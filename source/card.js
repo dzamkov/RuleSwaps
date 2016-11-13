@@ -4,18 +4,73 @@ Role[0] = Role.Action = { id: 0, str: "Action" };
 Role[1] = Role.Condition = { id: 1, str: "Condition" };
 Role[2] = Role.Player = { id: 2, str: "Player" };
 
-// Gets a string representing a role or compound role
-function getRoleString() {
-	
-}
-
 // Identifies a type of card in the game (in general, not a specific instance).
-function Card(role, slots, value, text, resolve) {
+function Card(role, text, resolve) {
 	this.role = role;
-	this.slots = slots;
-	this.value = value;
 	this.text = text;
 	this.resolve = resolve;
+	
+	// Parse text to determine slots
+	var cur = 0;
+	var start = 0;
+	var state = 0;
+	var parts = []
+	var slots = []
+	var parenthetical = null;
+	function emitText() {
+		if (start < cur) {
+			parts.push(text.substring(start, cur));
+		}
+	}
+	function emitSlot() {
+		var str = text.substring(start, cur);
+		var role = Role[str];
+		if (role) {
+			parts.push(role);
+			slots.push(role);
+		} else {
+			throw "Unrecognized role ";
+		}
+	}
+	function emitParenthetical() {
+		var str = text.substring(start, cur);
+		parenthetical = str;
+	}
+	while (cur < text.length) {
+		var ch = text.charAt(cur);
+		if (state === 0) {
+			if (ch === '{') {
+				emitText();
+				start = cur + 1;
+				state = 1;
+			} else if (ch === '(') {
+				emitText();
+				start = cur + 1;
+				state = 2;
+			}
+		} else if (state === 1) {
+			if (ch === '}') {
+				emitSlot();
+				start = cur + 1;
+				state = 0;
+			}
+		} else if (state === 2) {
+			if (ch === ')') {
+				emitParenthetical();
+				start = cur + 1;
+				state = 0;
+				break;
+			}
+		}
+		cur++;
+	}
+	if (state !== 0) {
+		throw "Failed to parse text";
+	}
+	emitText();
+	this.parts = parts;
+	this.slots = slots;
+	this.parenthetical = parenthetical;
 }
 
 // Creates an element for an instance of this card
@@ -26,25 +81,33 @@ Card.prototype.createElement = function() {
 	var header = document.createElement("div");
 	header.className = "card-header " +
 		"card-header-" + this.role.str.toLowerCase();
+	mainDiv.appendChild(header);
 	
 	var type = document.createElement("span");
 	type.className = "card-type";
 	type.innerText = this.role.str;
-	
-	var value = document.createElement("span");
-	value.className = "card-value";
-	value.innerText = this.value.toString();
+	header.appendChild(type);
 	
 	var text = document.createElement("div");
 	text.className = "card-text";
-	text.innerHTML = this.text
-		.replace(/{Action}/, "<span class=\"card-text-action\">(Action)</span>")
-		.replace(/{Condition}/, "<span class=\"card-text-condition\">(Condition)</span>")
-		.replace(/{Player}/, "<span class=\"card-text-player\">(Player)</span>");
-	
-	header.appendChild(type);
-	header.appendChild(value);
-	mainDiv.appendChild(header);
+	for (var i = 0; i < this.parts.length; i++) {
+		var part = this.parts[i];
+		if (typeof part === "string") {
+			text.appendChild(document.createTextNode(part));
+		} else {
+			var slot = document.createElement("span");
+			slot.className = "card-text-" + part.str.toLowerCase();
+			slot.innerText = "(" + part.str + ")";
+			text.appendChild(slot);
+		}
+	}
 	mainDiv.appendChild(text);
+	
+	if (this.parenthetical) {
+		var parenthetical = document.createElement("div");
+		parenthetical.className = "card-parenthetical";
+		parenthetical.innerText = "(" + this.parenthetical + ")";
+		mainDiv.appendChild(parenthetical);
+	}
 	return mainDiv;
 };

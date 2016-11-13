@@ -32,7 +32,7 @@ $(int_dir)/%.js: $(source_dir)/%.js
 	babel $< --presets es2015 -o $@
 	
 common_files := $(int_dir)/card.js $(int_dir)/cards.js 
-client_files := $(common_files) $(int_dir)/client.js
+client_files := $(common_files) $(int_dir)/motion.js $(int_dir)/client.js
 server_files := $(common_files) $(int_dir)/server.js
 
 $(output_dir)/static/script.js: node_modules/babel-polyfill/dist/polyfill.min.js $(client_files)

@@ -4,6 +4,38 @@ body {
 	font-family: "Trebuchet MS", Helvetica, sans-serif;
 }
 
+#section-player {
+	position: absolute;
+	left: 20%;
+	right: 20%;
+	bottom: 10px;
+	height: 200px;
+}
+
+.section-back {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	background: linear-gradient(#25282d, #000000);
+	border-radius: 20px;
+	border: solid 2px black;
+	box-shadow: 0 0 20px 0 black;
+	opacity: 0.4;
+}
+
+#section-player-hand {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	padding: 20px;
+	opacity: 1;
+	border-spacing: 20px;
+}
+
 .card {
 	user-select: none;
 	cursor: pointer;
@@ -13,12 +45,30 @@ body {
 	box-shadow: 0 0 14px 0 #101010;
 	width: 120px;
 	height: 160px;
+	transition: transform 0.05s;
 }
 
-.card:hover {
+.card-exit-hole {
+	border-radius: 10px 10px;
+	border: solid 2px #002966;
+	background-color: #a4e1f2;
+	box-shadow: 0 0 14px 0 #003399;
+	width: 120px;
+	height: 160px;
+	opacity: 0.4;
+}
+
+.card-invis-hole {
+	width: 120px;
+	height: 160px;	
+}
+
+.card-hover {
 	background-color: #e6ffff;
 	border-color: #002966;
 	box-shadow: 0 0 14px 0 #003399;
+	z-index: 1;
+	transform: scale(1.1);
 }
 
 .card-header {
@@ -51,23 +101,6 @@ body {
 	bottom: 1px;
 }
 
-.card-value {
-	position: absolute;
-	bottom: 1px;
-	right: 4px;
-}
-
-.card-value:after {
-	margin-left: 2px;
-    background-image: url("images/star.png");
-    background-size: cover;
-    display: inline-block;
-    width: 20px; 
-    height: 20px;
-    content: "";
-	vertical-align: bottom;
-}
-
 .card-text {
 	padding: 2px 3px;
 	font-size: 13px;
@@ -87,4 +120,11 @@ body {
 .card-text-condition {
 	color: #239023;
 	font-weight: bold;
+}
+
+.card-parenthetical {
+	padding: 4px 5px;
+	font-size: 11px;
+	text-align: center;
+	font-style: italic;
 }

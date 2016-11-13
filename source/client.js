@@ -44,7 +44,7 @@ window.onload = function() {
 		}
 	}
 	
-	Motion.enableAccept(document.getElementById("section-player-hand"), function(element, left, top) {
+	Motion.enableAccept(document.getElementById("section-player-self-hand"), function(element, left, top) {
 		var children = this.children;
 		var prev = null;
 		for (var i = 0; i < children.length; i++) {

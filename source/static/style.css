@@ -1,15 +1,71 @@
 body {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	margin: 0;
 	background-image: url("images/background.png");
 	background-position: center top;
 	font-family: "Trebuchet MS", Helvetica, sans-serif;
 }
 
-#section-player {
+#section-player-self {
 	position: absolute;
 	left: 20%;
 	right: 20%;
 	bottom: 10px;
 	height: 200px;
+}
+
+#section-player-self-hand {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	padding: 20px;
+	border-spacing: 20px;
+}
+
+#section-playarea {
+	position: absolute;
+	left: 120px;
+	right: 120px;
+	top: 10px;
+	bottom: 230px;
+}
+
+#players-left {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
+	left: 0;
+	width: 100px;
+	top: 10px;
+	bottom: 230px;
+}
+
+#players-right {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-around;
+	right: 0;
+	width: 100px;
+	top: 10px;
+	bottom: 230px;
+}
+
+.section-player-left {
+	position: relative;
+	width: 100px;
+	height: 100px;
+}
+
+.section-player-right {
+	position: relative;
+	width: 100px;
+	height: 100px;
 }
 
 .section-back {
@@ -25,15 +81,31 @@ body {
 	opacity: 0.4;
 }
 
-#section-player-hand {
+.section-back-left {
 	position: absolute;
 	left: 0;
 	top: 0;
 	bottom: 0;
 	right: 0;
-	padding: 20px;
-	opacity: 1;
-	border-spacing: 20px;
+	background: linear-gradient(#25282d, #000000);
+	border-radius: 0 20px 20px 0;
+	border: solid 2px black;
+	border-left: none;
+	box-shadow: 0 0 20px 0 black;
+	opacity: 0.4;
+}
+
+.section-back-right {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	background: linear-gradient(#25282d, #000000);
+	border-radius: 20px 0 0 20px;
+	border: solid 2px black;
+	box-shadow: 0 0 20px 0 black;
+	opacity: 0.4;
 }
 
 .card {

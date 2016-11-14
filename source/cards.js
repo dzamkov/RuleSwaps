@@ -71,13 +71,13 @@ Cards["majority_vote"] = new Card(Role.Condition,
 		// TODO
 	});
 	
-Cards["wealth-vote"] = new Card(Role.Condition,
+Cards["wealth_vote"] = new Card(Role.Condition,
 	"Wealth-weighted vote (each player gets votes equal to their wealth)",
 	function*(slots, context) {
 		// TODO
 	});
 
-Cards["payment-vote"] = new Card(Role.Condition,
+Cards["payment_vote"] = new Card(Role.Condition,
 	"Payment-weighted vote (each player gets votes equal to the amount of coins they pay)",
 	function*(slots, context) {
 		// TODO
@@ -98,19 +98,19 @@ Cards["wealthiest_player"] = new Card(Role.Player,
 		// TODO
 	});
 
-Cards["left"] = new Card(Role.Player,
+Cards["left_player"] = new Card(Role.Player,
 	"The player to the left of {Player}",
 	function*(slots, context) {
 		// TODO
 	});
 
-Cards["right"] = new Card(Role.Player,
+Cards["right_player"] = new Card(Role.Player,
 	"The player to the right of {Player}",
 	function*(slots, context) {
 		// TODO
 	});
 
-Cards["payment"] = new Card(Role.Player,
+Cards["biggest_payor"] = new Card(Role.Player,
 	"Whoever pays the most coins (if there is a tie, choose randomly among the winners)",
 	function*(slots, context) {
 		// TODO

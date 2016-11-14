@@ -8,6 +8,42 @@ body {
 	font-family: "Trebuchet MS", Helvetica, sans-serif;
 }
 
+#section-playarea {
+	position: absolute;
+	left: 120px;
+	right: 120px;
+	top: 10px;
+	bottom: 230px;
+}
+
+#section-playerarea-right {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	left: 200px;
+	top: 20px;
+	right: 20px;
+	bottom: 20px;
+}
+
+#section-log {
+	position: relative;
+	flex-grow: 1;
+	overflow-x: hidden;
+	overflow-y: scroll;
+	border-radius: 10px 10px 0 0;
+	background: white;
+}
+
+#section-input {
+	z-index: 1;
+	height: 200px;
+	border-top: solid 1px black;
+	border-radius: 0 0 10px 10px;
+	box-shadow: 0 0 10px 0 #101010;
+	background: #565656;
+}
+
 #section-player-self {
 	position: absolute;
 	left: 20%;
@@ -24,14 +60,6 @@ body {
 	right: 0;
 	padding: 20px;
 	border-spacing: 20px;
-}
-
-#section-playarea {
-	position: absolute;
-	left: 120px;
-	right: 120px;
-	top: 10px;
-	bottom: 230px;
 }
 
 #players-left {
@@ -56,16 +84,41 @@ body {
 	bottom: 230px;
 }
 
+.section-log-entry {
+	padding: 8px;
+}
+
+.section-log-entry:nth-child(odd) {
+	background-color: #f0ffff;
+}
+
+.section-log-entry:nth-child(even) {
+	background-color: #fffff0;
+}
+
+.section-log-shadow {
+	position: absolute;
+	z-index: 2;
+	pointer-events: none;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	border-radius: 10px;
+	border: solid 1px black;
+	box-shadow: inset 0 0 10px #000000;
+}
+
 .section-player-left {
 	position: relative;
 	width: 100px;
-	height: 100px;
+	height: 140px;
 }
 
 .section-player-right {
 	position: relative;
 	width: 100px;
-	height: 100px;
+	height: 140px;
 }
 
 .section-back {
@@ -109,6 +162,7 @@ body {
 }
 
 .card {
+	z-index: 5;
 	user-select: none;
 	cursor: pointer;
 	border-radius: 10px 10px;
@@ -139,7 +193,7 @@ body {
 	background-color: #e6ffff;
 	border-color: #002966;
 	box-shadow: 0 0 14px 0 #003399;
-	z-index: 1;
+	z-index: 10;
 	transform: scale(1.1);
 }
 

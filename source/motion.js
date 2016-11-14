@@ -12,8 +12,11 @@ var Motion = new function() {
 	
 	// Smoothly animates and then merges the given source object into the given destination object.
 	function mergeInto(source, dest) {
+		var motion = source.motion || (source.motion = {});
 		source.target = dest;
-		replace(dest, source);
+		if (motion.mergeInto) {
+			motion.mergeInto.call(source, dest);
+		}
 	}
 	
 	// Sets an element to smoothly move to the given position within its parent. The first time this
@@ -25,6 +28,11 @@ var Motion = new function() {
 			element.style.position = "absolute";
 		element.style.left = left + "px";
 		element.style.top = top + "px";
+	}
+	
+	// Gets the placeholder element representing where the given dragged element was dragged from.
+	function getExitHole(element) {
+		return element.motion.exitHole;
 	}
 	
 	// Gets the rectangle the given element is moving to.
@@ -90,11 +98,11 @@ var Motion = new function() {
 	}
 	
 	// Removes or resets an element being used as a placeholder for dragging.
-	function cancelHole(hole) {
+	function cancelHole(hole, isExiting) {
 		var parent = hole.parentNode;
 		var parentMotion, cancelHole;
 		if ((parentMotion = parent.motion) && (cancelHole = parentMotion.cancelHole)) {
-			cancelHole.call(parent, hole);
+			cancelHole.call(parent, hole, isExiting);
 		} else {
 			parent.removeChild(hole);
 		}
@@ -120,7 +128,7 @@ var Motion = new function() {
 					eRect.bottom < hRect.top || 
 					eRect.top > hRect.bottom)
 				{
-					cancelHole(elementMotion.enterHole);
+					cancelHole(elementMotion.enterHole, false);
 					elementMotion.enterHole = null;
 				}
 			}
@@ -144,7 +152,7 @@ var Motion = new function() {
 				var nEnterHole = getEnterHole.call(acceptor, element, left, top);
 				if (nEnterHole !== elementMotion.enterHole) {
 					if (elementMotion.enterHole)
-						cancelHole(elementMotion.enterHole);
+						cancelHole(elementMotion.enterHole, false);
 					elementMotion.enterHole = (nEnterHole !== elementMotion.exitHole) ? nEnterHole : null;
 				}
 			}
@@ -163,7 +171,7 @@ var Motion = new function() {
 			if (motion.enterHole) {
 				mergeInto(dragging.element, motion.enterHole);
 				if (motion.exitHole)
-					cancelHole(motion.exitHole);
+					cancelHole(motion.exitHole, true);
 				motion.enterHole = motion.exitHole = null;
 			} else if (motion.exitHole) {
 				mergeInto(dragging.element, motion.exitHole);
@@ -195,6 +203,7 @@ var Motion = new function() {
 	function enableDrag(element, getExitHole, mergeInto) {
 		var motion = element.motion || (element.motion = {});
 		motion.getExitHole = getExitHole;
+		motion.mergeInto = mergeInto;
 		element.addEventListener("mousedown", draggableMouseDown);
 	}
 	
@@ -221,6 +230,7 @@ var Motion = new function() {
 	
 	this.mergeInto = mergeInto;
 	this.moveTo = moveTo;
+	this.getExitHole = getExitHole;
 	this.getTargetRect = getTargetRect;
 	this.replace = replace;
 	this.enableDrag = enableDrag;

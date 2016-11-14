@@ -24,8 +24,8 @@ $(output_dir)/static/images:
 $(output_dir)/%.html: $(source_dir)/%.html
 	html-minifier $< --collapse-whitespace -o $@
 	
-$(output_dir)/%.css: $(source_dir)/%.css
-	cleancss $< --skip-rebase -o $@
+$(output_dir)/%.css: $(source_dir)/%.scss
+	node-sass $< --output-style compressed > $@
 
 $(int_dir)/%.js: $(source_dir)/%.js
 	mkdir -p $(dir $@)

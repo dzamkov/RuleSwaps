@@ -8,6 +8,17 @@ body {
 	font-family: "Trebuchet MS", Helvetica, sans-serif;
 }
 
+.fill-parent {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+}
+
+$curve-section: 20px;
+$curve-log: 10px;
+
 #section-playarea {
 	position: absolute;
 	left: 120px;
@@ -31,15 +42,18 @@ body {
 	flex-grow: 1;
 	overflow-x: hidden;
 	overflow-y: scroll;
-	border-radius: 10px 10px 0 0;
+	border-radius: $curve-log $curve-log 0 0;
 	background: white;
 }
 
 #section-input {
+	position: relative;
 	z-index: 1;
 	height: 200px;
+	padding: 20px;
+	border-spacing: 20px;
 	border-top: solid 1px black;
-	border-radius: 0 0 10px 10px;
+	border-radius: 0 0 $curve-log $curve-log;
 	box-shadow: 0 0 10px 0 #101010;
 	background: #565656;
 }
@@ -53,11 +67,7 @@ body {
 }
 
 #section-player-self-hand {
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
+	@extend .fill-parent;
 	padding: 20px;
 	border-spacing: 20px;
 }
@@ -97,14 +107,10 @@ body {
 }
 
 .section-log-shadow {
-	position: absolute;
+	@extend .fill-parent;
 	z-index: 2;
 	pointer-events: none;
-	left: 0;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	border-radius: 10px;
+	border-radius: $curve-log;
 	border: solid 1px black;
 	box-shadow: inset 0 0 10px #000000;
 }
@@ -122,11 +128,7 @@ body {
 }
 
 .section-back {
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
+	@extend .fill-parent;
 	background: linear-gradient(#25282d, #000000);
 	border-radius: 20px;
 	border: solid 2px black;
@@ -135,58 +137,117 @@ body {
 }
 
 .section-back-left {
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
-	background: linear-gradient(#25282d, #000000);
+	@extend .fill-parent;
+	@extend .section-back;
 	border-radius: 0 20px 20px 0;
-	border: solid 2px black;
-	border-left: none;
-	box-shadow: 0 0 20px 0 black;
-	opacity: 0.4;
 }
 
 .section-back-right {
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	right: 0;
-	background: linear-gradient(#25282d, #000000);
+	@extend .fill-parent;
+	@extend .section-back;
 	border-radius: 20px 0 0 20px;
-	border: solid 2px black;
-	box-shadow: 0 0 20px 0 black;
-	opacity: 0.4;
+}
+
+
+$action-color-light: #ff6666;
+$action-color-mid: #dc3131;
+$action-color-dark: #702020;
+
+$condition-color-light: #5cc56d;
+$condition-color-mid: #20a135;
+$condition-color-dark: #107010;
+
+$player-color-light: #506af1;
+$player-color-mid: #1841e4;
+$player-color-dark: #102060;
+
+
+.card-shape {
+	border-radius: 10px;
+	width: 120px;
+	height: 160px;
+	z-index: 5;
 }
 
 .card {
-	z-index: 5;
+	@extend .card-shape;
 	user-select: none;
 	cursor: pointer;
-	border-radius: 10px 10px;
 	border: solid 2px black;
 	background-color: white;
 	box-shadow: 0 0 14px 0 #101010;
-	width: 120px;
-	height: 160px;
 	transition: transform 0.05s;
 }
 
-.card-exit-hole {
-	border-radius: 10px 10px;
-	border: solid 2px #002966;
-	background-color: #a4e1f2;
-	box-shadow: 0 0 14px 0 #003399;
-	width: 120px;
-	height: 160px;
+.card-hole {
+	@extend .card-shape;
+	border: solid 2px #606060;
+	background-color: #efefef;
+	box-shadow: 0 0 14px 0 #909090;
 	opacity: 0.4;
 }
 
-.card-invis-hole {
-	width: 120px;
-	height: 160px;	
+@mixin card-hole-special($light, $mid, $dark) {
+	border: solid 2px $dark;
+	background: repeating-linear-gradient(
+		45deg, $light, $light 4px, $mid 4px, $mid 8px);
+	box-shadow: 0 0 14px 0 $dark;
+	opacity: 0.4;
+}
+
+@mixin card-hole-special-active($light, $mid, $dark) {
+	border: solid 2px $dark;
+	background-color: $mid;
+	box-shadow: 0 0 14px 0 $dark;
+	opacity: 0.4;
+}
+
+.card-hole-action {
+	@extend .card-shape;
+	@include card-hole-special(
+		$action-color-light,
+		$action-color-mid,
+		$action-color-dark);
+}
+
+.card-hole-action-active {
+	@extend .card-shape;
+	@include card-hole-special-active(
+		$action-color-light,
+		$action-color-mid,
+		$action-color-dark);
+}
+
+.card-hole-condition {
+	@extend .card-shape;
+	@include card-hole-special(
+		$condition-color-light,
+		$condition-color-mid,
+		$condition-color-dark);
+}
+
+.card-hole-condition-active {
+	@extend .card-shape;
+	@include card-hole-special-active(
+		$condition-color-light,
+		$condition-color-mid,
+		$condition-color-dark);
+}
+
+.card-hole-player {
+	@extend .card-shape;
+	@include card-hole-special(
+		$player-color-light,
+		$player-color-mid,
+		$player-color-dark);
+}
+
+.card-hole-player-active {
+	@extend .card-shape;
+	@include card-hole-special-active(
+		$player-color-light,
+		$player-color-mid,
+		$player-color-dark);
 }
 
 .card-hover {
@@ -211,15 +272,15 @@ body {
 }
 
 .card-header-action {
-	background: linear-gradient(#ff9999, #ff6666);
-}
-
-.card-header-player {
-	background: linear-gradient(#708af1, #1841e4);
+	background: linear-gradient($action-color-light, $action-color-mid);
 }
 
 .card-header-condition {
-	background: linear-gradient(#5cc56d, #20a135);
+	background: linear-gradient($condition-color-light, $condition-color-mid);
+}
+
+.card-header-player {
+	background: linear-gradient($player-color-light, $player-color-mid);
 }
 
 .card-type {
@@ -233,19 +294,23 @@ body {
 	text-align: center;
 }
 
-.card-text-action {
-	color: #d00000;
+.card-text-slot {
 	font-weight: bold;
+}
+
+.card-text-action {
+	@extend .card-text-slot;
+	color: #d00000;
 }
 
 .card-text-player {
+	@extend .card-text-slot;
 	color: #0000ff;
-	font-weight: bold;
 }
 
 .card-text-condition {
+	@extend .card-text-slot;
 	color: #239023;
-	font-weight: bold;
 }
 
 .card-parenthetical {

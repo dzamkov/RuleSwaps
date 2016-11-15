@@ -1,5 +1,5 @@
 // Identifies the role of card.
-var Role = { };
+let Role = { };
 Role[0] = Role.Action = { id: 0, str: "Action" };
 Role[1] = Role.Condition = { id: 1, str: "Condition" };
 Role[2] = Role.Player = { id: 2, str: "Player" };
@@ -11,20 +11,20 @@ function Card(role, text, resolve) {
 	this.resolve = resolve;
 	
 	// Parse text to determine slots
-	var cur = 0;
-	var start = 0;
-	var state = 0;
-	var parts = []
-	var slots = []
-	var parenthetical = null;
+	let cur = 0;
+	let start = 0;
+	let state = 0;
+	let parts = []
+	let slots = []
+	let parenthetical = null;
 	function emitText() {
 		if (start < cur) {
 			parts.push(text.substring(start, cur));
 		}
 	}
 	function emitSlot() {
-		var str = text.substring(start, cur);
-		var role = Role[str];
+		let str = text.substring(start, cur);
+		let role = Role[str];
 		if (role) {
 			parts.push(role);
 			slots.push(role);
@@ -33,11 +33,11 @@ function Card(role, text, resolve) {
 		}
 	}
 	function emitParenthetical() {
-		var str = text.substring(start, cur);
+		let str = text.substring(start, cur);
 		parenthetical = str;
 	}
 	while (cur < text.length) {
-		var ch = text.charAt(cur);
+		let ch = text.charAt(cur);
 		if (state === 0) {
 			if (ch === '{') {
 				emitText();
@@ -73,41 +73,48 @@ function Card(role, text, resolve) {
 	this.parenthetical = parenthetical;
 }
 
-// Creates an element for an instance of this card
-Card.prototype.createElement = function() {
-	var mainDiv = document.createElement("div");
-	mainDiv.className = "card";
-	
-	var header = document.createElement("div");
-	header.className = "card-header " +
-		"card-header-" + this.role.str.toLowerCase();
-	mainDiv.appendChild(header);
-	
-	var type = document.createElement("span");
-	type.className = "card-type";
-	type.innerText = this.role.str;
-	header.appendChild(type);
-	
-	var text = document.createElement("div");
-	text.className = "card-text";
-	for (var i = 0; i < this.parts.length; i++) {
-		var part = this.parts[i];
-		if (typeof part === "string") {
-			text.appendChild(document.createTextNode(part));
-		} else {
-			var slot = document.createElement("span");
-			slot.className = "card-text-" + part.str.toLowerCase();
-			slot.innerText = "(" + part.str + ")";
-			text.appendChild(slot);
+
+// Describes an expression made up of cards.
+function Expression(card, slots) {
+	this.card = card;
+	this.slots = slots;
+}
+
+// Constructs an expression from a section of a list of cards.
+Expression.parseFromList = function(cards, indexRef) {
+	let index = indexRef.index++;
+	if (index < cards.length) {
+		let card = cards[index];
+		let slots = []
+		for (let i = 0; i < card.slots.length; i++) {
+			let slot = Expression.parseFromList(cards, indexRef);
+			if (slot.card.role !== card.slots[i])
+				return null;
+			slots.push(slot);
 		}
+		return new Expression(card, slots);
+	} else {
+		return null;
 	}
-	mainDiv.appendChild(text);
-	
-	if (this.parenthetical) {
-		var parenthetical = document.createElement("div");
-		parenthetical.className = "card-parenthetical";
-		parenthetical.innerText = "(" + this.parenthetical + ")";
-		mainDiv.appendChild(parenthetical);
-	}
-	return mainDiv;
-};
+}
+
+// Constructs an expression from a list of cards, returning null if the list is not well-formed.
+Expression.fromList = function(cards) {
+	let indexRef = { index: 0 };
+	let res = Expression.parseFromList(cards, indexRef);
+	return indexRef.index === cards.length ? res : null;
+}
+
+// Appends the cards in this expression to the given list.
+Expression.prototype.writeToList = function(cards) {
+	cards.push(this.card);
+	for (let i = 0; i < this.slots.length; i++)
+		this.slots[i].writeToList(cards);
+}
+
+// Converts this expression to a list.
+Expression.prototype.toList = function() {
+	let cards = [];
+	this.writeToList(cards);
+	return cards;
+}

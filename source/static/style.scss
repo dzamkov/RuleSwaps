@@ -48,6 +48,7 @@ $curve-log: 10px;
 
 #section-input {
 	position: relative;
+	flex-shrink: 0;
 	z-index: 1;
 	height: 200px;
 	padding: 20px;
@@ -92,18 +93,6 @@ $curve-log: 10px;
 	width: 100px;
 	top: 10px;
 	bottom: 230px;
-}
-
-.section-log-entry {
-	padding: 8px;
-}
-
-.section-log-entry:nth-child(odd) {
-	background-color: #f0ffff;
-}
-
-.section-log-entry:nth-child(even) {
-	background-color: #fffff0;
 }
 
 .section-log-shadow {
@@ -155,12 +144,72 @@ $action-color-dark: #702020;
 
 $condition-color-light: #5cc56d;
 $condition-color-mid: #20a135;
-$condition-color-dark: #107010;
+$condition-color-dark: #006010;
 
 $player-color-light: #506af1;
 $player-color-mid: #1841e4;
 $player-color-dark: #102060;
 
+.log-entry {
+	font-size: 14px;
+	border-radius: 12px 0 0 12px;
+	border: solid 1px #707070;
+	border-right: none;
+	margin-top: -1px;
+	padding: 8px;
+}
+
+.log-entry:nth-child(odd) {
+	background-color: #f0ffff;
+}
+
+.log-entry:nth-child(even) {
+	background-color: #fffff0;
+}
+
+
+.log-entry-player {
+	color: $player-color-mid;
+	font-weight: bold;
+}
+
+.mini-card {
+	display: inline-block;
+	width: 12px;
+	height: 16px;
+	border-radius: 2px;
+	border: solid 1px black;
+	margin-left: 2px;
+	margin-right: 2px;
+	vertical-align: middle;
+}
+
+.mini-card-action {
+	@extend .mini-card;
+	background: linear-gradient(
+		$action-color-mid,
+		$action-color-mid 4px,
+		white 5px,
+		white);
+}
+
+.mini-card-condition {
+	@extend .mini-card;
+	background: linear-gradient(
+		$condition-color-mid,
+		$condition-color-mid 4px,
+		white 5px,
+		white);
+}
+
+.mini-card-player {
+	@extend .mini-card;
+	background: linear-gradient(
+		$player-color-mid,
+		$player-color-mid 4px,
+		white 5px,
+		white);
+}
 
 .card-shape {
 	border-radius: 10px;

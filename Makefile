@@ -31,7 +31,7 @@ $(int_dir)/%.js: $(source_dir)/%.js
 	mkdir -p $(dir $@)
 	babel $< --presets es2015 -o $@
 	
-common_files := $(int_dir)/card.js $(int_dir)/cards.js 
+common_files := $(int_dir)/card.js $(int_dir)/game.js  $(int_dir)/cards.js 
 client_files := $(common_files) $(int_dir)/motion.js $(int_dir)/ui.js $(int_dir)/client.js
 server_files := $(common_files) $(int_dir)/server.js
 

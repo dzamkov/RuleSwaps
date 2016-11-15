@@ -1,5 +1,44 @@
+// Creates an element for an instance of this card
+Card.prototype.createElement = function() {
+	let mainDiv = document.createElement("div");
+	mainDiv.className = "card";
+	
+	let header = document.createElement("div");
+	header.className = "card-header " +
+		"card-header-" + this.role.str.toLowerCase();
+	mainDiv.appendChild(header);
+	
+	let type = document.createElement("span");
+	type.className = "card-type";
+	type.innerText = this.role.str;
+	header.appendChild(type);
+	
+	let text = document.createElement("div");
+	text.className = "card-text";
+	for (let i = 0; i < this.parts.length; i++) {
+		let part = this.parts[i];
+		if (typeof part === "string") {
+			text.appendChild(document.createTextNode(part));
+		} else {
+			let slot = document.createElement("span");
+			slot.className = "card-text-" + part.str.toLowerCase();
+			slot.innerText = "(" + part.str + ")";
+			text.appendChild(slot);
+		}
+	}
+	mainDiv.appendChild(text);
+	
+	if (this.parenthetical) {
+		let parenthetical = document.createElement("div");
+		parenthetical.className = "card-parenthetical";
+		parenthetical.innerText = "(" + this.parenthetical + ")";
+		mainDiv.appendChild(parenthetical);
+	}
+	return mainDiv;
+};
+
 // Contains functions related to game UI.
-var UI = new function() {
+let UI = new function() {
 	
 	// Augments an element to be a card. Provides an interface to the element at a logical level.
 	function Card(element, type) {
@@ -13,8 +52,8 @@ var UI = new function() {
 	// Enables a card to be dragged between acceptors
 	Card.prototype.enableDrag = function() {
 		Motion.enableDrag(this.element, function() {
-			var expression = this.card.expression;
-			var hole;
+			let expression = this.card.expression;
+			let hole;
 			if (expression) {
 				hole = createSlotHole(this.card.type.role);
 			} else {
@@ -24,8 +63,8 @@ var UI = new function() {
 			hole.holeFor = this;
 			return hole;
 		}, function(dest) {
-			var card = this.card;
-			var expression = dest.parentNode.expression;
+			let card = this.card;
+			let expression = dest.parentNode.expression;
 			Motion.replace(dest, this);
 			if (expression) {
 				if (card.expression !== expression) {
@@ -47,20 +86,20 @@ var UI = new function() {
 	
 	// Balances the children of a hand or list of cards
 	function balanceChildren(shouldCenter) {
-		var children = this.children;
-		var computedStyle = window.getComputedStyle(this);
-		var paddingLeft = parseFloat(computedStyle.paddingLeft || 0);
-		var paddingRight = parseFloat(computedStyle.paddingRight || 0);
-		var paddingTop = parseFloat(computedStyle.paddingTop || 0);
-		var containerWidth = this.clientWidth - paddingLeft - paddingRight;
-		var spacing = parseFloat(computedStyle.borderSpacing || 0);
-		var takenWidth = spacing * (children.length - 1);
-		var lastWidth = 0;
-		for (var i = 0; i < children.length; i++) {
+		let children = this.children;
+		let computedStyle = window.getComputedStyle(this);
+		let paddingLeft = parseFloat(computedStyle.paddingLeft || 0);
+		let paddingRight = parseFloat(computedStyle.paddingRight || 0);
+		let paddingTop = parseFloat(computedStyle.paddingTop || 0);
+		let containerWidth = this.clientWidth - paddingLeft - paddingRight;
+		let spacing = parseFloat(computedStyle.borderSpacing || 0);
+		let takenWidth = spacing * (children.length - 1);
+		let lastWidth = 0;
+		for (let i = 0; i < children.length; i++) {
 			takenWidth += (lastWidth = children[i].offsetWidth);
 		}
 		
-		var left, compression;
+		let left, compression;
 		if (takenWidth < containerWidth) {
 			left = (shouldCenter ? (containerWidth - takenWidth) / 2.0 : 0) + paddingLeft;
 			compression = 1.0;
@@ -68,7 +107,7 @@ var UI = new function() {
 			left = paddingLeft;
 			compression = (containerWidth - lastWidth) / (takenWidth - lastWidth);
 		}
-		for (var i = 0; i < children.length; i++) {
+		for (let i = 0; i < children.length; i++) {
 			Motion.moveTo(children[i], left, paddingTop);
 			left += (children[i].offsetWidth + spacing) * compression;
 		}
@@ -76,25 +115,25 @@ var UI = new function() {
 	
 	// Accepts a card into a hand of cards.
 	function handAcceptCard(incoming, left, top) {
-		var card = incoming.card;
+		let card = incoming.card;
 		if (card) {
-			var children = this.children;
-			var prev = null;
-			for (var i = 0; i < children.length; i++) {
-				var child = children[i];
-				var rect = Motion.getTargetRect(child);
-				var midX = (rect.left + rect.right) / 2.0;
+			let children = this.children;
+			let prev = null;
+			for (let i = 0; i < children.length; i++) {
+				let child = children[i];
+				let rect = Motion.getTargetRect(child);
+				let midX = (rect.left + rect.right) / 2.0;
 				if (midX < left) {
 					prev = child;
 				} else {
 					break;
 				}
 			}
-			var next = prev ? prev.nextSibling : this.firstChild;
+			let next = prev ? prev.nextSibling : this.firstChild;
 			if (prev && prev.holeFor === incoming) return prev;
 			if (next && next.holeFor === incoming) return next;
 			
-			var hole = document.createElement("div");
+			let hole = document.createElement("div");
 			hole.holeFor = incoming;
 			hole.className = "card-hole";
 			this.insertBefore(hole, next);
@@ -110,9 +149,9 @@ var UI = new function() {
 	}
 	
 	// Handles window resizing
-	var toResize = [];
+	let toResize = [];
 	function windowResize(e) {
-		for (var i = 0; i < toResize.length; i++)
+		for (let i = 0; i < toResize.length; i++)
 			toResize[i]();
 	}
 	
@@ -127,7 +166,7 @@ var UI = new function() {
 	
 	// Draws a new card into this hand.
 	Hand.prototype.draw = function(cardType) {
-		var card = createCard(cardType);
+		let card = createCard(cardType);
 		card.enableDrag();
 		this.element.appendChild(card.element);
 		balanceChildren.call(this.element, true);
@@ -141,14 +180,14 @@ var UI = new function() {
 			
 			// Don't allow incoming cards from the same expression
 			if (incoming.card.expression !== this.expression) {
-				var children = this.children;
-				var cur = null;
-				var bestDis = Infinity;
-				for (var i = 0; i < children.length; i++) {
-					var child = children[i];
-					var rect = Motion.getTargetRect(child);
-					var midX = (rect.left + rect.right) / 2.0;
-					var dis = Math.abs(midX - left);
+				let children = this.children;
+				let cur = null;
+				let bestDis = Infinity;
+				for (let i = 0; i < children.length; i++) {
+					let child = children[i];
+					let rect = Motion.getTargetRect(child);
+					let midX = (rect.left + rect.right) / 2.0;
+					let dis = Math.abs(midX - left);
 					if (dis < bestDis) {
 						cur = child;
 						bestDis = dis;
@@ -156,7 +195,7 @@ var UI = new function() {
 				}
 				
 				if (cur) {
-					var role = incoming.card.type.role;
+					let role = incoming.card.type.role;
 					if (cur.holeFor === incoming) {
 						return cur;
 					} else if (cur.holeFor === role) {
@@ -174,7 +213,7 @@ var UI = new function() {
 	function expressionCancelHole(hole, isExiting) {
 		console.assert(hole.holeFor instanceof HTMLElement);
 		if (isExiting) {
-			var type = hole.holeFor.card.type;
+			let type = hole.holeFor.card.type;
 			hole.holeFor = type.role;
 			this.expression.removeSlots(hole, type.slots.length);
 		} else {
@@ -192,7 +231,7 @@ var UI = new function() {
 	
 	// Creates a hole element for a slot of the given role.
 	function createSlotHole(role) {
-		var hole = document.createElement("div");
+		let hole = document.createElement("div");
 		hole.holeFor = role;
 		hole.className = "card-hole-" + role.str.toLowerCase();
 		return hole;
@@ -208,9 +247,9 @@ var UI = new function() {
 	
 	// Adds slots to an expression after the given card element.
 	Expression.prototype.addSlots = function(after, slots) {
-		var before = after.nextSibling;
-		for (var i = 0; i < slots.length; i++) {
-			var hole = createSlotHole(slots[i]);
+		let before = after.nextSibling;
+		for (let i = 0; i < slots.length; i++) {
+			let hole = createSlotHole(slots[i]);
 			this.element.insertBefore(hole, before);
 			before = hole.nextSibling;
 		}
@@ -219,11 +258,50 @@ var UI = new function() {
 	
 	// Removes a certain number slots from an expression after the given card element.
 	Expression.prototype.removeSlots = function(after, count) {
-		for (var i = 0; i < count; i++) {
-			var child = after.nextSibling;
+		for (let i = 0; i < count; i++) {
+			let child = after.nextSibling;
 			this.element.removeChild(child);
 		}
 		balanceChildren.call(this.element, false);
+	}
+	
+	// Creates a list of miniaturized cards that expand on mouse over. 
+	function createMiniList(cards) {
+		let container = document.createElement("span");
+		for (var i = 0; i < cards.length; i++) {
+			var card = document.createElement("div");
+			card.className = "mini-card-" + cards[i].role.str.toLowerCase();
+			container.appendChild(card);
+		}
+		return container;
+	}
+	
+	// Augments an element to be a game log.
+	function Log(element) {
+		this.element = element;
+		element.log = this;
+	}
+	
+	// Appends an item to the log.
+	Log.prototype.log = function(depth, parts) {
+		let entry = document.createElement("div");
+		entry.className = "log-entry";
+		entry.style.marginLeft = (depth * 20) + "px";
+		for (let i = 0; i < parts.length; i++) {
+			var part = parts[i];
+			if (typeof part === "string") {
+				entry.appendChild(document.createTextNode(part));
+			} else if (part instanceof Player) {
+				var player = document.createElement("span");
+				player.className = "log-entry-player";
+				player.innerText = part.name;
+				entry.appendChild(player);
+			} else if (part instanceof window.Expression) {
+				var list = createMiniList(part.toList());
+				entry.appendChild(list);
+			}
+		}
+		this.element.appendChild(entry);
 	}
 	
 	// Register window events
@@ -233,4 +311,5 @@ var UI = new function() {
 	this.createCard = createCard;
 	this.Hand = Hand;
 	this.Expression = Expression;
+	this.Log = Log;
 }

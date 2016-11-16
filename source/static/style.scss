@@ -1,3 +1,8 @@
+$font-family: "Trebuchet MS", Helvetica, sans-serif;
+
+$card-width: 120px;
+$card-height: 160px;
+
 body {
 	position: absolute;
 	width: 100%;
@@ -5,7 +10,7 @@ body {
 	margin: 0;
 	background-image: url("images/background.png");
 	background-position: center top;
-	font-family: "Trebuchet MS", Helvetica, sans-serif;
+	font-family: $font-family;
 }
 
 .fill-parent {
@@ -14,6 +19,31 @@ body {
 	top: 0;
 	bottom: 0;
 	right: 0;
+}
+
+@mixin button-style($light,$mid,$dark) {
+	user-select: none;
+	cursor: pointer;
+	font-size: 18px;
+	color: $dark;
+	background: linear-gradient($light, $mid);
+	text-shadow: 0 0 5px $light;
+	
+	&:hover {
+		box-shadow: inset 0 0 8px 0 $dark;
+	}
+	
+	&:active {
+		background: $mid;
+	}
+}
+
+@mixin button($light,$mid,$dark) {
+	@include button-style($light, $mid, $dark);
+	border: solid 1px $dark;
+	border-radius: 6px;
+	text-align: center;
+	padding: 5px;
 }
 
 $curve-section: 20px;
@@ -40,23 +70,64 @@ $curve-log: 10px;
 #section-log {
 	position: relative;
 	flex-grow: 1;
+	padding: 5px;
 	overflow-x: hidden;
 	overflow-y: scroll;
 	border-radius: $curve-log $curve-log 0 0;
-	background: white;
+	background: rgba(#dcdcdc, 0.4);
 }
 
 #section-input {
 	position: relative;
 	flex-shrink: 0;
 	z-index: 1;
-	height: 200px;
-	padding: 20px;
-	border-spacing: 20px;
+	overflow: hidden;
 	border-top: solid 1px black;
 	border-radius: 0 0 $curve-log $curve-log;
-	box-shadow: 0 0 10px 0 #101010;
+	box-shadow: 0 0 5px 0 #101010;
 	background: #565656;
+}
+
+$input-expression-area-margin: 2px;
+$input-expression-area-padding: 6px;
+$input-expression-button-width: 80px;
+$input-expression-button-padding: 6px;
+
+#input-expression {
+	position: relative;
+	height: $card-height +
+		2 * $input-expression-area-padding +
+		2 * $input-expression-area-margin;
+}
+
+#input-expression-cards {
+	position: absolute;
+	top: $input-expression-area-margin;
+	bottom: $input-expression-area-margin;
+	left: $input-expression-area-margin;
+	right: $input-expression-button-width +
+		2 * $input-expression-button-padding;
+	height: $card-height;
+	padding: $input-expression-area-padding;
+	border-spacing: 10px;
+	
+	background-color: #6d6d6d;
+	border-radius: 8px;
+	box-shadow: inset 0 0 2px #000000;
+}
+
+#input-expression-buttons {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	padding: $input-expression-button-padding;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: $input-expression-button-width;
+	a {
+		margin-bottom: 5px;
+	}
 }
 
 #section-player-self {
@@ -95,13 +166,91 @@ $curve-log: 10px;
 	bottom: 230px;
 }
 
+
+$input-chat-height: 30px;
+$input-chat-selector-width: 100px;
+$input-chat-button-width: 60px;
+
+#input-chat {
+	position: relative;
+	height: $input-chat-height;
+}
+
+#input-chat-container {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: $input-chat-selector-width;
+	right: $input-chat-button-width;
+}
+
+#input-chat-selector {
+	box-sizing: border-box;
+	width: $input-chat-selector-width;
+	height: 100%;
+	border-radius: 0 0 0 $curve-log;
+	
+	font-family: $font-family;
+	font-size: 14px;
+	padding-left: 10px;
+	padding-right: 4px;
+	color: #e0e0e0;
+	
+	outline: none;
+	background-color: #222222;
+	border: none;
+}
+
+#input-chat-box {
+	box-sizing: border-box;
+	margin: 0;
+	width: 100%;
+	height: 100%;
+	
+	font-family: $font-family;
+	font-size: 14px;
+	padding-left: 10px;
+	padding-right: 10px;
+	
+	background-color: #444444;
+	color: #e0e0e0;
+	border: none;
+	outline: none;
+	box-shadow: inset 0 0 2px #000000;
+}
+
+#input-chat-button {
+	@include button-style(#c49754, #aa6633, #551111);
+	
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	width: $input-chat-button-width;
+	
+	text-align: center;
+	vertical-align: middle;
+	line-height: $input-chat-height - 4px;
+	
+	border-top: solid 1px #222222;
+	border-radius: 0 0 $curve-log 0;
+}
+
+.button-green {
+	@include button(#85ce85, #2e863c, #005010);
+}
+
+.button-yellow {
+	@include button(#dbd872, #a07129, #553300);
+}
+
 .section-log-shadow {
 	@extend .fill-parent;
 	z-index: 2;
 	pointer-events: none;
 	border-radius: $curve-log;
 	border: solid 1px black;
-	box-shadow: inset 0 0 10px #000000;
+	box-shadow: inset 0 0 5px #000000;
 }
 
 .section-player-left {
@@ -120,8 +269,8 @@ $curve-log: 10px;
 	@extend .fill-parent;
 	background: linear-gradient(#25282d, #000000);
 	border-radius: 20px;
-	border: solid 2px black;
-	box-shadow: 0 0 20px 0 black;
+	border: solid 1px black;
+	box-shadow: 0 0 10px 0 black;
 	opacity: 0.4;
 }
 
@@ -137,7 +286,6 @@ $curve-log: 10px;
 	border-radius: 20px 0 0 20px;
 }
 
-
 $action-color-light: #ff6666;
 $action-color-mid: #dc3131;
 $action-color-dark: #702020;
@@ -151,22 +299,19 @@ $player-color-mid: #1841e4;
 $player-color-dark: #102060;
 
 .log-entry {
-	font-size: 14px;
-	border-radius: 12px 0 0 12px;
-	border: solid 1px #707070;
-	border-right: none;
-	margin-top: -1px;
+	display: inline-block;
+	float: left;
+	clear: left;
+	
 	padding: 8px;
+	margin: 2px;
+	font-size: 14px;
+	
+	border-radius: 6px;
+	border: solid 1px black;
+	
+	background: linear-gradient(rgba(#ffffff, 0.9) 0%, rgba(#ffffff, 0.7) 8%, rgba(#ffffff, 0.5) 100%);
 }
-
-.log-entry:nth-child(odd) {
-	background-color: #f0ffff;
-}
-
-.log-entry:nth-child(even) {
-	background-color: #fffff0;
-}
-
 
 .log-entry-player {
 	color: $player-color-mid;
@@ -213,8 +358,8 @@ $player-color-dark: #102060;
 
 .card-shape {
 	border-radius: 10px;
-	width: 120px;
-	height: 160px;
+	width: $card-width;
+	height: $card-height;
 	z-index: 5;
 }
 
@@ -228,27 +373,29 @@ $player-color-dark: #102060;
 	transition: transform 0.05s;
 }
 
+$card-hole-opacity: 0.5;
+
 .card-hole {
 	@extend .card-shape;
-	border: solid 2px #606060;
+	border: solid 1px #404040;
 	background-color: #efefef;
-	box-shadow: 0 0 14px 0 #909090;
-	opacity: 0.4;
+	box-shadow: 0 0 6px 0 #909090;
+	opacity: $card-hole-opacity;
 }
 
 @mixin card-hole-special($light, $mid, $dark) {
-	border: solid 2px $dark;
+	border: solid 1px $dark;
 	background: repeating-linear-gradient(
 		45deg, $light, $light 4px, $mid 4px, $mid 8px);
-	box-shadow: 0 0 14px 0 $dark;
-	opacity: 0.4;
+	box-shadow: 0 0 6px 0 $dark;
+	opacity: $card-hole-opacity;
 }
 
 @mixin card-hole-special-active($light, $mid, $dark) {
-	border: solid 2px $dark;
+	border: solid 1px $dark;
 	background-color: $mid;
-	box-shadow: 0 0 14px 0 $dark;
-	opacity: 0.4;
+	box-shadow: 0 0 6px 0 $dark;
+	opacity: $card-hole-opacity;
 }
 
 .card-hole-action {

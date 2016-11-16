@@ -55,7 +55,7 @@ let UI = new function() {
 			let expression = this.card.expression;
 			let hole;
 			if (expression) {
-				hole = createSlotHole(this.card.type.role);
+				hole = createSlotHole(this.card.type.role, true);
 			} else {
 				hole = document.createElement("div");
 				hole.className = "card-hole";
@@ -173,7 +173,6 @@ let UI = new function() {
 		return card;
 	}
 	
-	
 	// Accepts a card into an expression.
 	function expressionAcceptCard(incoming, left, top) {
 		if (incoming.card) {
@@ -218,8 +217,8 @@ let UI = new function() {
 			this.expression.removeSlots(hole, type.slots.length);
 		} else {
 			hole.holeFor = hole.holeFor.card.type.role;
-			hole.className = "card-hole-" + hole.holeFor.str.toLowerCase();
 		}
+		hole.className = "card-hole-" + hole.holeFor.str.toLowerCase();
 	}
 	
 	// Augments an element to be a list of cards representing an expression.
@@ -230,10 +229,12 @@ let UI = new function() {
 	}
 	
 	// Creates a hole element for a slot of the given role.
-	function createSlotHole(role) {
+	function createSlotHole(role, isActive) {
 		let hole = document.createElement("div");
+		let className = "card-hole-" + role.str.toLowerCase();
+		if (isActive) className += "-active";
 		hole.holeFor = role;
-		hole.className = "card-hole-" + role.str.toLowerCase();
+		hole.className = className;
 		return hole;
 	}
 	
@@ -241,7 +242,7 @@ let UI = new function() {
 	// be called if the expression is empty.
 	Expression.prototype.expect = function(role) {
 
-		this.element.appendChild(createSlotHole(role));
+		this.element.appendChild(createSlotHole(role, false));
 		balanceChildren.call(this.element, false);
 	}
 	
@@ -249,20 +250,25 @@ let UI = new function() {
 	Expression.prototype.addSlots = function(after, slots) {
 		let before = after.nextSibling;
 		for (let i = 0; i < slots.length; i++) {
-			let hole = createSlotHole(slots[i]);
+			let hole = createSlotHole(slots[i], false);
 			this.element.insertBefore(hole, before);
 			before = hole.nextSibling;
 		}
 		balanceChildren.call(this.element, false);
 	}
 	
-	// Removes a certain number slots from an expression after the given card element.
-	Expression.prototype.removeSlots = function(after, count) {
+	// Removes a certain number of slots from an expression without balancing
+	function expressionRemoveSlots(after, count) {
 		for (let i = 0; i < count; i++) {
 			let child = after.nextSibling;
-			this.element.removeChild(child);
+			this.removeChild(child);
 		}
-		balanceChildren.call(this.element, false);
+		balanceChildren.call(this, false);
+	}
+	
+	// Removes a certain number slots from an expression after the given card element.
+	Expression.prototype.removeSlots = function(after, count) {
+		expressionRemoveSlots.call(this.element, after, count);
 	}
 	
 	// Creates a list of miniaturized cards that expand on mouse over. 

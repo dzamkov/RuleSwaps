@@ -9,7 +9,7 @@ window.onload = function() {
 	hand.draw(Cards["twice"]);
 	hand.draw(Cards["or"]);
 	
-	var exp = new UI.Expression(document.getElementById("section-input"));
+	var exp = new UI.Expression(document.getElementById("input-expression-cards"));
 	exp.expect(Role.Action);
 	
 	let log = new UI.Log(document.getElementById("section-log"));

@@ -231,10 +231,13 @@ let UI = new function() {
 				entry.appendChild(list);
 			}
 		}
-		let scrollToBottom = this.element.scrollTop >
-			this.element.scrollHeight - this.element.offsetHeight - 30;
 		this.element.appendChild(entry);
-		if (scrollToBottom) this.element.scrollTop = this.element.scrollHeight;
+		this.scrollToBottom();
+	}
+	
+	// Scrolls to the bottom of the log.
+	Log.prototype.scrollToBottom = function() {
+		this.element.scrollTop = this.element.scrollHeight;
 	}
 	
 	// Augments an element to be a button.
@@ -283,6 +286,7 @@ let UI = new function() {
 			this.passButton = new Button(passButton);
 			this.callback = null;
 			
+			this.log = null;
 			this.returnHand = null;
 			this.playDeck = null;
 			

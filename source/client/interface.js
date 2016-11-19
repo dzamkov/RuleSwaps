@@ -1,5 +1,6 @@
 // A client-specific interface to a game.
 function Interface(setup, playerSelf, parts) {
+	this.delayTimeout = null;
 	
 	// Set up UI
 	this.ui = {
@@ -20,6 +21,7 @@ function Interface(setup, playerSelf, parts) {
 		}
 	};
 	
+	this.ui.input.expression.log = this.ui.log;
 	this.ui.input.expression.returnHand = this.ui.hand;
 	// this.ui.input.expression.playDeck = this.ui.deck.play;
 	
@@ -31,14 +33,22 @@ function Interface(setup, playerSelf, parts) {
 // Derive interface from game.
 Interface.prototype = Object.create(Game.prototype);
 
+Interface.prototype.run = function() {
+	if (!this.delayTimeout) {
+		Game.prototype.run.call(this);
+	}
+}
+
 Interface.prototype.resolveCommitment = function(commitment, value) {
 	// TODO: Send message
 	Game.prototype.resolveCommitment.call(this, commitment, value);
 	if (!this.isRunning) this.run();
 }
 
-Interface.prototype.log = function() {
+Interface.prototype.log = function*() {
 	this.ui.log.log(this.getDepth(), arguments);
+	this.delay(500);
+	yield this.pause();
 }
 
 Interface.prototype.drawCard = function*(player, cardCommitment) {
@@ -65,4 +75,13 @@ Interface.prototype.interactSpecify = function*(player, role, style) {
 	} else {
 		return Game.prototype.interactSpecify.call(this, player, role);
 	}
+}
+
+// Stops the interface from running for the given length of time.
+Interface.prototype.delay = function(time) {
+	if (this.delayTimeout) clearTimeout(this.delayTimeout);
+	this.delayTime = setTimeout((function() {
+		this.delayTime = null;
+		this.run();
+	}).bind(this), time);
 }

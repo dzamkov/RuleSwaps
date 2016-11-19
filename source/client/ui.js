@@ -231,7 +231,10 @@ let UI = new function() {
 				entry.appendChild(list);
 			}
 		}
+		let scrollToBottom = this.element.scrollTop >
+			this.element.scrollHeight - this.element.offsetHeight - 30;
 		this.element.appendChild(entry);
+		if (scrollToBottom) this.element.scrollTop = this.element.scrollHeight;
 	}
 	
 	// Augments an element to be a button.

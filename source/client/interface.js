@@ -20,6 +20,9 @@ function Interface(setup, playerSelf, parts) {
 		}
 	};
 	
+	this.ui.input.expression.returnHand = this.ui.hand;
+	// this.ui.input.expression.playDeck = this.ui.deck.play;
+	
 	// Set up game
 	Game.call(this, setup);
 	this.playerSelf = this.players[playerSelf];
@@ -50,13 +53,15 @@ Interface.prototype.drawCard = function*(player, cardCommitment) {
 	}
 }
 
-Interface.prototype.interactSpecify = function(player, role, style) {
+Interface.prototype.interactSpecify = function*(player, role, style) {
 	if (player === this.playerSelf) {
 		let game = this;
 		let commitment = this.createCommitment();
 		this.ui.input.expression.request(role, style, function(exp) {
 			game.resolveCommitment(commitment, exp);
 		});
+		yield this.revealTo(this.playerSelf, commitment);
+		return commitment;
 	} else {
 		return Game.prototype.interactSpecify.call(this, player, role);
 	}

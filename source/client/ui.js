@@ -49,22 +49,10 @@ let UI = new function() {
 	function Card(element, type) {
 		Motion.Animated.call(this, element);
 		this.type = type;
-		this.home = null;
 		this.hoverStyle = "-hover";
 	}
 	
 	Card.prototype = Object.create(Motion.Animated.prototype);
-	
-	// Sends this card back to where its from, or deletes it. This call should remove the card
-	// from its current parent immediately.
-	Card.prototype.remove = function() {
-		if (this.home) {
-			let hole = this.home.createInvisibleHole();
-			this.mergeInto(this.home, hole);
-		} else {
-			this.element.parentNode.removeChild(this.element);
-		}
-	}
 	
 	// Creates an element representing a card, and returns its logical interface.
 	function createCard(cardType) {
@@ -285,6 +273,9 @@ let UI = new function() {
 			this.passButton = new Button(passButton);
 			this.callback = null;
 			
+			this.returnHand = null;
+			this.playDeck = null;
+			
 			this.acceptButton.onClick = this.inputAccept.bind(this);
 			this.passButton.onClick = this.inputPass.bind(this);
 		}
@@ -395,7 +386,7 @@ let UI = new function() {
 			for (let i = 0; i < count; i++) {
 				let child = after.nextSibling;
 				if (child.animated instanceof Card) {
-					child.animated.remove();
+					this.removeCard(child.animated, false)
 					this.removeSlots(after, child.animated.type.slots.length);
 				} else {
 					this.list.removeChild(child);
@@ -406,23 +397,56 @@ let UI = new function() {
 		
 		// Tries the input currently in the expression.
 		Expression.prototype.inputAccept = function() {
-			// TODO
+			
+			// Build expression
+			let cards = [];
+			let children = this.element.children;
+			for (let i = 0; i < children.length; i++) {
+				let child = children[i];
+				if (child.animated instanceof Card) {
+					cards.push(child.animated.type);
+				} else {
+					console.assert(false, "Expression still contains holes");
+					return;
+				}
+			}
+			let exp = window.Expression.fromList(cards);
+			if (!exp) {
+				console.assert(false, "Expression is invalid");
+				return;
+			}
+			
+			// Reset and callback
+			this.reset(true);
+			if (this.callback) this.callback(exp);
 		}
 		
 		// Cancels input in this expression.
 		Expression.prototype.inputPass = function() {
-			// TODO: Return cards home
-			this.reset();
+			this.reset(false);
 			if (this.callback) this.callback(null);
 		}
 		
+		// Removes a card from this expression, either returning it to the hand, or putting
+		// it in the in-play deck.
+		Expression.prototype.removeCard = function(card, inPlay) {
+			if (inPlay && this.playDeck) {
+				card.mergeInto(this.playDeck, this.playDeck.element);
+			} else if (!inPlay && this.returnHand) {
+				let hole = this.returnHand.createInvisibleHole();
+				card.mergeInto(this.returnHand, hole);
+			} else {
+				this.list.removeChild(card.element);
+			}
+		}
+		
 		// Resets the expression input, removing all children
-		Expression.prototype.reset = function() {
+		Expression.prototype.reset = function(inPlay) {
 			this.container.className = "input-hidden";
 			while (this.list.firstChild) {
 				let element = this.list.firstChild;
 				if (element.animated instanceof Card) {
-					element.animated.remove();
+					this.removeCard(element.animated, inPlay)
 				} else {
 					this.list.removeChild(this.list.firstChild);
 				}

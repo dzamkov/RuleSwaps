@@ -45,9 +45,6 @@ function Game(setup) {
 	this.isRunning = false;
 	this.executionStack = [(function*() {
 		
-		// Don't start just yet
-		yield; 
-		
 		// The high-level playthrough procedure for a game.
 		while (true) {
 			console.assert(this.playerStack.length === 0);
@@ -86,12 +83,10 @@ Game.prototype.run = function() {
 		let cur = this.executionStack.pop();
 		let res = cur.next(response);
 		if (!res.done) this.executionStack.push(cur);
-		if (res.value) {
-			if (res.value.next) { // Check for generator
-				this.executionStack.push(res.value);
-			} else {
-				response = res.value;
-			}
+		response = res.value;
+		if (response && response.next) { // Check for generator
+			this.executionStack.push(response);
+			response = null;
 		}
 	}
 }

@@ -55,6 +55,17 @@ let UI = new function() {
 	
 	Card.prototype = Object.create(Motion.Animated.prototype);
 	
+	// Sends this card back to where its from, or deletes it. This call should remove the card
+	// from its current parent immediately.
+	Card.prototype.remove = function() {
+		if (this.home) {
+			let hole = this.home.createInvisibleHole();
+			this.mergeInto(this.home, hole);
+		} else {
+			this.element.parentNode.removeChild(this.element);
+		}
+	}
+	
 	// Creates an element representing a card, and returns its logical interface.
 	function createCard(cardType) {
 		return new Card(cardType.createElement(), cardType);
@@ -333,11 +344,21 @@ let UI = new function() {
 				this.removeSlots(hole, animated.type.slots.length);
 				this.balanceChildren(false);
 			}
+			this.acceptButton.disable();
 		}
 		
 		Expression.prototype.accept = function(card, hole) {
 			Motion.Acceptor.prototype.accept.call(this, card, hole);
 			this.addSlots(card.element, card.type.slots);
+			
+			// Check if all slots have been filled
+			let children = this.list.children;
+			let allFilled = true;
+			for (let i = 0; i < children.length; i++) {
+				allFilled &= children[i].animated instanceof Card;
+			}
+			if (allFilled)
+				this.acceptButton.enable();
 		}
 		
 		// Creates a hole element for a slot of the given role.
@@ -373,7 +394,12 @@ let UI = new function() {
 		Expression.prototype.removeSlots = function(after, count) {
 			for (let i = 0; i < count; i++) {
 				let child = after.nextSibling;
-				this.list.removeChild(child);
+				if (child.animated instanceof Card) {
+					child.animated.remove();
+					this.removeSlots(after, child.animated.type.slots.length);
+				} else {
+					this.list.removeChild(child);
+				}
 			}
 			this.balanceChildren(false);
 		}
@@ -393,7 +419,14 @@ let UI = new function() {
 		// Resets the expression input, removing all children
 		Expression.prototype.reset = function() {
 			this.container.className = "input-hidden";
-			while (this.list.firstChild) this.list.removeChild(this.list.firstChild);
+			while (this.list.firstChild) {
+				let element = this.list.firstChild;
+				if (element.animated instanceof Card) {
+					element.animated.remove();
+				} else {
+					this.list.removeChild(this.list.firstChild);
+				}
+			}
 		}
 		
 		// Shows the expression input, requesting that the user specifies an expression of the given role.

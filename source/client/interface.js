@@ -45,6 +45,7 @@ Interface.prototype.drawCard = function*(player, cardCommitment) {
 		let cardType = cardCommitment.value;
 		
 		let card = this.ui.deck.draw.pull(cardType);
+		card.home = this.ui.hand;
 		card.mergeInto(this.ui.hand, this.ui.hand.createInvisibleHole());
 	}
 }

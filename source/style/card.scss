@@ -13,42 +13,46 @@ $player-color-light: #506af1;
 $player-color-mid: #1841e4;
 $player-color-dark: #102060;
 
+.mini-card-list {
+	margin: 4px;
+}
+
 .mini-card {
 	display: inline-block;
-	width: 12px;
-	height: 16px;
-	border-radius: 2px;
+	box-sizing: border-box;
+	width: 60px;
+	height: 80px;
+	border-radius: 4px;
 	border: solid 1px black;
 	margin-left: 2px;
 	margin-right: 2px;
+	padding-top: 8px;
 	vertical-align: middle;
-}
-
-.mini-card-action {
-	@extend .mini-card;
-	background: linear-gradient(
-		$action-color-mid,
-		$action-color-mid 4px,
-		white 5px,
-		white);
-}
-
-.mini-card-condition {
-	@extend .mini-card;
-	background: linear-gradient(
-		$condition-color-mid,
-		$condition-color-mid 4px,
-		white 5px,
-		white);
-}
-
-.mini-card-player {
-	@extend .mini-card;
-	background: linear-gradient(
-		$player-color-mid,
-		$player-color-mid 4px,
-		white 5px,
-		white);
+	overflow: hidden;
+	
+	&.-action {
+		background: linear-gradient(
+			$action-color-light,
+			$action-color-mid 7px,
+			white 7px,
+			white);
+	}
+	
+	&.-condition {
+		background: linear-gradient(
+			$condition-color-light,
+			$condition-color-mid 7px,
+			white 7px,
+			white);
+	}
+	
+	&.-player {
+		background: linear-gradient(
+			$player-color-light,
+			$player-color-mid 7px,
+			white 7px,
+			white);
+	}
 }
 
 .card-shape {
@@ -69,6 +73,15 @@ $player-color-dark: #102060;
 		transform: scale(1.1);
 		z-index: 1;
 	}
+	&.-action .card-header {
+		background: linear-gradient($action-color-light, $action-color-mid);
+	}
+	&.-condition .card-header {
+		background: linear-gradient($condition-color-light, $condition-color-mid);
+	}
+	&.-player .card-header {
+		background: linear-gradient($player-color-light, $player-color-mid);
+	}
 }
 
 .card-content {
@@ -80,6 +93,70 @@ $player-color-dark: #102060;
 	box-shadow: 0 0 14px 0 #101010;
 	transition: transform 0.05s;
 }
+
+.card-header {
+	position: relative;
+	height: 20px;
+	border-radius: 8px 8px 0 0;
+	background: linear-gradient(#ff9999, #ff6666);
+	border-bottom: solid 1px black;
+	box-shadow: 0 0 4px 0 #101010;
+	color: white;
+	font-size: 16px;
+	text-shadow: 0 0 3px black, 0 0 3px black, 0 0 3px black;
+	padding: 1px 4px 1px 4px;
+}
+
+.card-type {
+	position: absolute;
+	bottom: 1px;
+}
+
+.card-text {
+	padding: 2px 3px;
+	font-size: 13px;
+	text-align: center;
+	
+	&.-mini {
+		font-size: 7px;
+	}
+	
+	& .-slot {
+		font-weight: bold;
+	}
+	
+	& .-action {
+		@extend .-slot;
+		color: #d00000;
+	}
+	
+	& .-player {
+		@extend .-slot;
+		color: #0000ff;
+	}
+	
+	& .-condition {
+		@extend .-slot;
+		color: #239023;
+	}
+}
+
+.card-parenthetical {
+	padding: 4px 5px;
+	font-size: 11px;
+	text-align: center;
+	font-style: italic;
+}
+
+.card-back {
+	@extend .card-shape;
+	border: solid 1px black;
+	background-image: url("images/cardback.png");
+	background-size: $card-width $card-height;
+	background-position: center;
+	box-shadow: 0 0 6px 0 #101010;
+}
+
 
 $card-hole-opacity: 0.5;
 
@@ -152,75 +229,4 @@ $card-hole-opacity: 0.5;
 		$player-color-light,
 		$player-color-mid,
 		$player-color-dark);
-}
-
-.card-header {
-	position: relative;
-	height: 20px;
-	border-radius: 8px 8px 0 0;
-	background: linear-gradient(#ff9999, #ff6666);
-	border-bottom: solid 1px black;
-	box-shadow: 0 0 4px 0 #101010;
-	color: white;
-	font-size: 16px;
-	text-shadow: 0 0 3px black, 0 0 3px black, 0 0 3px black;
-	padding: 1px 4px 1px 4px;
-}
-
-.card-header-action {
-	background: linear-gradient($action-color-light, $action-color-mid);
-}
-
-.card-header-condition {
-	background: linear-gradient($condition-color-light, $condition-color-mid);
-}
-
-.card-header-player {
-	background: linear-gradient($player-color-light, $player-color-mid);
-}
-
-.card-type {
-	position: absolute;
-	bottom: 1px;
-}
-
-.card-text {
-	padding: 2px 3px;
-	font-size: 13px;
-	text-align: center;
-	
-	& .-slot {
-		font-weight: bold;
-	}
-	
-	& .-action {
-		@extend .-slot;
-		color: #d00000;
-	}
-	
-	& .-player {
-		@extend .-slot;
-		color: #0000ff;
-	}
-	
-	& .-condition {
-		@extend .-slot;
-		color: #239023;
-	}
-}
-
-.card-parenthetical {
-	padding: 4px 5px;
-	font-size: 11px;
-	text-align: center;
-	font-style: italic;
-}
-
-.card-back {
-	@extend .card-shape;
-	border: solid 1px black;
-	background-image: url("images/cardback.png");
-	background-size: $card-width $card-height;
-	background-position: center;
-	box-shadow: 0 0 6px 0 #101010;
 }

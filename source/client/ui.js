@@ -1,24 +1,32 @@
 // Creates an element for an instance of this card
-Card.prototype.createElement = function() {
+Card.prototype.createElement = function(isMini) {
 	let mainDiv = document.createElement("div");
-	mainDiv.className = "card";
+	mainDiv.className = isMini ? "mini-card" : "card";
+	mainDiv.className += " -" + this.role.str.toLowerCase();;
 	
-	let contentDiv = document.createElement("div");
-	contentDiv.className = "card-content";
-	mainDiv.appendChild(contentDiv);
+	let contentDiv;
+	if (isMini) {
+		contentDiv = mainDiv;
+	} else {
+		contentDiv = document.createElement("div");
+		contentDiv.className = "card-content";
+		mainDiv.appendChild(contentDiv);
+	}
 	
-	let header = document.createElement("div");
-	header.className = "card-header " +
-		"card-header-" + this.role.str.toLowerCase();
-	contentDiv.appendChild(header);
-	
-	let type = document.createElement("span");
-	type.className = "card-type";
-	type.innerText = this.role.str;
-	header.appendChild(type);
+	if (!isMini) {
+		let header = document.createElement("div");
+		header.className = "card-header";
+		contentDiv.appendChild(header);
+		
+		let type = document.createElement("span");
+		type.className = "card-type";
+		type.innerText = this.role.str;
+		header.appendChild(type);
+	}
 	
 	let text = document.createElement("div");
 	text.className = "card-text";
+	if (isMini) text.className += " -mini";
 	for (let i = 0; i < this.parts.length; i++) {
 		let part = this.parts[i];
 		if (typeof part === "string") {
@@ -32,7 +40,7 @@ Card.prototype.createElement = function() {
 	}
 	contentDiv.appendChild(text);
 	
-	if (this.parenthetical) {
+	if (!isMini && this.parenthetical) {
 		let parenthetical = document.createElement("div");
 		parenthetical.className = "card-parenthetical";
 		parenthetical.innerText = "(" + this.parenthetical + ")";
@@ -56,7 +64,7 @@ let UI = new function() {
 	
 	// Creates an element representing a card, and returns its logical interface.
 	function createCard(cardType) {
-		return new Card(cardType.createElement(), cardType);
+		return new Card(cardType.createElement(false), cardType);
 	}
 	
 	// Balances the children of a hand or list of cards
@@ -166,13 +174,12 @@ let UI = new function() {
 		return hole;
 	}
 	
-	// Creates a list of miniaturized cards that expand on mouse over. 
+	// Creates a list of miniaturized cards that expands on mouse over. 
 	function createMiniList(cards) {
-		let container = document.createElement("span");
+		let container = document.createElement("div");
+		container.className = "mini-card-list";
 		for (var i = 0; i < cards.length; i++) {
-			var card = document.createElement("div");
-			card.className = "mini-card-" + cards[i].role.str.toLowerCase();
-			container.appendChild(card);
+			container.appendChild(cards[i].createElement(true));
 		}
 		return container;
 	}

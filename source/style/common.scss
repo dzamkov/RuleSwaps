@@ -1,0 +1,77 @@
+$font-family: "Trebuchet MS", Helvetica, sans-serif;
+$curve-section: 20px;
+
+.fill-parent {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+}
+
+@mixin button-color($light, $mid) {
+	background: linear-gradient($light, $mid);
+	text-shadow: 0 0 5px $light;
+	color: darken($mid, 40%);
+	border-color: darken($mid, 40%);
+	
+	&:hover:not(.-disabled) {
+		box-shadow: inset 0 0 8px 0 darken($mid, 40%);
+	}
+	
+	&:active {
+		background: $mid;
+	}
+	
+	&.-disabled {
+		color: #333333;
+		background: desaturate($mid, 30%);
+		border-color: #444444;
+	}
+}
+
+.button {
+	user-select: none;
+	cursor: pointer;
+	border: solid 1px;
+	text-align: center;
+	
+	&.-green {
+		@include button-color(#85ce85, #2e863c);
+	}
+	
+	&.-yellow {
+		@include button-color(#dbd872, #a07129);
+	}
+	
+	&.-medium {
+		font-size: 18px;
+		border-radius: 6px;
+		padding: 5px;
+	}
+	
+	&.-disabled {
+		cursor: default;	
+	}
+}
+
+.section-back {
+	@extend .fill-parent;
+	background: linear-gradient(#25282d, #000000);
+	border-radius: $curve-section;
+	border: solid 1px black;
+	box-shadow: 0 0 16px 0 black;
+	opacity: 0.4;
+}
+
+.section-back-left {
+	@extend .fill-parent;
+	@extend .section-back;
+	border-radius: 0 $curve-section $curve-section 0;
+}
+
+.section-back-right {
+	@extend .fill-parent;
+	@extend .section-back;
+	border-radius: $curve-section 0 0 $curve-section;
+}

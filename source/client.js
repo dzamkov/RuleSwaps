@@ -1,30 +1,38 @@
 
 window.onload = function() {
-	var hand = new UI.Hand(document.getElementById("section-player-self-hand"));
-	hand.draw(Cards["wealthiest_player"]);
-	hand.draw(Cards["biggest_payor"]);
-	hand.draw(Cards["majority_vote"]);
-	hand.draw(Cards["wealth_vote"]);
-	hand.draw(Cards["conditional"]);
-	hand.draw(Cards["twice"]);
-	hand.draw(Cards["or"]);
+	let goreflex = new Player();
+	goreflex.name = "Goreflex";
 	
-	var exp = new UI.Expression(document.getElementById("input-expression-cards"));
-	exp.expect(Role.Action);
+	let setup = new Game.Setup(
+		[
+			goreflex
+		],[
+			["you_gain_5"],
+			["specify_action_optional", "you"],
+			["you_draw_2"]
+		],{
+			"you_gain_5": 3,
+			"you_draw_2": 3,
+			"twice": 3,
+			"conditional": 4,
+			"or": 2,
+			"majority_vote": 10
+		});
 	
-	let log = new UI.Log(document.getElementById("section-log"));
-	
-	var player = new Player(0, []);
-	player.name = "Goreflex";
-	
-	var game = new Game(
-		[player],
-		[Expression.fromList([Cards["you_gain_5"]]),
-		Expression.fromList([Cards["specify_action_optional"], Cards["you"]]),
-		Expression.fromList([Cards["you_draw_2"]])]);
-	game.onlog = log.log.bind(log);
-	
-	setInterval(function() {
-		game.run(null, false);
-	}, 500);
+	let inteface = new Interface(setup, 0, {
+		deckDraw: document.getElementById("deck-draw"),
+		deckDiscard: document.getElementById("deck-discard"),
+		deckPlay: document.getElementById("deck-play"),
+		
+		log: document.getElementById("section-log"),
+		
+		inputExpression: document.getElementById("input-expression"),
+		inputExpressionList: document.getElementById("input-expression-list"),
+		inputExpressionAccept: document.getElementById("input-expression-accept"),
+		inputExpressionPass: document.getElementById("input-expression-pass"),
+		
+		selfHand: document.getElementById("section-player-self-hand")
+	});
+	inteface.canResolveRandomness = true;
+	inteface.run(null);
 }

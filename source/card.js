@@ -9,6 +9,7 @@ function Card(role, text, resolve) {
 	this.role = role;
 	this.text = text;
 	this.resolve = resolve;
+	this.name = null; // Name of card in list
 	
 	// Parse text to determine slots
 	let cur = 0;
@@ -73,6 +74,21 @@ function Card(role, text, resolve) {
 	this.parenthetical = parenthetical;
 }
 
+// The list of all possible cards.
+Card.List = { }
+
+// Registers a card.
+Card.register = function(name, card) {
+	card.name = name;
+	Card.List[name] = card;
+}
+
+// Looks up a card based on the given information.
+Card.get = function(card) {
+	if (typeof card === "string") card = Card.List[card];
+	console.assert(card instanceof Card);
+	return card;
+}
 
 // Describes an expression made up of cards.
 function Expression(card, slots) {
@@ -80,11 +96,17 @@ function Expression(card, slots) {
 	this.slots = slots;
 }
 
+// Gets an expression based on the given information.
+Expression.get = function(exp) {
+	if (exp instanceof Expression) return exp;
+	return Expression.fromList(exp);
+}
+
 // Constructs an expression from a section of a list of cards.
 Expression.parseFromList = function(cards, indexRef) {
 	let index = indexRef.index++;
 	if (index < cards.length) {
-		let card = cards[index];
+		let card = Card.get(cards[index]);
 		let slots = []
 		for (let i = 0; i < card.slots.length; i++) {
 			let slot = Expression.parseFromList(cards, indexRef);
@@ -117,4 +139,66 @@ Expression.prototype.toList = function() {
 	let cards = [];
 	this.writeToList(cards);
 	return cards;
+}
+
+
+// Represents a set of cards.
+function CardSet(counts, totalCount) {
+	this.counts = counts;
+	this.totalCount = totalCount;
+}
+
+// Creates a new card set from the given information.
+CardSet.create = function(set) {
+	let counts = set;
+	if (set instanceof CardSet) {
+		counts = set;
+	}
+	
+	let nCounts = new Object();
+	let totalCount = 0;
+	for (let card in counts) {
+		nCounts[card] = counts[card];
+		totalCount += counts[card];
+	}
+	return new CardSet(nCounts, totalCount);
+}
+
+// Adds a card to this card set.
+CardSet.prototype.insert = function(card) {
+	let name = Card.get(card).name;
+	this.counts[name] = (this.counts[name] || 0) + 1;
+	this.totalCount++;
+}
+
+// Tries removing a single copy of the given card from this card set.
+CardSet.prototype.remove = function(card) {
+	let count = this.counts[Card.get(card).name];
+	if (count > 0) {
+		this.totalCount -= 1;
+		count -= 1;
+		if (count > 0) {
+			this.counts[card] = count;
+		} else {
+			delete this.counts[card];
+		}
+		return true;
+	} else {
+		return false;
+	}
+}
+
+// Selects and removes a card randomly from this set.
+CardSet.prototype.draw = function() {
+	let i = Math.floor(Math.random() * this.totalCount);
+	for (let card in this.counts) {
+		let count = this.counts[card];
+		i -= count;
+		if (i < 0) {
+			this.counts[card] = count - 1;
+			this.totalCount -= 1;
+			return Card.get(card);
+		}
+	}
+	return null;
 }

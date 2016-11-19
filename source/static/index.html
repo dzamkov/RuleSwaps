@@ -11,16 +11,21 @@
 		</div>
 		<div id="section-playarea">
 			<div class="section-back"></div>
-			<div id="section-playerarea-right">
+			<div id="section-playarea-sidebar">
+				<div id="deck-draw" class="deck"></div>
+				<div id="deck-discard" class="deck"></div>
+				<div id="deck-play" class="deck"></div>
+			</div>
+			<div id="section-playarea-main">
 				<div class="section-log-shadow"></div>
 				<div id="section-log"></div>
 				<div id="section-input">
-					<div id="input-expression">
-						<div id="input-expression-cards">
+					<div id="input-expression" class="input-hidden">
+						<div id="input-expression-list">
 						</div>
 						<div id="input-expression-buttons">
-							<a id="input-expression-accept" class="button-green">Accept</a>
-							<a id="input-expression-pass" class="button-yellow">Pass</a>
+							<a id="input-expression-accept" class="button -green -medium">Accept</a>
+							<a id="input-expression-pass" class="button -yellow -medium">Pass</a>
 						</div>
 					</div>
 					<div id="input-chat">

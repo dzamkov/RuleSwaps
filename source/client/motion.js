@@ -126,13 +126,7 @@ var Motion = new function() {
 	// Gets the current client rectangle of this animated element.
 	Animated.prototype.getClientRect = function() {
 		let element = this.element;
-		
-		element.style.transition = "none";
-		element.style.transform = "none";
 		var rect = element.getBoundingClientRect();
-		element.style.transition = "";
-		element.style.transform = "";
-		
 		return rect;
 	}
 	

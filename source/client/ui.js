@@ -3,10 +3,14 @@ Card.prototype.createElement = function() {
 	let mainDiv = document.createElement("div");
 	mainDiv.className = "card";
 	
+	let contentDiv = document.createElement("div");
+	contentDiv.className = "card-content";
+	mainDiv.appendChild(contentDiv);
+	
 	let header = document.createElement("div");
 	header.className = "card-header " +
 		"card-header-" + this.role.str.toLowerCase();
-	mainDiv.appendChild(header);
+	contentDiv.appendChild(header);
 	
 	let type = document.createElement("span");
 	type.className = "card-type";
@@ -26,13 +30,13 @@ Card.prototype.createElement = function() {
 			text.appendChild(slot);
 		}
 	}
-	mainDiv.appendChild(text);
+	contentDiv.appendChild(text);
 	
 	if (this.parenthetical) {
 		let parenthetical = document.createElement("div");
 		parenthetical.className = "card-parenthetical";
 		parenthetical.innerText = "(" + this.parenthetical + ")";
-		mainDiv.appendChild(parenthetical);
+		contentDiv.appendChild(parenthetical);
 	}
 	return mainDiv;
 };

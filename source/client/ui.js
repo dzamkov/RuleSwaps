@@ -456,7 +456,39 @@ let UI = new function() {
 	// Contains interfaces for specific types of player input.
 	let Input = new function() {
 		
-		// Augments an element to be a list of cards representing an expression.
+		// Augments an element to be a yes/no input.
+		function Boolean(container, yesButton, noButton) {
+			this.container = container;
+			this.yesButton = new Button(yesButton);
+			this.noButton = new Button(noButton);
+			this.callback = null;
+			
+			this.yesButton.onClick = this.inputYes.bind(this);
+			this.noButton.onClick = this.inputNo.bind(this);
+		}
+		
+		Boolean.prototype.reset = function() {
+			this.container.className = "input -hidden";
+		}
+		
+		Boolean.prototype.inputYes = function() {
+			this.reset();
+			if (this.callback) this.callback(true);
+		}
+		
+		Boolean.prototype.inputNo = function() {
+			this.reset();
+			if (this.callback) this.callback(false);
+		}
+		
+		// Shows the boolean input, requesting a response from the user.
+		Boolean.prototype.request = function(callback) {
+			this.container.className = "input";
+			this.callback = callback;
+		}
+		
+		
+		// Augments an element to be an expression input.
 		function Expression(container, list, acceptButton, passButton) {
 			Motion.Acceptor.call(this, list);
 			
@@ -636,7 +668,7 @@ let UI = new function() {
 		
 		// Resets the expression input, removing all children
 		Expression.prototype.reset = function(inPlay) {
-			this.container.className = "input-hidden";
+			this.container.className = "input -hidden";
 			while (this.list.firstChild) {
 				let element = this.list.firstChild;
 				if (element.animated instanceof Card) {
@@ -652,10 +684,11 @@ let UI = new function() {
 			console.assert(this.list.children.length === 0);
 			this.expect(role);
 			this.acceptButton.disable();
-			this.container.className = "";
+			this.container.className = "input";
 			this.callback = callback;
 		}
 		
+		this.Boolean = Boolean;
 		this.Expression = Expression;
 	}
 	

@@ -237,7 +237,12 @@ Game.prototype.random = function*(range) {
 	return commitment;
 }
 
-// Causes the given player to specify an expression of the given role. Returns that expression wrapped in
+// Requests the given player specify a boolean value. Returns that value wrapped in a commitment.
+Game.prototype.interactBoolean = function(player) {
+	return this.createCommitment();
+}
+
+// Requests the given player to specify an expression of the given role. Returns that expression wrapped in
 // a commitment.
 Game.prototype.interactSpecify = function(player, role) {
 	return this.createCommitment();

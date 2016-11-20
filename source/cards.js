@@ -81,6 +81,15 @@ Card.register("coin_flip", new Card(Role.Condition,
 		}
 	}));
 
+Card.register("decide_bool", new Card(Role.Condition,
+	"{Player} decides",
+	function*(game, slots) {
+		let player = yield game.resolve(slots[0]);
+		let decision = yield game.reveal(yield game.interactBoolean(player));
+		yield game.log(player, decision ? " approves" : " rejects");
+		return decision;
+	}));
+	
 Card.register("or", new Card(Role.Condition,
 	"{Condition} or {Condition} (stop if the first condition is satisfied)",
 	function*(game, slots) {

@@ -44,6 +44,10 @@ $curve-section: 20px;
 		@include button-color(#dbd872, #a07129);
 	}
 	
+	&.-red {
+		@include button-color(#ce8585, #862e3c);
+	}
+	
 	&.-medium {
 		font-size: 18px;
 		border-radius: 6px;

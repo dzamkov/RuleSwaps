@@ -146,14 +146,6 @@ $playarea-margin: 20px;
 	bottom: 230px;
 }
 
-.input {
-	transition: height 0.5s cubic-bezier(0.645, 0.045, 0.355, 1);
-}
-
-.input-hidden {
-	height: 0 !important;
-}
-
 $input-chat-height: 30px;
 $input-chat-selector-width: 100px;
 $input-chat-button-width: 60px;
@@ -162,6 +154,24 @@ $input-expression-area-margin: 2px;
 $input-expression-area-padding: 6px;
 $input-expression-button-width: 80px;
 $input-expression-button-padding: 6px;
+
+.input {
+	transition: height 0.5s cubic-bezier(0.645, 0.045, 0.355, 1);
+	overflow: hidden;
+	
+	&.-hidden {
+		height: 0 !important;
+	}
+}
+
+#input-boolean {
+	@extend .input;
+	position: relative;
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	a { margin: 5px }
+}
 
 #input-expression {
 	@extend .input;
@@ -299,7 +309,7 @@ $input-expression-button-padding: 6px;
 	}
 	
 	&.-proposal {
-		background: #ee1111;
+		background: #e12424;
 	}
 	
 	&.-insert-point {

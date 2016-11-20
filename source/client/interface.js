@@ -15,6 +15,10 @@ function Interface(setup, playerSelf, parts) {
 			parts.constitutionList),
 		log: new UI.Log(parts.log),
 		input: {
+			bool: new UI.Input.Boolean(
+				parts.inputBoolean,
+				parts.inputBooleanYes,
+				parts.inputBooleanNo),
 			expression: new UI.Input.Expression(
 				parts.inputExpression,
 				parts.inputExpressionList,
@@ -70,9 +74,19 @@ Interface.prototype.drawCard = function*(player, cardCommitment) {
 	}
 }
 
+Interface.prototype.interactBoolean = function*(player) {
+	let game = this;
+	let commitment = Game.prototype.interactBoolean.call(this, player);
+	if (!commitment.isResolved && player == this.playerSelf) {
+		this.ui.input.bool.request(this.resolveCommitment.bind(this, commitment));
+		yield this.revealTo(this.playerSelf, commitment);
+	}
+	return commitment;
+}
+
 Interface.prototype.interactSpecify = function*(player, role, style) {
 	let game = this;
-	let commitment = Game.prototype.interactSpecify.call(this, player);
+	let commitment = Game.prototype.interactSpecify.call(this, player, role);
 	if (!commitment.isResolved && player === this.playerSelf) {
 		this.ui.input.expression.request(role, style, function(exp) {
 			game.resolveCommitment(commitment, exp);

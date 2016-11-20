@@ -8,22 +8,18 @@ window.onload = function() {
 			goreflex
 		],[
 			["you_gain_5"],
+			["insert_ammendment_conditional", "you", "coin_flip"],
 			["specify_action_optional", "you"],
 			["you_draw_2"]
-		],{
-			"you_gain_5": 3,
-			"you_draw_2": 3,
-			"twice": 3,
-			"conditional": 4,
-			"or": 2,
-			"majority_vote": 10
-		});
+		],defaultDeck);
 	
 	let inteface = new Interface(setup, 0, {
 		deckDraw: document.getElementById("deck-draw"),
 		deckDiscard: document.getElementById("deck-discard"),
 		deckPlay: document.getElementById("deck-play"),
 		
+		constitutionNumbers: document.getElementById("section-constitution-numbers"),
+		constitutionList: document.getElementById("section-constitution-list"),
 		log: document.getElementById("section-log"),
 		
 		inputExpression: document.getElementById("input-expression"),

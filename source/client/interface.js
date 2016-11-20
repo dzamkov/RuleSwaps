@@ -11,6 +11,9 @@ function Interface(setup, playerSelf, parts) {
 			play: new UI.Deck(parts.deckPlay)
 		},
 		hand: new UI.Hand(parts.selfHand),
+		constitution: new UI.Constitution(
+			parts.constitutionNumbers,
+			parts.constitutionList),
 		log: new UI.Log(parts.log),
 		input: {
 			expression: new UI.Input.Expression(
@@ -27,6 +30,7 @@ function Interface(setup, playerSelf, parts) {
 	
 	// Set up game
 	Game.call(this, setup);
+	this.ui.constitution.populate(this.constitution);
 	this.playerSelf = this.players[playerSelf];
 }
 

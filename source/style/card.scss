@@ -14,7 +14,7 @@ $player-color-mid: #1841e4;
 $player-color-dark: #102060;
 
 .mini-card-list {
-	margin: 4px;
+	margin: 2px;
 }
 
 .mini-card {
@@ -24,8 +24,7 @@ $player-color-dark: #102060;
 	height: 80px;
 	border-radius: 4px;
 	border: solid 1px black;
-	margin-left: 2px;
-	margin-right: 2px;
+	margin: 2px;
 	padding-top: 8px;
 	vertical-align: middle;
 	overflow: hidden;
@@ -34,24 +33,24 @@ $player-color-dark: #102060;
 		background: linear-gradient(
 			$action-color-light,
 			$action-color-mid 7px,
-			white 7px,
-			white);
+			#f2f2f2 7px,
+			#f2f2f2);
 	}
 	
 	&.-condition {
 		background: linear-gradient(
 			$condition-color-light,
 			$condition-color-mid 7px,
-			white 7px,
-			white);
+			#f2f2f2 7px,
+			#f2f2f2);
 	}
 	
 	&.-player {
 		background: linear-gradient(
 			$player-color-light,
 			$player-color-mid 7px,
-			white 7px,
-			white);
+			#f2f2f2 7px,
+			#f2f2f2);
 	}
 }
 

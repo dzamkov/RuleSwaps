@@ -205,6 +205,67 @@ let UI = new function() {
 		return card;
 	}
 	
+	// Augments an element to be the game constitution.
+	function Constitution(numbers, list) {
+		Motion.Acceptor.call(this, list);
+		this.numbers = numbers;
+	}
+	
+	Constitution.prototype = Object.create(Motion.Acceptor.prototype);
+	
+	// Creates an entry for a constitution.
+	Constitution.createEntry = function(exp) {
+		let list = createMiniList(exp.toList());
+		let entry = document.createElement("div");
+		entry.className = "constitution-entry";
+		entry.appendChild(list);
+		new Motion.Animated(entry);
+		return entry;
+	}
+	
+	// Populats a constitution from the given list
+	Constitution.prototype.populate = function(constitution) {
+		for (let i = 0; i < constitution.length; i++) {
+			this.element.appendChild(Constitution.createEntry(constitution[i]));
+		}
+		this.balanceChildren();
+	}
+	
+	// Sets the positions for the items inside a constitution.
+	Constitution.prototype.balanceChildren = function() {
+		let element = this.element;
+		let children = element.children;
+		let computedStyle = window.getComputedStyle(element);
+		let paddingLeft = parseFloat(computedStyle.paddingLeft || 0);
+		let paddingTop = parseFloat(computedStyle.paddingTop || 0);
+		let spacing = parseFloat(computedStyle.borderSpacing || 0);
+		let top = paddingTop;
+		for (let i = 0; i < children.length; i++) {
+			children[i].animated.moveTo(paddingLeft, top);
+			top += children[i].offsetHeight + spacing;
+		}
+		
+		// Balance numbers to match
+		let numbers = this.numbers;
+		while (numbers.children.length < children.length) {
+			let numbersEntry = document.createElement("div");
+			numbersEntry.className = "constitution-number-entry";
+			numbersEntry.innerText = numbers.children.length + 1;
+			numbers.appendChild(numbersEntry);
+		}
+		while (numbers.children.length > children.length) {
+			numbers.removeChild(numbers.lastChild);
+		}
+		let bottom = 0;
+		for (let i = 0; i < numbers.children.length; i++) {
+			let rect = children[i].animated.getTargetRect();
+			numbers.children[i].style.top = rect.top + "px";
+			numbers.children[i].style.height = (rect.bottom - rect.top) + "px";
+			bottom = rect.bottom;
+		}
+		numbers.style.height = bottom + "px";
+	}
+	
 	
 	// Augments an element to be a game log.
 	function Log(element) {
@@ -483,6 +544,7 @@ let UI = new function() {
 	this.createCard = createCard;
 	this.Deck = Deck;
 	this.Hand = Hand;
+	this.Constitution = Constitution;
 	this.Log = Log;
 	this.Button = Button;
 	this.Input = Input;

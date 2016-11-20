@@ -205,10 +205,12 @@ let UI = new function() {
 		return card;
 	}
 	
+	
 	// Augments an element to be the game constitution.
 	function Constitution(numbers, list) {
 		Motion.Acceptor.call(this, list);
 		this.numbers = numbers;
+		this.insertPoint = null;
 	}
 	
 	Constitution.prototype = Object.create(Motion.Acceptor.prototype);
@@ -221,6 +223,49 @@ let UI = new function() {
 		entry.appendChild(list);
 		new Motion.Animated(entry);
 		return entry;
+	}
+	
+	Constitution.prototype.dragOut = function(element) {
+		if (this.insertPoint === element.animated) {
+			let hole = document.createElement("div");
+			hole.className = "constitution-entry -hole";
+			new Motion.Animated(hole);
+			this.insertPoint.hole = hole;
+			let rect = element.animated.getClientRect();
+			element.animated.replace(hole.animated);
+			return {
+				rect: rect,
+				animated: element.animated,
+				hole: hole
+			}
+		}
+	}
+	
+	Constitution.prototype.dragIn = function(animated, left, top, fromAcceptor) {
+		
+		// Only allow incoming from the same acceptor
+		if (fromAcceptor === this) {
+			let children = this.element.children;
+			let prev = null;
+			for (let i = 0; i < children.length; i++) {
+				let child = children[i];
+				let rect = child.animated.getTargetRect();
+				let midY = (rect.top + rect.bottom) / 2.0;
+				if (midY < top) {
+					prev = child;
+				} else {
+					break;
+				}
+			}
+			
+			let next = prev ? prev.nextSibling : this.element.firstChild;
+			if (animated.hole === prev) return prev;
+			if (animated.hole === next) return next;
+			
+			this.element.insertBefore(animated.hole, next);
+			this.balanceChildren();
+			return animated.hole;
+		}
 	}
 	
 	// Populats a constitution from the given list
@@ -266,6 +311,80 @@ let UI = new function() {
 		numbers.style.height = bottom + "px";
 	}
 	
+	// Sets the line that is marked as being executed.
+	Constitution.prototype.setActiveLine = function(line) {
+		let children = this.element.children;
+		for (let i = 0; i < children.length; i++) {
+			let child = children[i];
+			child.className = child.className.replace(" -active", "");
+			if (i === line) child.className += " -active";
+		}
+	}
+	
+	// Creates a placeholder entry that allows the user to pick an insertion
+	// point in the constitution.
+	Constitution.prototype.allowInsertPick = function() {
+		if (!this.insertPoint) {
+			let entry = document.createElement("div");
+			entry.className = "constitution-entry -insert-point";
+			entry.innerText = "Insert ammendment here";
+			this.insertPoint = new Motion.Animated(entry);
+			this.insertPoint.hoverStyle = "-hover";
+			this.element.appendChild(entry);
+			this.balanceChildren();
+		}
+	}
+	
+	// Removes the ability for the user to select an insertion point.
+	Constitution.prototype.cancelInsertPick = function() {
+		if (this.insertPoint) {
+			this.element.removeChild(this.insertPoint.element);
+			this.balanceChildren();
+			this.insertPoint = null;
+		}
+	}
+	
+	// Upgrades the insertion pick made to this constitution to a proposal.
+	Constitution.prototype.proposeInsertPick = function(exp) {
+		console.assert(this.insertPoint);
+		let entry = Constitution.createEntry(exp);
+		let proposal = entry.animated;
+		entry.className += " -proposal";
+		this.insertPoint.replace(proposal);
+		this.balanceChildren();
+		this.insertPoint = null;
+		
+		// Determine line number
+		let line = 0;
+		let cur = this.element.firstChild;
+		while (cur != entry) {
+			cur = cur.nextSibling;
+			line++;
+		}
+		proposal.line = line;
+		return proposal;
+	}
+	
+	// Creates and insert a proposal into this constitution.
+	Constitution.prototype.propose = function(line, exp) {
+		let entry = Constitution.createEntry(exp);
+		let proposal = entry.animated;
+		entry.className += " -proposal";
+		this.element.appendChild(entry);
+		this.balanceChildren();
+		return proposal;
+	}
+	
+	// Cancels a proposal.
+	Constitution.prototype.cancelProposal = function(proposal) {
+		this.element.removeChild(proposal.element);
+		this.balanceChildren();
+	}
+	
+	// Confirms a proposal.
+	Constitution.prototype.confirmProposal = function(proposal) {
+		proposal.element.className = proposal.element.className.replace(" -proposal", "");
+	}
 	
 	// Augments an element to be a game log.
 	function Log(element) {

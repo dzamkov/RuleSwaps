@@ -8,6 +8,7 @@ window.onload = function() {
 			goreflex
 		],[
 			["you_gain_5"],
+			["you_draw_2"],
 			["insert_ammendment_conditional", "you", "coin_flip"],
 			["specify_action_optional", "you"],
 			["you_draw_2"]

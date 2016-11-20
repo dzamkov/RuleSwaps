@@ -48,15 +48,15 @@ function Game(setup) {
 		// The high-level playthrough procedure for a game.
 		while (true) {
 			console.assert(this.playerStack.length === 0);
-			this.line = 0;
+			yield this.setActiveLine(0);
 			let player = this.players[this.turn % this.players.length];
 			yield this.log(player, " takes the floor for turn " + (this.turn + 1));
 			this.playerStack.push(player);
 			while (this.line < this.constitution.length) {
 				let exp = this.constitution[this.line];
-				yield this.log("The " + getOrdinal(this.line + 1) + " ammendment is triggered: ", exp);
+				yield this.log("The " + getOrdinal(this.line + 1) + " ammendment is invoked ", exp);
 				yield this.resolve(exp);
-				this.line++;
+				yield this.setActiveLine(this.line + 1);
 			}
 			this.playerStack.pop();
 			this.turn++;
@@ -112,7 +112,6 @@ Game.prototype.resolve = function(exp) {
 	return exp.card.resolve(this, exp.slots);
 }
 
-
 // Creates a new unresolved commitment.
 Game.prototype.createCommitment = function() {
 	return new Commitment(this.nextCommitmentId++);
@@ -165,6 +164,16 @@ Game.prototype.log = function() {
 	// Override me
 }
 
+// Gets the current consitution.
+Game.prototype.getConstitution = function() {
+	return this.constitution;
+}
+
+// Sets the constitution line that is currently being executed.
+Game.prototype.setActiveLine = function(line) {
+	this.line = line;
+}
+
 // Gets the number of coins the given player has.
 Game.prototype.getCoins = function(player) {
 	return player.coins;
@@ -183,6 +192,11 @@ Game.prototype.takeCoins = function(player, count) {
 // Gets the hand size of the given player
 Game.prototype.getHandSize = function(player) {
 	return player.handSize;
+}
+
+// Discards the given list of cards in the given order.
+Game.prototype.discard = function(cards) {
+	// TODO
 }
 
 // Causes a player to draw the given number of cards.
@@ -213,8 +227,37 @@ Game.prototype.drawCard = function*(player, cardCommitment) {
 	player.handSize++;
 }
 
+// Chooses a random integer between 0 (inclusive) and the given number (exclusive). Returns
+// it as a commitment.
+Game.prototype.random = function*(range) {
+	let commitment = this.createCommitment();
+	if (this.canResolveRandomness) {
+		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
+	}
+	return commitment;
+}
+
 // Causes the given player to specify an expression of the given role. Returns that expression wrapped in
 // a commitment.
 Game.prototype.interactSpecify = function(player, role) {
 	return this.createCommitment();
+}
+
+// Causes the given player to specify an ammendment and returns it (without a commitment). This must
+// be followed by a call to either cancel or confirm the ammendment.
+Game.prototype.interactAmmend = function*(player) {
+	return yield this.reveal(this.createCommitment());
+}
+
+// Cancels an ammendment previously specified by a player.
+Game.prototype.cancelAmmend = function(ammend) {
+	
+}
+
+// Confirms an ammendment previously specified by a player.
+Game.prototype.confirmAmmend = function*(ammend) {
+	if (ammend.line <= this.line) {
+		yield this.setActiveLine(this.line + 1);
+	}
+	this.constitution.splice(ammend.line, 0, ammend.exp);
 }

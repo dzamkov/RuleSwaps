@@ -64,6 +64,7 @@ $playarea-margin: 20px;
 	background: rgba(#eeeeee, 0.5);
 	
 	padding-top: 10px;
+	padding-bottom: 10px;
 	text-align: center;
 	font-style: italic;
 }
@@ -291,6 +292,38 @@ $input-expression-button-padding: 6px;
 	box-sizing: border-box;
 	border-radius: 6px;
 	background: rgba(#111111, 0.3);
+	font-style: none;
+	
+	&.-active {
+		background: #ffba00;
+	}
+	
+	&.-proposal {
+		background: #ee1111;
+	}
+	
+	&.-insert-point {
+		cursor: pointer;
+		height: $mini-card-list-height;
+		width: 200px;
+		background: #d29a9a;
+		border: solid 1px #a50000;
+		color: #a50000;
+		font-size: 12px;
+		padding-top: $mini-card-list-height / 2 - 10px;
+		text-align: center;
+		&.-hover {
+			box-shadow: 0 0 6px 0 rgba(#ff3333, 0.5);
+		}
+	}
+	
+	&.-hole {
+		height: $mini-card-list-height;
+		width: 200px;
+		background: rgba(white, 0.5);
+		border: solid 1px #404040;
+		background-color: rgba(#efefef, 0.5);
+	}
 }
 
 .constitution-number-entry {

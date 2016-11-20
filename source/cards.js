@@ -24,8 +24,9 @@ Card.register("specify_action_optional", new Card(Role.Action,
 		yield game.log(player, " may specify and perform an action");
 		let exp = yield game.reveal(yield game.interactSpecify(player, Role.Action));
 		if (exp) {
-			yield game.log(player, " performs an action: ", exp);
+			yield game.log(player, " performs an action ", exp);
 			yield game.resolve(exp);
+			yield game.discard(exp.toList());
 		} else {
 			yield game.log(player, " waives the right to perform an action");
 		}
@@ -43,16 +44,41 @@ Card.register("conditional_twice", new Card(Role.Action,
 Card.register("insert_ammendment_conditional", new Card(Role.Action,
 	"{Player} may propose an ammendment, to be ratified if {Condition}",
 	function*(game, slots) {
-		
+		let player = yield game.resolve(slots[0]);
+		yield game.log(player, " may propose an ammendment");
+		let ammend = yield game.interactAmmend(player);
+		if (ammend) {
+			yield game.log(player,
+				(ammend.line === 0) ?
+				(" proposes a new ammendment at the top of the constitution") :
+				(" proposes a new ammendment below the " + getOrdinal(ammend.line)),
+				ammend.exp);
+			if (yield game.resolve(slots[1])) {
+				yield game.log(player, "'s ammendment has been ratified");
+				yield game.confirmAmmend(ammend);
+			} else {
+				yield game.log(player, "'s ammendment was not ratified");
+				yield game.cancelAmmend(ammend);
+			}
+		} else {
+			yield game.log(player, " waives the right to propose an ammendment");
+		}
 	}));
 	
 // Conditions
 // -----------------------
 
 Card.register("coin_flip", new Card(Role.Condition,
-	"Coin flip yields heads",
+	"Coin flip",
 	function*(game, slots) {
-		// TODO
+		let res = yield game.reveal(yield game.random(2));
+		if (res === 1) {
+			yield game.log("The coin came up heads");
+			return true;
+		} else {
+			yield game.log("The coin came up tails");
+			return false;
+		}
 	}));
 
 Card.register("or", new Card(Role.Condition,

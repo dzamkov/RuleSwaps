@@ -8,7 +8,6 @@ function Interface(setup, playerSelf, parts) {
 		deck: {
 			draw: new UI.Deck(parts.deckDraw),
 			discard: new UI.Deck(parts.deckDiscard),
-			play: new UI.Deck(parts.deckPlay)
 		},
 		hand: new UI.Hand(parts.selfHand),
 		constitution: new UI.Constitution(
@@ -26,7 +25,6 @@ function Interface(setup, playerSelf, parts) {
 	
 	this.ui.input.expression.log = this.ui.log;
 	this.ui.input.expression.returnHand = this.ui.hand;
-	// this.ui.input.expression.playDeck = this.ui.deck.play;
 	
 	// Set up game
 	Game.call(this, setup);
@@ -55,6 +53,11 @@ Interface.prototype.log = function*() {
 	yield this.pause();
 }
 
+Interface.prototype.setActiveLine = function*(line) {
+	this.ui.constitution.setActiveLine(line);
+	yield Game.prototype.setActiveLine.call(this, line);
+}
+
 Interface.prototype.drawCard = function*(player, cardCommitment) {
 	yield Game.prototype.drawCard.call(this, player, cardCommitment);
 	if (this.playerSelf === player) {
@@ -68,17 +71,51 @@ Interface.prototype.drawCard = function*(player, cardCommitment) {
 }
 
 Interface.prototype.interactSpecify = function*(player, role, style) {
-	if (player === this.playerSelf) {
-		let game = this;
-		let commitment = this.createCommitment();
+	let game = this;
+	let commitment = Game.prototype.interactSpecify.call(this, player);
+	if (!commitment.isResolved && player === this.playerSelf) {
 		this.ui.input.expression.request(role, style, function(exp) {
 			game.resolveCommitment(commitment, exp);
 		});
 		yield this.revealTo(this.playerSelf, commitment);
-		return commitment;
-	} else {
-		return Game.prototype.interactSpecify.call(this, player, role);
 	}
+	return commitment;
+}
+
+Interface.prototype.interactAmmend = function*(player, style) {
+	let game = this;
+	let commitment = this.createCommitment();
+	if (!commitment.isResolved && player === this.playerSelf) {
+		this.ui.constitution.allowInsertPick();
+		this.ui.input.expression.request(Role.Action, style, function(exp) {
+			if (exp) {
+				let proposal = game.ui.constitution.proposeInsertPick(exp);
+				game.resolveCommitment(commitment, {
+					line: proposal.line,
+					exp: exp,
+					proposal: proposal
+				});
+			} else {
+				game.ui.constitution.cancelInsertPick();
+				game.resolveCommitment(commitment, null);
+			}
+		});
+		return yield this.reveal(commitment);
+	} else {
+		let ammend = yield this.reveal(commitment);
+		ammend.proposal = this.ui.constitution.propose(ammend.line, ammend.exp);
+		return ammend;
+	}
+}
+
+Interface.prototype.confirmAmmend = function*(ammend) {
+	this.ui.constitution.confirmProposal(ammend.proposal);
+	yield Game.prototype.confirmAmmend.call(this, ammend);
+}
+
+Interface.prototype.cancelAmmend = function*(ammend) {
+	this.ui.constitution.cancelProposal(ammend.proposal);
+	yield Game.prototype.cancelAmmend.call(this, ammend);
 }
 
 // Stops the interface from running for the given length of time.

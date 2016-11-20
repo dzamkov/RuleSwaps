@@ -209,8 +209,8 @@ var Motion = new function() {
 				acceptorElement = acceptorElement.parentNode;
 			if (acceptor) {
 				let rect = acceptorElement.getBoundingClientRect();
-				let left = e.clientX - rect.left;
-				let top = e.clientY - rect.top;
+				let left = e.clientX - rect.left + acceptorElement.scrollLeft;
+				let top = e.clientY - rect.top + acceptorElement.scrollTop;
 				let nEnterHole = acceptor.dragIn(animated, left, top, dragging.exitAcceptor);
 				if (nEnterHole && nEnterHole !== dragging.enterHole && nEnterHole !== dragging.exitHole) {
 					if (dragging.enterHole) dragging.enterAcceptor.leave(animated, dragging.enterHole, false);

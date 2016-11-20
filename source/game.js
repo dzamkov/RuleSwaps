@@ -102,6 +102,17 @@ Game.prototype.getActivePlayer = function() {
 	return this.playerStack[this.playerStack.length - 1];
 }
 
+// Adds a player to the top of the player stack.
+Game.prototype.pushPlayerStack = function(player) {
+	this.playerStack.push(player);
+}
+
+// Removes a player from the top of the player stack.
+Game.prototype.popPlayerStack = function(player) {
+	let res = this.playerStack.pop();
+	console.assert(!player || player === res);
+}
+
 // Gets how far into the player stack the game is at.
 Game.prototype.getDepth = function() {
 	return this.playerStack.length;

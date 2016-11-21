@@ -17,27 +17,27 @@ ServerGame.active = { };
 
 // Gets a game by its game id.
 ServerGame.get = function(gameId, callback) {
-	let cur = ServerGame.active[gameId];
-	if (cur) return cur;
-	
-	let player1 = new Player();
-	player1.name = "Player 1";
-	player1.userId = 1;
-	
-	let player2 = new Player();
-	player2.name = "Player 2";
-	player2.userId = 2;
-	
-	let setup = new Game.Setup(
-		[player1, player2],[
-			["you_gain_5"],
-			["you_draw_2"],
-			["insert_amendment_conditional", "you", "decide_bool", "you"],
-			["specify_action_optional", "you"],
-			["you_draw_2"]
-		], defaultDeck);
-	
-	let game = ServerGame.active[gameId] = new ServerGame(setup);
+	let game = ServerGame.active[gameId];
+	if (!game) {
+		let player1 = new Player();
+		player1.name = "Player 1";
+		player1.userId = 1;
+		
+		let player2 = new Player();
+		player2.name = "Player 2";
+		player2.userId = 2;
+		
+		let setup = new Game.Setup(
+			[player1, player2],[
+				["you_gain_5"],
+				["you_draw_2"],
+				["insert_amendment_conditional", "you", "decide_bool", "you"],
+				["specify_action_optional", "you"],
+				["you_draw_2"]
+			], defaultDeck);
+		
+		game = ServerGame.active[gameId] = new ServerGame(setup);
+	}
 	callback(game);
 }
 

@@ -1,16 +1,16 @@
 $card-width: 120px;
 $card-height: 160px;
 
-$action-color-light: #ff6666;
-$action-color-mid: #dc3131;
+$action-color-light: #ee7777;
+$action-color-mid: #bb2121;
 $action-color-dark: #702020;
 
-$condition-color-light: #5cc56d;
-$condition-color-mid: #20a135;
+$condition-color-light: #85ce85;
+$condition-color-mid: #2e863c;
 $condition-color-dark: #006010;
 
-$player-color-light: #506af1;
-$player-color-mid: #1841e4;
+$player-color-light: #5577f1;
+$player-color-mid: #1841bb;
 $player-color-dark: #102060;
 
 $mini-card-list-height: 88px;
@@ -152,7 +152,7 @@ $mini-card-list-height: 88px;
 .card-back {
 	@extend .card-shape;
 	border: solid 1px black;
-	background-image: url("images/cardback.png");
+	background-image: url("/static/images/cardback.png");
 	background-size: $card-width $card-height;
 	background-position: center;
 	box-shadow: 0 0 6px 0 #101010;

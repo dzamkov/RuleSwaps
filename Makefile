@@ -13,7 +13,7 @@ clean:
 
 $(output_dir)/static: \
 	$(output_dir)/static/images \
-	$(output_dir)/static/index.html \
+	$(output_dir)/static/game.html \
 	$(output_dir)/static/style.css \
 	$(output_dir)/static/script.js
 
@@ -31,7 +31,11 @@ $(int_dir)/%.js: $(source_dir)/%.js
 	mkdir -p $(dir $@)
 	babel $< --presets es2015 -o $@
 	
-common_files := $(int_dir)/card.js $(int_dir)/game.js  $(int_dir)/cards.js 
+common_files := \
+	$(int_dir)/card.js \
+	$(int_dir)/game.js \
+	$(int_dir)/cards.js \
+	$(int_dir)/format.js
 client_files := $(common_files) \
 	$(int_dir)/client/motion.js \
 	$(int_dir)/client/ui.js \

@@ -75,17 +75,17 @@ function Card(role, text, resolve) {
 }
 
 // The list of all possible cards.
-Card.List = { }
+Card.list = { }
 
 // Registers a card.
 Card.register = function(name, card) {
 	card.name = name;
-	Card.List[name] = card;
+	Card.list[name] = card;
 }
 
 // Looks up a card based on the given information.
 Card.get = function(card) {
-	if (typeof card === "string") card = Card.List[card];
+	if (typeof card === "string") card = Card.list[card];
 	console.assert(card instanceof Card);
 	return card;
 }

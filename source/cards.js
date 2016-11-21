@@ -43,27 +43,27 @@ Card.register("conditional_twice", new Card(Role.Action,
 		}
 	}));
 	
-Card.register("insert_ammendment_conditional", new Card(Role.Action,
-	"{Player} may propose an ammendment, to be ratified if {Condition}",
+Card.register("insert_amendment_conditional", new Card(Role.Action,
+	"{Player} may propose an amendment, to be ratified if {Condition}",
 	function*(game, slots) {
 		let player = yield game.resolve(slots[0]);
-		yield game.log(player, " may propose an ammendment");
-		let ammend = yield game.interactAmmend(player);
-		if (ammend) {
+		yield game.log(player, " may propose an amendment");
+		let amend = yield game.interactAmend(player);
+		if (amend) {
 			yield game.log(player,
-				(ammend.line === 0) ?
-				(" proposes a new ammendment at the top of the constitution") :
-				(" proposes a new ammendment below the " + getOrdinal(ammend.line)),
-				ammend.exp);
+				(amend.line === 0) ?
+				(" proposes a new amendment at the top of the constitution") :
+				(" proposes a new amendment below the " + getOrdinal(amend.line)),
+				amend.exp);
 			if (yield game.resolve(slots[1])) {
-				yield game.log(player, "'s ammendment has been ratified");
-				yield game.confirmAmmend(ammend);
+				yield game.log(player, "'s amendment has been ratified");
+				yield game.confirmAmend(amend);
 			} else {
-				yield game.log(player, "'s ammendment was not ratified");
-				yield game.cancelAmmend(ammend);
+				yield game.log(player, "'s amendment was not ratified");
+				yield game.cancelAmend(amend);
 			}
 		} else {
-			yield game.log(player, " waives the right to propose an ammendment");
+			yield game.log(player, " waives the right to propose an amendment");
 		}
 	}));
 	
@@ -162,7 +162,7 @@ let defaultDeck = {
 	"you_gain_5": 5,
 	"specify_action_optional": 3,
 	"conditional_twice": 3,
-	"insert_ammendment_conditional": 3,
+	"insert_amendment_conditional": 3,
 	
 	"coin_flip": 5,
 	"or": 4,

@@ -15,8 +15,10 @@ Player.create = function(player) {
 }
 
 // Identifies a secret game value, but doesn't necessarily provide the value.
-function Commitment(id) {
+function Commitment(id, player, format) {
 	this.id = id;
+	this.player = player;
+	this.format = format;
 	this.value = null;
 	this.isResolved = false;
 }
@@ -41,7 +43,6 @@ function Game(setup) {
 	this.line = 0;
 	this.playerStack = [];
 	
-	this.canResolveRandomness = false;
 	this.isRunning = false;
 	this.executionStack = [(function*() {
 		
@@ -54,7 +55,7 @@ function Game(setup) {
 			this.playerStack.push(player);
 			while (this.line < this.constitution.length) {
 				let exp = this.constitution[this.line];
-				yield this.log("The " + getOrdinal(this.line + 1) + " ammendment is invoked ", exp);
+				yield this.log("The " + getOrdinal(this.line + 1) + " amendment is invoked ", exp);
 				yield this.resolve(exp);
 				yield this.setActiveLine(this.line + 1);
 			}
@@ -91,7 +92,8 @@ Game.prototype.run = function() {
 	}
 }
 
-// Stops a game from running.
+// Stops a game from running. For this to be effective, it should be used in a loop with a
+// wait condition.
 Game.prototype.pause = function*() {
 	this.isRunning = false;
 	yield;
@@ -124,28 +126,34 @@ Game.prototype.resolve = function(exp) {
 }
 
 // Creates a new unresolved commitment.
-Game.prototype.createCommitment = function() {
-	return new Commitment(this.nextCommitmentId++);
+Game.prototype.createCommitment = function(player, format) {
+	return new Commitment(this.nextCommitmentId++, player, format);
 }
 
 // Resolves a commitment.
 Game.prototype.resolveCommitment = function(commitment, value) {
 	commitment.value = value;
 	commitment.isResolved = true;
+	if (!this.isRunning) this.run();
+}
+
+// Waits until the given commitment is resolved, then returns its value. This will not
+// necessarily guarantee that  
+Game.prototype.awaitCommitment = function*(commitment) {
+	while (!commitment.isResolved) yield this.pause();
+	return commitment.value;
 }
 
 // Gets the value of the given commitment. When this is used, the value of the commitment
 // becomes public information.
 Game.prototype.reveal = function*(commitment) {
-	if (!commitment.isResolved) yield this.pause();
-	return commitment.value;
+	yield this.awaitCommitment(commitment);
 }
 
 // Gets the value of the given commitment for the given player. This will return null if the
 // current interface is not allowed to look at that player's private information.
 Game.prototype.revealTo = function*(player, commitment) {
-	if (!commitment.isResolved) yield this.pause();
-	return commitment.value;
+	yield this.awaitCommitment(commitment);
 }
 
 function getOrdinalSuffix(i) {
@@ -213,13 +221,8 @@ Game.prototype.discard = function(cards) {
 // Causes a player to draw the given number of cards.
 Game.prototype.drawCards = function*(player, count) {
 	while (count > 0) {
-		let cardCommitment = this.createCommitment();
-		if (this.deck && this.canResolveRandomness) {
-			let card = this.deck.draw();
-			this.resolveCommitment(cardCommitment, card);
-		} else {
-			this.deck = null;
-		}
+		let cardCommitment = this.createCommitment(null, Format.card);
+		this.deck = null;
 		yield this.drawCard(player, cardCommitment);
 		count--;
 	}
@@ -241,7 +244,7 @@ Game.prototype.drawCard = function*(player, cardCommitment) {
 // Chooses a random integer between 0 (inclusive) and the given number (exclusive). Returns
 // it as a commitment.
 Game.prototype.random = function*(range) {
-	let commitment = this.createCommitment();
+	let commitment = this.createCommitment(null, Format.num(limit));
 	if (this.canResolveRandomness) {
 		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
 	}
@@ -250,30 +253,38 @@ Game.prototype.random = function*(range) {
 
 // Requests the given player specify a boolean value. Returns that value wrapped in a commitment.
 Game.prototype.interactBoolean = function(player) {
-	return this.createCommitment();
+	return this.createCommitment(player, Format.bool);
 }
 
 // Requests the given player to specify an expression of the given role. Returns that expression wrapped in
 // a commitment.
 Game.prototype.interactSpecify = function(player, role) {
-	return this.createCommitment();
+	return this.createCommitment(player, Format.exp);
 }
 
-// Causes the given player to specify an ammendment and returns it (without a commitment). This must
-// be followed by a call to either cancel or confirm the ammendment.
-Game.prototype.interactAmmend = function*(player) {
-	return yield this.reveal(this.createCommitment());
+// Gets the format for an amendment to the constitution at this moment.
+Game.prototype.getAmendFormat = function() {
+	return Format.obj({
+		line: Format.num(this.constitution.length + 1),
+		exp: Format.exp
+	});
 }
 
-// Cancels an ammendment previously specified by a player.
-Game.prototype.cancelAmmend = function(ammend) {
+// Causes the given player to specify an amendment and returns it (without a commitment). This must
+// be followed by a call to either cancel or confirm the amendment.
+Game.prototype.interactAmend = function*(player) {
+	return yield this.reveal(this.createCommitment(player, this.getAmendFormat()));
+}
+
+// Cancels an amendment previously specified by a player.
+Game.prototype.cancelAmend = function(amend) {
 	
 }
 
-// Confirms an ammendment previously specified by a player.
-Game.prototype.confirmAmmend = function*(ammend) {
-	if (ammend.line <= this.line) {
+// Confirms an amendment previously specified by a player.
+Game.prototype.confirmAmend = function*(amend) {
+	if (amend.line <= this.line) {
 		yield this.setActiveLine(this.line + 1);
 	}
-	this.constitution.splice(ammend.line, 0, ammend.exp);
+	this.constitution.splice(amend.line, 0, amend.exp);
 }

@@ -327,7 +327,7 @@ let UI = new function() {
 		if (!this.insertPoint) {
 			let entry = document.createElement("div");
 			entry.className = "constitution-entry -insert-point";
-			entry.innerText = "Insert ammendment here";
+			entry.innerText = "Insert amendment here";
 			this.insertPoint = new Motion.Animated(entry);
 			this.insertPoint.hoverStyle = "-hover";
 			this.element.appendChild(entry);

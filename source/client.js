@@ -4,7 +4,7 @@ function ajax(request, callback) {
 	let xhttp = new XMLHttpRequest();
 	xhttp.open("POST", window.location, true);
 	xhttp.onload = function(e) {
-		callback(JSON.parse(xhttp.responseText));
+		if (callback) callback(JSON.parse(xhttp.responseText));
 	}
 	xhttp.send(JSON.stringify(request));
 }
@@ -32,7 +32,35 @@ function start(response) {
 		
 		selfHand: document.getElementById("section-player-self-hand")
 	});
-	inteface.run(null);
+	
+	// Send a message upon resolving a commitment.
+	inteface.resolveCommitment = function(commitment, value) {
+		ajax({
+			messageType: "commit",
+			commitmentId: commitment.id,
+			commitmentValue: commitment.format.encode(value)
+		});
+		Interface.prototype.resolveCommitment.call(this, commitment, value);
+	}
+	
+	// Performs a polling query for more game information.
+	function poll(baseCommitmentId) {
+		ajax({
+			messageType: "poll",
+			baseCommitmentId: baseCommitmentId
+		}, function(response) {
+			for (let commitmentId in response.commitments) {
+				let commitment = inteface.getCommitment(commitmentId);
+				if (!commitment.isResolved) commitment.resolveEncoded(response.commitments[commitmentId]);
+			}
+			inteface.run();
+			poll(response.baseCommitmentId);
+		});
+	}
+	
+	// Run game
+	inteface.run();
+	poll(0);
 }
 
 // Handle loading

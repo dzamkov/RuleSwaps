@@ -45,16 +45,23 @@ Interface.prototype.run = function() {
 	}
 }
 
+Interface.prototype.revealTo = function*(player, commitment) {
+	if (this.playerSelf === player) {
+		return yield this.awaitCommitment(commitment);
+	} else {
+		return null;
+	}
+}
+
 Interface.prototype.log = function*() {
 	this.ui.log.log(this.getDepth(), arguments);
-	this.delay(500);
-	yield this.pause();
+	yield this.delay(500);
 }
 
 Interface.prototype.setActiveLine = function*(line) {
 	// TODO: problem with multiple proposals
 	this.ui.constitution.setActiveLine(line);
-	yield Game.prototype.setActiveLine.call(this, line);
+	return yield Game.prototype.setActiveLine.call(this, line);
 }
 
 Interface.prototype.drawCard = function*(player, cardCommitment) {
@@ -69,8 +76,14 @@ Interface.prototype.drawCard = function*(player, cardCommitment) {
 	}
 }
 
+// Resolves a commitment for this interface.
+Interface.prototype.resolveCommitment = function(commitment, value) {
+	console.assert(this.playerSelf === commitment.player);
+	commitment.resolve(value);
+	this.run();
+}
+
 Interface.prototype.interactBoolean = function*(player) {
-	let game = this;
 	let commitment = Game.prototype.interactBoolean.call(this, player);
 	if (!commitment.isResolved && player == this.playerSelf) {
 		this.ui.input.bool.request(this.resolveCommitment.bind(this, commitment));
@@ -80,12 +93,9 @@ Interface.prototype.interactBoolean = function*(player) {
 }
 
 Interface.prototype.interactSpecify = function*(player, role, style) {
-	let game = this;
 	let commitment = Game.prototype.interactSpecify.call(this, player, role);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		this.ui.input.expression.request(role, style, function(exp) {
-			game.resolveCommitment(commitment, exp);
-		});
+		this.ui.input.expression.request(role, style, this.resolveCommitment.bind(this, commitment));
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
@@ -93,7 +103,7 @@ Interface.prototype.interactSpecify = function*(player, role, style) {
 
 Interface.prototype.interactAmend = function*(player, style) {
 	let game = this;
-	let commitment = this.createCommitment(player, this.getAmendFormat());
+	let commitment = this.declareCommitment(player, this.getAmendFormat());
 	if (!commitment.isResolved && player === this.playerSelf) {
 		this.ui.constitution.allowInsertPick();
 		this.ui.input.expression.request(Role.Action, style, function(exp) {
@@ -112,26 +122,27 @@ Interface.prototype.interactAmend = function*(player, style) {
 		return yield this.reveal(commitment);
 	} else {
 		let ammend = yield this.reveal(commitment);
-		ammend.proposal = this.ui.constitution.propose(ammend.line, ammend.exp);
+		if (ammend) ammend.proposal = this.ui.constitution.propose(ammend.line, ammend.exp);
 		return ammend;
 	}
 }
 
 Interface.prototype.confirmAmend = function*(ammend) {
 	this.ui.constitution.confirmProposal(ammend.proposal);
-	yield Game.prototype.confirmAmend.call(this, ammend);
+	return yield Game.prototype.confirmAmend.call(this, ammend);
 }
 
 Interface.prototype.cancelAmend = function*(ammend) {
 	this.ui.constitution.cancelProposal(ammend.proposal);
-	yield Game.prototype.cancelAmend.call(this, ammend);
+	return yield Game.prototype.cancelAmend.call(this, ammend);
 }
 
 // Stops the interface from running for the given length of time.
-Interface.prototype.delay = function(time) {
+Interface.prototype.delay = function*(time) {
 	if (this.delayTimeout) clearTimeout(this.delayTimeout);
 	this.delayTime = setTimeout((function() {
 		this.delayTime = null;
 		this.run();
 	}).bind(this), time);
+	while (this.delayTime) yield this.pause();
 }

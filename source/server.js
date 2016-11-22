@@ -10,6 +10,19 @@ let port = parseInt(process.argv[2], 10);
 function ServerGame(setup) {
 	Game.call(this, setup);
 	this.setup = setup;
+	
+	// The first commitment in the frame we are waiting on.
+	this.baseCommitmentId = 0;
+	
+	// The number of commitments that need to be resolved before we can proceed in the frame.
+	this.unresolved = 0;
+	
+	// The callbacks currently waiting on more data, along with the base commitment Id they are
+	// waiting form.
+	this.waiting = [];
+	
+	// The set of all reveals made, in order.
+	this.revealed = [];
 }
 
 // The set of all active server games.
@@ -20,11 +33,11 @@ ServerGame.get = function(gameId, callback) {
 	let game = ServerGame.active[gameId];
 	if (!game) {
 		let player1 = new Player();
-		player1.name = "Player 1";
+		player1.name = "Gorp";
 		player1.userId = 1;
 		
 		let player2 = new Player();
-		player2.name = "Player 2";
+		player2.name = "Dorp";
 		player2.userId = 2;
 		
 		let setup = new Game.Setup(
@@ -37,6 +50,7 @@ ServerGame.get = function(gameId, callback) {
 			], defaultDeck);
 		
 		game = ServerGame.active[gameId] = new ServerGame(setup);
+		game.update();
 	}
 	callback(game);
 }
@@ -45,26 +59,133 @@ ServerGame.prototype = Object.create(Game.prototype);
 
 ServerGame.prototype.drawCards = function*(player, count) {
 	while (count > 0) {
-		let cardCommitment = this.createCommitment(null, Format.card);
-		this.resolveCommitment(cardCommitment, this.deck.draw());
+		let cardCommitment = this.declareCommitment(null, Format.card);
+		if (cardCommitment.isResolved) {
+			this.deck.remove(cardCommitment.value);
+		} else {
+			this.resolveCommitment(cardCommitment, this.deck.draw());
+		}
 		yield this.drawCard(player, cardCommitment);
 		count--;
 	}
 }
 
 ServerGame.prototype.random = function*(range) {
-	let commitment = this.createCommitment(null, Format.num(limit));
-	this.resolveCommitment(commitment, Math.floor(Math.random() * range));
+	let commitment = this.declareCommitment(null, Format.num(limit));
+	if (!commitment.isResolved) {
+		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
+	}
 	return commitment;
+}
+
+ServerGame.prototype.declareCommitment = function(player, format) {
+	let commitment = Game.prototype.declareCommitment.call(this, player, format);
+	if (!commitment.isResolved) this.unresolved++;
+	return commitment;
+}
+
+// Resolves a commitment for this game.
+ServerGame.prototype.resolveCommitment = function(commitment, value) {
+	console.assert(commitment.player === null);
+	commitment.resolve(value);
+	this.unresolved--;
+}
+
+ServerGame.prototype.waitReveal = function*(commitment) {
+	while (this.unresolved > 0) yield this.pause();
+	console.assert(commitment.isResolved);
+	this.baseCommitmentId = this.nextCommitmentId;
+	return commitment.value;
+}
+
+ServerGame.prototype.reveal = function*(commitment) {
+	this.revealed.push({
+		baseCommitmentId: this.nextCommitmentId,
+		commitment: commitment,
+		player: null
+	});
+	return yield this.waitReveal(commitment);
+}
+
+ServerGame.prototype.revealTo = function*(player, commitment) {
+	this.revealed.push({
+		baseCommitmentId: this.nextCommitmentId,
+		commitment: commitment,
+		player: player
+	});
+	return yield this.waitReveal(commitment);
+}
+
+// Builds a response to a poll message.
+ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId) {
+	let commitments = { };
+	for (let i = this.revealed.length - 1; i >= 0; i--) {
+		let item = this.revealed[i];
+		if (baseCommitmentId < item.baseCommitmentId) {
+			if (item.baseCommitmentId <= this.baseCommitmentId) {
+				if (!item.player || item.player === player) {
+					let commitment = item.commitment;
+					console.assert(commitment.isResolved);
+					commitments[commitment.id] = commitment.format.encode(commitment.value);
+				}
+			}
+		} else {
+			break;
+		}
+	}
+	return {
+		commitments: commitments,
+		baseCommitmentId: this.baseCommitmentId
+	};
+}
+
+// Runs the game and responds to polls.
+ServerGame.prototype.update = function() {
+	this.run();
+	
+	// Respond to polls
+	for (let i = 0; i < this.waiting.length; i++) {
+		let waiting = this.waiting[i];
+		if (waiting.baseCommitmentId < this.baseCommitmentId) {
+			waiting.callback(this.buildPollResponse(waiting.player, waiting.baseCommitmentId));
+			this.waiting[i] = this.waiting[this.waiting.length - 1];
+			this.waiting.pop();
+			i--;
+		}
+	}
 }
 
 // Handles a message sent to this game.
 ServerGame.prototype.handle = function(request, callback) {
 	let type = request.messageType;
+	let player = this.players[0]; // TODO
 	if (type === "intro") {
 		callback({
 			setup: this.setup
 		});
+	} else if (type === "commit") {
+		// TODO: Sanitize, check player
+		let commitmentId = Format.nat.decode(request.commitmentId);
+		if (commitmentId < this.nextCommitmentId) {
+			let commitment = this.getCommitment(request.commitmentId);
+			if (!commitment.isResolved) {
+				commitment.resolveEncoded(request.commitmentValue);
+				this.unresolved--;
+				this.update();
+			}
+		}
+		callback(null);
+	} else if (type === "poll") {
+		let baseCommitmentId = Format.nat.decode(request.baseCommitmentId);
+		if (baseCommitmentId < this.baseCommitmentId) {
+			callback(this.buildPollResponse(player, baseCommitmentId));
+		} else {
+			this.waiting.push({
+				player: player,
+				baseCommitmentId: baseCommitmentId,
+				callback: callback
+			});
+		}
 	} else {
 		callback(null);	
 	}

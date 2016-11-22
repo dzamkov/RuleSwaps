@@ -17,6 +17,8 @@ Format.prototype.decode = function(source) {
 
 // The exception thrown when a decode fails.
 Format.Exception = { };
+Format.Exception.name = "Format exception";
+Format.Exception.toString = function() { return this.name };
 
 // A format for a boolean value.
 Format.bool = new Format(false);
@@ -50,6 +52,7 @@ Format.card.decode = function(source) {
 Format.exp = new Format(null);
 
 Format.exp.encode = function(exp) {
+	if (exp === null) return null;
 	let list = exp.toList();
 	let nList = new Array(list.length);
 	for (let i = 0; i < list.length; i++) nList[i] = Format.card.encode(list[i]);
@@ -106,17 +109,22 @@ Format.Obj = function(props) {
 }
 
 Format.Obj.prototype.encode = function(value) {
-	return value;
+	if (value === null) return null;
+	let obj = { };
+	for (let prop in this.props) {
+		obj[prop] = this.props[prop].encode(value[prop]);
+	}
+	return obj;
 }
 
 Format.Obj.prototype.decode = function(source) {
 	if (source === null) return null;
 	if (typeof source !== "object") throw Format.Exception;
-	let obj = Object.create();
+	let obj = { };
 	for (let prop in source) {
 		let format = this.props[prop];
 		if (!format) throw Format.Exception;
-		obj[prop] = format.decode(prop);
+		obj[prop] = format.decode(source[prop]);
 	}
 	for (let prop in this.props) {
 		if (!obj.hasOwnProperty(prop)) throw Format.Exception;

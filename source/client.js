@@ -11,8 +11,10 @@ function ajax(request, callback) {
 
 // Starts the game given the response to the "intro" request.
 function start(response) {
-	let setup = response.setup;
-	let inteface = new Interface(setup, 0, {
+	let setup = Format.setup.decode(response.setup);
+	let sessionId = response.sessionId;
+	let playerId = response.playerId;
+	let inteface = new Interface(setup, playerId, {
 		deckDraw: document.getElementById("deck-draw"),
 		deckDiscard: document.getElementById("deck-discard"),
 		deckPlay: document.getElementById("deck-play"),
@@ -37,6 +39,7 @@ function start(response) {
 	inteface.resolveCommitment = function(commitment, value) {
 		ajax({
 			messageType: "commit",
+			sessionId: sessionId,
 			commitmentId: commitment.id,
 			commitmentValue: commitment.format.encode(value)
 		});
@@ -47,6 +50,7 @@ function start(response) {
 	function poll(baseCommitmentId) {
 		ajax({
 			messageType: "poll",
+			sessionId: sessionId,
 			baseCommitmentId: baseCommitmentId
 		}, function(response) {
 			for (let commitmentId in response.commitments) {

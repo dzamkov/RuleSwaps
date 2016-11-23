@@ -1,13 +1,17 @@
 // Identifies and describes a player in a game.
-function Player(coins, handSize, hand) {
+function Player(coins, hand, handSize) {
 	this.coins = coins || 0;
+	this.hand = null;
 	this.handSize = handSize || 0;
-	this.hand = CardSet.create(hand || { });
+	if (hand) {
+		this.hand = CardSet.create(hand);
+		this.handSize = this.hand.totalCount;
+	}
 }
 
 // Creates a player based on the given information.
 Player.create = function(player) {
-	let nPlayer = new Player(player.coins, player.handSize, player.hand);
+	let nPlayer = new Player(player.coins, player.hand, player.handSize);
 	for (let prop in player) {
 		if (!nPlayer[prop]) nPlayer[prop] = player[prop];
 	}
@@ -53,6 +57,7 @@ function Game(setup) {
 	this.players = new Array(setup.players.length);
 	for (let i = 0; i < this.players.length; i++) {
 		this.players[i] = Player.create(setup.players[i]);
+		this.players[i].id = i;
 	}
 	this.deck = CardSet.create(setup.deck);
 	

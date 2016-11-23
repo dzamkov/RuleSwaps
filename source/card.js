@@ -152,10 +152,10 @@ function CardSet(counts, totalCount) {
 CardSet.create = function(set) {
 	let counts = set;
 	if (set instanceof CardSet) {
-		counts = set;
+		counts = set.counts;
 	}
 	
-	let nCounts = new Object();
+	let nCounts = { };
 	let totalCount = 0;
 	for (let card in counts) {
 		nCounts[card] = counts[card];

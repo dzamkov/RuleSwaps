@@ -20,6 +20,11 @@ Format.Exception = { };
 Format.Exception.name = "Format exception";
 Format.Exception.toString = function() { return this.name };
 
+// A format which assumes nothing about its contained value and does no encoding or decoding.
+Format.any = new Format(null);
+Format.any.encode = function(value) { return value; }
+Format.any.decode = function(value) { return value; }
+
 // A format for a boolean value.
 Format.bool = new Format(false);
 
@@ -46,6 +51,26 @@ Format.card.decode = function(source) {
 	let res = Card.get(source);
 	if (!res) throw Format.Exception;
 	return res;
+}
+
+// A format for a non-null card set.
+Format.cardSet = new Format({ });
+
+Format.cardSet.encode = function(cards) {
+	return cards.counts;
+}
+
+Format.cardSet.decode = function(source) {
+	if (!(source instanceof Object)) throw Format.Exception;
+	let counts = { };
+	let totalCount = 0;
+	for (let card in source) {
+		if (!Card.get(card)) throw Format.Exception;
+		let count = Format.nat.decode(source[card]);
+		counts[card] = count;
+		totalCount += count;
+	}
+	return new CardSet(counts, totalCount);
 }
 
 // A format for an expression, or null.
@@ -98,6 +123,38 @@ Format.Num.prototype.decode = function(value) {
 Format.nat = Format.num(Infinity);
 
 
+// A format for a list of non-null things.
+Format.list = function(inner) {
+	return new Format.List(inner);
+}
+
+Format.List = function(inner) {
+	Format.call(this, []);
+	this.inner = inner;
+}
+
+Format.List.prototype = Object.create(Format.prototype);
+
+Format.List.prototype.encode = function(list) {
+	let nList = new Array(list.length);
+	for (let i = 0; i < list.length; i++) {
+		let item = nList[i] = this.inner.encode(list[i]);
+		console.assert(item !== null);
+	}
+	return nList;
+}
+
+Format.List.prototype.decode = function(source) {
+	if (!(source instanceof Array)) throw Format.Exception;
+	let nList = new Array(source.length);
+	for (let i = 0; i < source.length; i++) {
+		let item = nList[i] = this.inner.decode(source[i]);
+		if (item === null) throw Format.Exception;
+	}
+	return nList;
+}
+
+
 // A format for a custom object, or null.
 Format.obj = function(props) {
 	return new Format.Obj(props);
@@ -131,3 +188,15 @@ Format.Obj.prototype.decode = function(source) {
 	}
 	return obj;
 }
+
+// A format for a game setup
+Format.setup = Format.obj({
+	players: Format.list(Format.obj({
+		name: Format.any,
+		userId: Format.any,
+		coins: Format.nat,
+		hand: Format.cardSet
+	})),
+	constitution: Format.list(Format.exp),
+	deck: Format.cardSet
+});

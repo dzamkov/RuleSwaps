@@ -23,6 +23,10 @@ function ServerGame(setup) {
 	
 	// The set of all reveals made, in order.
 	this.revealed = [];
+	
+	// For testing purposes, provide session id's for connecting players.
+	// TODO: Remove
+	this.nextPlayerConnect = 0;
 }
 
 // The set of all active server games.
@@ -32,22 +36,24 @@ ServerGame.active = { };
 ServerGame.get = function(gameId, callback) {
 	let game = ServerGame.active[gameId];
 	if (!game) {
-		let player1 = new Player();
+		let player1 = new Player(0, CardSet.create({ }));
 		player1.name = "Gorp";
 		player1.userId = 1;
+		player1.sessionId = "ses1";
 		
-		let player2 = new Player();
+		let player2 = new Player(0, CardSet.create({ }));
 		player2.name = "Dorp";
 		player2.userId = 2;
+		player2.sessionId = "ses2";
 		
 		let setup = new Game.Setup(
 			[player1, player2],[
-				["you_gain_5"],
-				["you_draw_2"],
-				["insert_amendment_conditional", "you", "decide_bool", "you"],
-				["specify_action_optional", "you"],
-				["you_draw_2"]
-			], defaultDeck);
+				Expression.fromList(["you_gain_5"]),
+				Expression.fromList(["you_draw_2"]),
+				Expression.fromList(["insert_amendment_conditional", "you", "decide_bool", "you"]),
+				Expression.fromList(["specify_action_optional", "you"]),
+				Expression.fromList(["you_draw_2"])
+			], CardSet.create(defaultDeck));
 		
 		game = ServerGame.active[gameId] = new ServerGame(setup);
 		game.update();
@@ -155,16 +161,30 @@ ServerGame.prototype.update = function() {
 	}
 }
 
+// Gets a player in this game base on the given session id.
+ServerGame.prototype.getPlayerBySessionId = function(sessionId) {
+	for (let i = 0; i < this.players.length; i++) {
+		if (this.players[i].sessionId === sessionId)
+			return this.players[i];
+	}
+	return null;
+}
+
 // Handles a message sent to this game.
 ServerGame.prototype.handle = function(request, callback) {
 	let type = request.messageType;
-	let player = this.players[0]; // TODO
 	if (type === "intro") {
+		let playerId = (this.nextPlayerConnect++) % this.players.length;
+		console.log(playerId + " joined");
 		callback({
-			setup: this.setup
+			setup: Format.setup.encode(this.setup),
+			sessionId: this.players[playerId].sessionId,
+			playerId: playerId
 		});
 	} else if (type === "commit") {
 		// TODO: Sanitize, check player
+		let player = this.getPlayerBySessionId(request.sessionId);
+		console.log(player.id + " commited");
 		let commitmentId = Format.nat.decode(request.commitmentId);
 		if (commitmentId < this.nextCommitmentId) {
 			let commitment = this.getCommitment(request.commitmentId);
@@ -176,6 +196,7 @@ ServerGame.prototype.handle = function(request, callback) {
 		}
 		callback(null);
 	} else if (type === "poll") {
+		let player = this.getPlayerBySessionId(request.sessionId);
 		let baseCommitmentId = Format.nat.decode(request.baseCommitmentId);
 		if (baseCommitmentId < this.baseCommitmentId) {
 			callback(this.buildPollResponse(player, baseCommitmentId));

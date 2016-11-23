@@ -77,7 +77,7 @@ ServerGame.prototype.drawCards = function*(player, count) {
 }
 
 ServerGame.prototype.random = function*(range) {
-	let commitment = this.declareCommitment(null, Format.num(limit));
+	let commitment = yield Game.prototype.random(range);
 	if (!commitment.isResolved) {
 		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
 	}

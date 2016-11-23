@@ -98,8 +98,8 @@ var Motion = new function() {
 	}
 	
 	// Causes this animated element to merge into the given hole of the given acceptor.
-	Animated.prototype.mergeInto = function(acceptor, hole) {
-		acceptor.accept(this, hole);
+	Animated.prototype.mergeInto = function(acceptor, hole, fromAcceptor) {
+		acceptor.accept(this, hole, fromAcceptor);
 	}
 	
 	// Causes this animated element to move smoothly to the given coordinates relative to its parent.
@@ -158,12 +158,12 @@ var Motion = new function() {
 	}
 	
 	// Called when a draggable element leaves this acceptor, invalidating a hole.
-	Acceptor.prototype.leave = function(animated, hole, isOriginalElement) {
+	Acceptor.prototype.leave = function(animated, hole, toAcceptor) {
 		this.removeChild(hole);
 	}
 	
 	// Accepts a new element into a hole of this acceptor.
-	Acceptor.prototype.accept = function(animated, hole) {
+	Acceptor.prototype.accept = function(animated, hole, fromAcceptor) {
 		let element = animated.element;
 		element.style.position = hole.style.position;
 		element.style.left = hole.style.left;
@@ -192,7 +192,7 @@ var Motion = new function() {
 					eRect.bottom < hRect.top || 
 					eRect.top > hRect.bottom)
 				{
-					dragging.enterAcceptor.leave(animated, dragging.enterHole, false);
+					dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
 					dragging.enterAcceptor = null;
 					dragging.enterHole = null;
 				}
@@ -213,7 +213,7 @@ var Motion = new function() {
 				let top = e.clientY - rect.top + acceptorElement.scrollTop;
 				let nEnterHole = acceptor.dragIn(animated, left, top, dragging.exitAcceptor);
 				if (nEnterHole && nEnterHole !== dragging.enterHole && nEnterHole !== dragging.exitHole) {
-					if (dragging.enterHole) dragging.enterAcceptor.leave(animated, dragging.enterHole, false);
+					if (dragging.enterHole) dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
 					dragging.enterHole = nEnterHole;
 					dragging.enterAcceptor = acceptor;
 				}
@@ -230,11 +230,11 @@ var Motion = new function() {
 			
 			// Begin merging
 			if (dragging.enterHole) {
-				dragging.animated.mergeInto(dragging.enterAcceptor, dragging.enterHole);
+				dragging.animated.mergeInto(dragging.enterAcceptor, dragging.enterHole, dragging.exitAcceptor);
 				if (dragging.exitHole)
-					dragging.exitAcceptor.leave(dragging.animated, dragging.exitHole, true);
+					dragging.exitAcceptor.leave(dragging.animated, dragging.exitHole, dragging.enterAcceptor);
 			} else if (dragging.exitHole) {
-				dragging.animated.mergeInto(dragging.exitAcceptor, dragging.exitHole);
+				dragging.animated.mergeInto(dragging.exitAcceptor, dragging.exitHole, null);
 			}
 		}
 	}

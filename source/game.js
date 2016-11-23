@@ -280,7 +280,7 @@ Game.prototype.drawCard = function*(player, cardCommitment) {
 // Chooses a random integer between 0 (inclusive) and the given number (exclusive). Returns
 // it as a commitment.
 Game.prototype.random = function*(range) {
-	return this.declareCommitment(null, Format.num(limit));
+	return this.declareCommitment(null, Format.num(range));
 }
 
 // Requests the given player specify a boolean value. Returns that value wrapped in a commitment.

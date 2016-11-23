@@ -159,7 +159,7 @@ let UI = new function() {
 		}
 	}
 	
-	Hand.prototype.leave = function(animated, hole, isOriginalElement) {
+	Hand.prototype.leave = function(animated, hole) {
 		this.element.removeChild(hole);
 		this.balanceChildren(true);
 	}
@@ -556,19 +556,22 @@ let UI = new function() {
 			}
 		}
 		
-		Expression.prototype.leave = function(animated, hole, isOriginalElement) {
+		Expression.prototype.leave = function(animated, hole, toAcceptor) {
 			hole.holeFor = animated.type.role;
 			hole.className = "card-hole-" + hole.holeFor.str.toLowerCase();
-			if (isOriginalElement) {
+			if (toAcceptor) {
 				this.removeSlots(hole, animated.type.slots.length);
 				this.balanceChildren(false);
 			}
 			this.acceptButton.disable();
 		}
 		
-		Expression.prototype.accept = function(card, hole) {
-			Motion.Acceptor.prototype.accept.call(this, card, hole);
-			this.addSlots(card.element, card.type.slots);
+		Expression.prototype.accept = function(card, hole, fromAcceptor) {
+			Motion.Acceptor.prototype.accept.call(this, card, hole, fromAcceptor);
+			if (fromAcceptor) {
+				console.assert(fromAcceptor !== this);
+				this.addSlots(card.element, card.type.slots);
+			}
 			
 			// Check if all slots have been filled
 			let children = this.list.children;

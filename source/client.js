@@ -32,6 +32,10 @@ function start(response) {
 		inputExpressionAccept: document.getElementById("input-expression-accept"),
 		inputExpressionPass: document.getElementById("input-expression-pass"),
 		
+		inputChatSelector: document.getElementById("input-chat-selector"),
+		inputChatTextbox: document.getElementById("input-chat-box"),
+		inputChatButton: document.getElementById("input-chat-button"),
+		
 		selfHand: document.getElementById("section-player-self-hand")
 	});
 	
@@ -46,25 +50,40 @@ function start(response) {
 		Interface.prototype.resolveCommitment.call(this, commitment, value);
 	}
 	
+	// Set up chat listener
+	inteface.onSay = function(recipient, message) {
+		ajax({
+			messageType: "chat",
+			sessionId: sessionId,
+			message: message
+		});
+	}
+	
 	// Performs a polling query for more game information.
-	function poll(baseCommitmentId) {
+	function poll(baseCommitmentId, messageId) {
 		ajax({
 			messageType: "poll",
 			sessionId: sessionId,
-			baseCommitmentId: baseCommitmentId
+			baseCommitmentId: baseCommitmentId,
+			messageId: messageId
 		}, function(response) {
+			console.log(response);
 			for (let commitmentId in response.commitments) {
 				let commitment = inteface.getCommitment(commitmentId);
 				if (!commitment.isResolved) commitment.resolveEncoded(response.commitments[commitmentId]);
 			}
+			for (let i = 0; i < response.messages.length; i++) {
+				let message = response.messages[i];
+				inteface.chat(inteface.players[message.playerId], message.message);
+			}
 			inteface.run();
-			poll(response.baseCommitmentId);
+			poll(response.baseCommitmentId, response.messageId);
 		});
 	}
 	
 	// Run game
 	inteface.run();
-	poll(0);
+	poll(0, 0);
 }
 
 // Handle loading

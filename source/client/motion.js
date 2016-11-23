@@ -3,18 +3,10 @@ var Motion = new function() {
 	
 	// TODO: Smooth motion
 	
-	// Prevents an event from propogating.
-	function pauseEvent(e) {
-		if (e.stopPropogation) e.stopPropogation();
-		if (e.preventDefault) e.preventDefault();
-		e.cancelBubble = true;
-		e.returnValue = false;
-	}
-	
 	// Handles a mouse down on a potentially draggable element.
 	function draggableMouseDown(e) {
 		if (e.button === 0 && !window.dragging) {
-			pauseEvent(e);
+			e.preventDefault();
 			
 			// Find animated and acceptor
 			let animated, acceptor;
@@ -178,7 +170,7 @@ var Motion = new function() {
 		if (dragging) {
 			let animated = dragging.animated;
 			let element = animated.element;
-			pauseEvent(e);
+			e.preventDefault();
 			animated.moveTo(
 				e.clientX - dragging.offsetX,
 				e.clientY - dragging.offsetY);
@@ -225,7 +217,7 @@ var Motion = new function() {
 	function windowMouseUp(e) {
 		var dragging = window.dragging;
 		if (e.button === 0 && dragging) {
-			pauseEvent(e);
+			e.preventDefault();
 			window.dragging = null;
 			
 			// Begin merging

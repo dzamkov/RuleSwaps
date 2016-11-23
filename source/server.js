@@ -17,12 +17,16 @@ function ServerGame(setup) {
 	// The number of commitments that need to be resolved before we can proceed in the frame.
 	this.unresolved = 0;
 	
+	// The set of all reveals made, in order.
+	this.revealed = [];
+	
+	// The list of all messages (i.e. chat) in the game.
+	this.messages = [];
+	
+	
 	// The callbacks currently waiting on more data, along with the base commitment Id they are
 	// waiting form.
 	this.waiting = [];
-	
-	// The set of all reveals made, in order.
-	this.revealed = [];
 	
 	// For testing purposes, provide session id's for connecting players.
 	// TODO: Remove
@@ -123,7 +127,9 @@ ServerGame.prototype.revealTo = function*(player, commitment) {
 }
 
 // Builds a response to a poll message.
-ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId) {
+ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId, messageId) {
+	
+	// Build commitments
 	let commitments = { };
 	for (let i = this.revealed.length - 1; i >= 0; i--) {
 		let item = this.revealed[i];
@@ -139,26 +145,49 @@ ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId) {
 			break;
 		}
 	}
+	
+	// Build messages
+	let messages = this.messages.slice(messageId);
+	
+	// Create response message
 	return {
 		commitments: commitments,
-		baseCommitmentId: this.baseCommitmentId
+		messages: messages,
+		baseCommitmentId: this.baseCommitmentId,
+		messageId: this.messages.length
 	};
 }
 
-// Runs the game and responds to polls.
-ServerGame.prototype.update = function() {
-	this.run();
-	
-	// Respond to polls
+// Adds a chat message to the server.
+ServerGame.prototype.chat = function(player, message) {
+	this.messages.push({
+		baseCommitmentId: this.baseCommitmentId,
+		playerId: player.id,
+		message: message
+	});
+	this.respond();
+}
+
+// Responds to polling requests to the server.
+ServerGame.prototype.respond = function() {
 	for (let i = 0; i < this.waiting.length; i++) {
 		let waiting = this.waiting[i];
-		if (waiting.baseCommitmentId < this.baseCommitmentId) {
-			waiting.callback(this.buildPollResponse(waiting.player, waiting.baseCommitmentId));
+		if (waiting.baseCommitmentId < this.baseCommitmentId || waiting.messageId < this.messages.length) {
+			waiting.callback(this.buildPollResponse(
+				waiting.player, 
+				waiting.baseCommitmentId,
+				waiting.messageId));
 			this.waiting[i] = this.waiting[this.waiting.length - 1];
 			this.waiting.pop();
 			i--;
 		}
 	}
+}
+
+// Runs the game and responds to polls.
+ServerGame.prototype.update = function() {
+	this.run();
+	this.respond();
 }
 
 // Gets a player in this game base on the given session id.
@@ -194,21 +223,27 @@ ServerGame.prototype.handle = function(request, callback) {
 				this.update();
 			}
 		}
-		callback(null);
+		callback(true);
+	} else if (type === "chat") {
+		let player = this.getPlayerBySessionId(request.sessionId);
+		this.chat(player, request.message);
+		callback(true);
 	} else if (type === "poll") {
 		let player = this.getPlayerBySessionId(request.sessionId);
 		let baseCommitmentId = Format.nat.decode(request.baseCommitmentId);
-		if (baseCommitmentId < this.baseCommitmentId) {
+		let messageId = Format.nat.decode(request.messageId);
+		if (baseCommitmentId < this.baseCommitmentId || messageId < this.messages.length) {
 			callback(this.buildPollResponse(player, baseCommitmentId));
 		} else {
 			this.waiting.push({
 				player: player,
 				baseCommitmentId: baseCommitmentId,
+				messageId: messageId,
 				callback: callback
 			});
 		}
 	} else {
-		callback(null);	
+		callback(true);	
 	}
 }
 

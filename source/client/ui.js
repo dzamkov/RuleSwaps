@@ -394,10 +394,18 @@ let UI = new function() {
 		element.log = this;
 	}
 	
+	// Identifies a style of log entry.
+	Log.Style = {
+		Normal: 0,
+		Chat: 1
+	};
+	
 	// Appends an item to the log.
-	Log.prototype.log = function(depth, parts) {
+	Log.prototype.log = function(depth, parts, style) {
 		let entry = document.createElement("div");
-		entry.className = "log-entry";
+		let className = "log-entry";
+		if (style === Log.Style.Chat) className += " -chat";
+		entry.className = className;
 		entry.style.marginLeft = (depth * 20) + "px";
 		for (let i = 0; i < parts.length; i++) {
 			var part = parts[i];
@@ -490,7 +498,7 @@ let UI = new function() {
 		}
 		
 		
-		// Augments an element to be an expression input.
+		// Augments a set of elements to be an expression input.
 		function Expression(container, list, acceptButton, passButton) {
 			Motion.Acceptor.call(this, list);
 			
@@ -693,8 +701,39 @@ let UI = new function() {
 			this.callback = callback;
 		}
 		
+		// Augments a set of elements to be a chat input.
+		function Chat(selector, textbox, button) {
+			this.selector = selector;
+			this.textbox = textbox;
+			this.button = new Button(button);
+			
+			
+			this.button.onClick = this.post.bind(this);
+			this.textbox.addEventListener("keypress", (function(e) {
+				if (e.keyCode === 13) {
+					e.preventDefault();
+					this.post();
+				}
+			}).bind(this));
+		}
+		
+		// Says the current contents of the chatbox, if non-empty.
+		Chat.prototype.post = function() {
+			if (this.textbox.value) {
+				this.onSay(null, this.textbox.value); // TODO: Recipient
+				this.textbox.value = "";
+			}
+		}
+		
+		// An event fired when something is said using the chatbox.
+		Chat.prototype.onSay = function(recipient, message) {
+			// Override me
+		}
+		
+		
 		this.Boolean = Boolean;
 		this.Expression = Expression;
+		this.Chat = Chat;
 	}
 	
 	this.Card = Card;

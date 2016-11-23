@@ -23,12 +23,19 @@ function Interface(setup, playerSelf, parts) {
 				parts.inputExpression,
 				parts.inputExpressionList,
 				parts.inputExpressionAccept,
-				parts.inputExpressionPass)
+				parts.inputExpressionPass),
+			chat: new UI.Input.Chat(
+				parts.inputChatSelector,
+				parts.inputChatTextbox,
+				parts.inputChatButton)
 		}
 	};
 	
 	this.ui.input.expression.log = this.ui.log;
 	this.ui.input.expression.returnHand = this.ui.hand;
+	this.ui.input.chat.onSay = (function(recipient, message) {
+		this.onSay(recipient, message);
+	}).bind(this);
 	
 	// Set up game
 	Game.call(this, setup);
@@ -54,8 +61,17 @@ Interface.prototype.revealTo = function*(player, commitment) {
 }
 
 Interface.prototype.log = function*() {
-	this.ui.log.log(this.getDepth(), arguments);
+	this.ui.log.log(this.getDepth(), arguments, UI.Log.Style.Normal);
 	yield this.delay(500);
+}
+
+Interface.prototype.chat = function(player, message) {
+	this.ui.log.log(this.getDepth(), [player, ": ", message], UI.Log.Style.Chat);
+}
+
+// An event fired in response to an outgoing chat.
+Interface.prototype.onSay = function(recipient, message) {
+	// Override me
 }
 
 Interface.prototype.setActiveLine = function*(line) {

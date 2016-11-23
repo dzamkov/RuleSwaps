@@ -114,27 +114,31 @@ Interface.prototype.interactAmend = function*(player, style) {
 					exp: exp,
 					proposal: proposal
 				});
+				
 			} else {
 				game.ui.constitution.cancelInsertPick();
 				game.resolveCommitment(commitment, null);
 			}
 		});
-		return yield this.reveal(commitment);
-	} else {
-		let ammend = yield this.reveal(commitment);
-		if (ammend) ammend.proposal = this.ui.constitution.propose(ammend.line, ammend.exp);
-		return ammend;
 	}
+	let amend = yield this.reveal(commitment);
+	if (amend) yield this.proposeAmendment(amend);
+	return amend;
 }
 
-Interface.prototype.confirmAmend = function*(ammend) {
-	this.ui.constitution.confirmProposal(ammend.proposal);
-	return yield Game.prototype.confirmAmend.call(this, ammend);
+Interface.prototype.proposeAmendment = function*(amend) {
+	if (!amend.proposal) amend.proposal = this.ui.constitution.propose(amend.line, amend.exp);
+	yield Game.prototype.proposeAmendment.call(this, amend);
 }
 
-Interface.prototype.cancelAmend = function*(ammend) {
-	this.ui.constitution.cancelProposal(ammend.proposal);
-	return yield Game.prototype.cancelAmend.call(this, ammend);
+Interface.prototype.confirmAmend = function*(amend) {
+	this.ui.constitution.confirmProposal(amend.proposal);
+	return yield Game.prototype.confirmAmend.call(this, amend);
+}
+
+Interface.prototype.cancelAmend = function*(amend) {
+	this.ui.constitution.cancelProposal(amend.proposal);
+	return yield Game.prototype.cancelAmend.call(this, amend);
 }
 
 // Stops the interface from running for the given length of time.

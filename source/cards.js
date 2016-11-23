@@ -23,6 +23,7 @@ Card.register("specify_action_optional", new Card(Role.Action,
 		let player = yield game.resolve(slots[0]);
 		yield game.log(player, " may specify and perform an action");
 		let exp = yield game.reveal(yield game.interactSpecify(player, Role.Action));
+		// TODO: Remove from hand
 		if (exp) {
 			yield game.log(player, " performs an action ", exp);
 			yield game.pushPlayerStack(player);

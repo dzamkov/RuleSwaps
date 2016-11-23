@@ -313,12 +313,13 @@ let UI = new function() {
 	
 	// Sets the line that is marked as being executed.
 	Constitution.prototype.setActiveLine = function(line) {
-		// TODO: Ignore proposals when counting
 		let children = this.element.children;
 		for (let i = 0; i < children.length; i++) {
 			let child = children[i];
-			child.className = child.className.replace(" -active", "");
-			if (i === line) child.className += " -active";
+			let className = child.className;
+			className = className.replace(" -active", "");
+			if (i === line) className += " -active";
+			child.className = className;
 		}
 	}
 	
@@ -371,7 +372,7 @@ let UI = new function() {
 		let entry = Constitution.createEntry(exp);
 		let proposal = entry.animated;
 		entry.className += " -proposal";
-		this.element.appendChild(entry); // TODO: Correct location
+		this.element.insertBefore(entry, this.element.children[line]);
 		this.balanceChildren();
 		return proposal;
 	}

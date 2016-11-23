@@ -297,21 +297,30 @@ Game.prototype.getAmendFormat = function() {
 	});
 }
 
-// Causes the given player to specify an amendment and returns it (without a commitment). This must
-// be followed by a call to either cancel or confirm the amendment.
+// Causes the given player to specify an amendment. Returns it as a proposed amendment.
 Game.prototype.interactAmend = function*(player) {
-	return yield this.reveal(this.declareCommitment(player, this.getAmendFormat()));
+	let amend = yield this.reveal(this.declareCommitment(player, this.getAmendFormat()));
+	if (amend) yield this.proposeAmendment(amend);
+	return amend;
+}
+
+// Proposes an amendment to the constitution. The proposal is viewable by all players, but
+// should be confirmed or canceled before it is invoked.
+Game.prototype.proposeAmendment = function*(amend) {
+	
+	// Proposals count as real amendments until they are canceled (makes indexing easier).
+	this.constitution.splice(amend.line, 0, amend.exp);
+	if (amend.line <= this.line) {
+		yield this.setActiveLine(this.line + 1);
+	}
 }
 
 // Cancels an amendment previously specified by a player.
 Game.prototype.cancelAmend = function(amend) {
-	// TODO
+	this.constitution.splice(amend.line, 1);
 }
 
 // Confirms an amendment previously specified by a player.
 Game.prototype.confirmAmend = function*(amend) {
-	if (amend.line <= this.line) {
-		yield this.setActiveLine(this.line + 1);
-	}
-	this.constitution.splice(amend.line, 0, amend.exp);
+	// Nothing to do here
 }

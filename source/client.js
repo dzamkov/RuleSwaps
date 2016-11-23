@@ -67,7 +67,6 @@ function start(response) {
 			baseCommitmentId: baseCommitmentId,
 			messageId: messageId
 		}, function(response) {
-			console.log(response);
 			for (let commitmentId in response.commitments) {
 				let commitment = inteface.getCommitment(commitmentId);
 				if (!commitment.isResolved) commitment.resolveEncoded(response.commitments[commitmentId]);

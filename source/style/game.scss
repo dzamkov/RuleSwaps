@@ -109,6 +109,8 @@ $playarea-margin: 20px;
 	background: #565656;
 }
 
+$player-info-width: 100px;
+
 #section-player-self {
 	position: absolute;
 	left: 20%;
@@ -118,9 +120,41 @@ $playarea-margin: 20px;
 }
 
 #section-player-self-hand {
-	@extend .fill-parent;
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: $player-info-width;
 	padding: 20px;
 	border-spacing: 20px;
+}
+
+#section-player-self-divider {
+	position: absolute;
+	top: 40px;
+	bottom: 40px;
+	right: $player-info-width;
+	width: 0;
+	border-left: solid 1px black;
+	border-right: solid 2px #1e3216;
+	opacity: 0.9;
+}
+
+#section-player-self-info {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	width: $player-info-width;
+}
+
+#section-player-self-coins {
+	position: absolute;
+	width: 80px;
+	height: 80px;
+	background-image: url("/static/images/coin.png");
+	background-size: 80px 80px;
+	background-position: center;
 }
 
 #players-left {
@@ -143,6 +177,46 @@ $playarea-margin: 20px;
 	width: 100px;
 	top: 10px;
 	bottom: 230px;
+}
+
+
+.player-info {
+	@extend .fill-parent;
+}
+
+.player-info-stats {
+	margin: auto;
+	width: 80px;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.player-info-base {
+	width: 80px;
+	height: 80px;
+	background-size: 80px 80px;
+	background-position: center;
+	margin: 4px;
+	
+	line-height: 80px;
+	font-size: 40px;
+	text-align: center;
+	text-shadow: 0 0 10px black, 0 0 5px black, 0 0 5px black;
+}
+
+.player-info-coins {
+	@extend .player-info-base;
+	background-image: url("/static/images/coin.png");
+	color: #ffffcc;
+
+}
+
+.player-info-cards {
+	@extend .player-info-base;
+	background-image: url("/static/images/cards.png");
+	color: #ddeeff;
 }
 
 $input-chat-height: 30px;
@@ -346,8 +420,8 @@ $input-expression-button-padding: 6px;
 	}
 	
 	margin-top: -3px;
-	padding-top: 35px;
 	text-align: center;
+	line-height: 86px;
 	color: black;
 	font-size: 20px;
 }

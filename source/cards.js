@@ -25,11 +25,13 @@ Card.register("specify_action_optional", new Card(Role.Action,
 		let exp = yield game.reveal(yield game.interactSpecify(player, Role.Action));
 		// TODO: Remove from hand
 		if (exp) {
+			let cardList = exp.toList();
+			yield game.removeCards(player, CardSet.fromList(cardList));
 			yield game.log(player, " performs an action ", exp);
 			yield game.pushPlayerStack(player);
 			yield game.resolve(exp);
 			yield game.popPlayerStack(player);
-			yield game.discard(exp.toList());
+			yield game.discard(cardList);
 		} else {
 			yield game.log(player, " waives the right to perform an action");
 		}

@@ -40,7 +40,23 @@ function Interface(setup, playerSelf, parts) {
 	// Set up game
 	Game.call(this, setup);
 	this.ui.constitution.populate(this.constitution);
+	
+	// Set up players
 	this.playerSelf = this.players[playerSelf];
+	this.playerSelf.info = new UI.PlayerInfo(this.playerSelf,
+		parts.selfCoins, parts.selfCards, parts.selfBack);
+	let otherPlayers = this.players.slice(playerSelf + 1).concat(this.players.slice(0, playerSelf));
+	let split = Math.ceil(otherPlayers.length / 2);
+	for (let i = split - 1; i >= 0; i--) {
+		let playerInfo = UI.PlayerInfo.create(otherPlayers[i], true);
+		parts.playersLeft.appendChild(playerInfo.container);
+		otherPlayers[i].info = playerInfo;
+	}
+	for (let i = split; i < otherPlayers.length; i++) {
+		let playerInfo = UI.PlayerInfo.create(otherPlayers[i], false);
+		parts.playersRight.appendChild(playerInfo.container);
+		otherPlayers[i].info = playerInfo;
+	}
 }
 
 // Derive interface from game.
@@ -78,6 +94,16 @@ Interface.prototype.setActiveLine = function*(line) {
 	// TODO: problem with multiple proposals
 	this.ui.constitution.setActiveLine(line);
 	return yield Game.prototype.setActiveLine.call(this, line);
+}
+
+Interface.prototype.setCoins = function*(player, count) {
+	player.info.setCoins(count);
+	return yield Game.prototype.setCoins.call(this, player, count);
+}
+
+Interface.prototype.setHandSize = function*(player, handSize) {
+	player.info.setCards(handSize);
+	return yield Game.prototype.setHandSize.call(this, player, handSize);
 }
 
 Interface.prototype.drawCard = function*(player, cardCommitment) {
@@ -137,9 +163,7 @@ Interface.prototype.interactAmend = function*(player, style) {
 			}
 		});
 	}
-	let amend = yield this.reveal(commitment);
-	if (amend) yield this.proposeAmendment(amend);
-	return amend;
+	return yield this.processAmend(commitment);
 }
 
 Interface.prototype.proposeAmendment = function*(amend) {

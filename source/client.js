@@ -36,7 +36,13 @@ function start(response) {
 		inputChatTextbox: document.getElementById("input-chat-box"),
 		inputChatButton: document.getElementById("input-chat-button"),
 		
-		selfHand: document.getElementById("section-player-self-hand")
+		selfBack: document.getElementById("player-self-back"),
+		selfHand: document.getElementById("section-player-self-hand"),
+		selfCoins: document.getElementById("player-self-coins"),
+		selfCards: document.getElementById("player-self-cards"),
+		
+		playersLeft: document.getElementById("players-left"),
+		playersRight: document.getElementById("players-right")
 	});
 	
 	// Send a message upon resolving a commitment.

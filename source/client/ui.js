@@ -460,8 +460,62 @@ let UI = new function() {
 		// Override me
 	}
 	
-	// Register window events
-	window.addEventListener("resize", windowResize);
+	
+	// Augments a set of elements to display player information.
+	function PlayerInfo(player, coins, cards, back) {
+		this.coins = coins;
+		this.cards = cards;
+		this.back = back;
+		
+		coins.innerText = player.coins;
+		cards.innerText = player.handSize;
+	}
+	
+	// Creates a player info section for a non-self player.
+	PlayerInfo.create = function(player, isLeft) {
+		let container = document.createElement("div");
+		let back = document.createElement("div");
+		container.appendChild(back);
+		
+		if (isLeft) {
+			container.className = "section-player-left";
+			back.className = "section-back-left";
+		} else {
+			container.className = "section-player-right";
+			back.className = "section-back-right";
+		}
+		
+		let name = document.createElement("div");
+		name.className = "player-name";
+		name.innerText = player.name;
+		container.appendChild(name);
+		
+		let info = document.createElement("div");
+		info.className = "player-info";
+		container.appendChild(info);
+		
+		let coins = document.createElement("div");
+		coins.className = "player-stat -small -coins";
+		info.appendChild(coins);
+		
+		let cards = document.createElement("div");
+		cards.className = "player-stat -small -cards";
+		info.appendChild(cards);
+		
+		let playerInfo = new PlayerInfo(player, coins, cards, back);
+		playerInfo.container = container;
+		return playerInfo;
+	}
+	
+	// Sets the number of coins the given player has.
+	PlayerInfo.prototype.setCoins = function(coins) {
+		this.coins.innerText = coins;
+	}
+	
+	// Sets the number of cards the given player has.
+	PlayerInfo.prototype.setCards = function(cards) {
+		this.cards.innerText = cards;
+	}
 	
 	// Contains interfaces for specific types of player input.
 	let Input = new function() {
@@ -736,6 +790,9 @@ let UI = new function() {
 		this.Chat = Chat;
 	}
 	
+	// Register window events
+	window.addEventListener("resize", windowResize);
+	
 	this.Card = Card;
 	this.createCard = createCard;
 	this.Deck = Deck;
@@ -743,5 +800,6 @@ let UI = new function() {
 	this.Constitution = Constitution;
 	this.Log = Log;
 	this.Button = Button;
+	this.PlayerInfo = PlayerInfo;
 	this.Input = Input;
 }

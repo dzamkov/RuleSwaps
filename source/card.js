@@ -164,6 +164,18 @@ CardSet.create = function(set) {
 	return new CardSet(nCounts, totalCount);
 }
 
+// Creates a new card set from a card list.
+CardSet.fromList = function(list) {
+	let counts = { };
+	let totalCount = 0;
+	for (let i = 0; i < list.length; i++) {
+		let name = Card.get(list[i]).name;
+		counts[name] = (counts[name] || 0) + 1;
+		totalCount++;
+	}
+	return new CardSet(counts, totalCount);
+}
+
 // Adds a card to this card set.
 CardSet.prototype.insert = function(card) {
 	let name = Card.get(card).name;
@@ -186,6 +198,16 @@ CardSet.prototype.remove = function(card) {
 	} else {
 		return false;
 	}
+}
+
+// Removes a set of cards from this card set. Fails if the cards are not in this set.
+CardSet.prototype.removeSet = function(set) {
+	for (let card in set.counts) {
+		let nCount = this.counts[card] - set.counts[card];
+		if (nCount < 0) throw "Card missing from set";
+		this.counts[card] = nCount;
+	}
+	this.totalCount -= set.totalCount;
 }
 
 // Selects and removes a card randomly from this set.

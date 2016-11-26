@@ -234,14 +234,24 @@ Game.prototype.getCoins = function(player) {
 	return player.coins;
 }
 
+// Sets the number of coins the given player has.
+Game.prototype.setCoins = function(player, count) {
+	player.coins = count;
+}
+
 // Gives coins to a player.
-Game.prototype.giveCoins = function(player, count) {
-	player.coins += count;
+Game.prototype.giveCoins = function*(player, count) {
+	yield this.setCoins(player, player.coins + count);
 }
 
 // Takes coins from a player
-Game.prototype.takeCoins = function(player, count) {
-	player.coins -= count;
+Game.prototype.takeCoins = function*(player, count) {
+	yield this.setCoins(player, player.coins - count);
+}
+
+// Discards the given list of cards in the given order.
+Game.prototype.discard = function(cards) {
+	// TODO
 }
 
 // Gets the hand size of the given player
@@ -249,9 +259,9 @@ Game.prototype.getHandSize = function(player) {
 	return player.handSize;
 }
 
-// Discards the given list of cards in the given order.
-Game.prototype.discard = function(cards) {
-	// TODO
+// Sets the hand size of the given player
+Game.prototype.setHandSize = function(player, handSize) {
+	player.handSize = handSize;
 }
 
 // Causes a player to draw the given number of cards.
@@ -274,7 +284,17 @@ Game.prototype.drawCard = function*(player, cardCommitment) {
 			player.hand = null;
 		}
 	}
-	player.handSize++;
+	yield this.setHandSize(player, player.handSize + 1);
+}
+
+// Removes a given set of cards from a player's hand.
+Game.prototype.removeCards = function*(player, cardSet) {
+	if (player.hand) {
+		player.hand.removeSet(cardSet);
+		yield this.setHandSize(player, player.hand.totalCount);
+	} else {
+		yield this.setHandSize(player, player.handSize - cardSet.totalCount);
+	}
 }
 
 // Chooses a random integer between 0 (inclusive) and the given number (exclusive). Returns
@@ -302,11 +322,19 @@ Game.prototype.getAmendFormat = function() {
 	});
 }
 
+// Given a commitment for an amendment, does the processing needed to reveal it and make a proposal.
+Game.prototype.processAmend = function*(commitment) {
+	let amend = yield this.reveal(commitment);
+	if (amend) {
+		yield this.removeCards(commitment.player, CardSet.fromList(amend.exp.toList()))
+		yield this.proposeAmendment(amend);
+	}
+	return amend;
+}
+
 // Causes the given player to specify an amendment. Returns it as a proposed amendment.
 Game.prototype.interactAmend = function*(player) {
-	let amend = yield this.reveal(this.declareCommitment(player, this.getAmendFormat()));
-	if (amend) yield this.proposeAmendment(amend);
-	return amend;
+	return yield this.processAmend(this.declareCommitment(player, this.getAmendFormat()));
 }
 
 // Proposes an amendment to the constitution. The proposal is viewable by all players, but

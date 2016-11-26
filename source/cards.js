@@ -91,7 +91,7 @@ Card.register("decide_bool", new Card(Role.Condition,
 	function*(game, slots) {
 		let player = yield game.resolve(slots[0]);
 		let decision = yield game.reveal(yield game.interactBoolean(player));
-		yield game.log(player, decision ? " approves" : " rejects");
+		yield game.log(player, decision ? Log.Positive(" approves") : Log.Negative(" rejects"));
 		return decision;
 	}));
 	
@@ -106,7 +106,29 @@ Card.register("or", new Card(Role.Condition,
 Card.register("majority_vote", new Card(Role.Condition,
 	"Majority vote",
 	function*(game, slots) {
-		// TODO
+		yield game.log("A majority vote is triggered");
+		let votes = new Array(game.players);
+		for (let i = 0; i < game.players.length; i++) {
+			votes[i] = yield game.interactBoolean(game.players[i]);
+		}
+		let count = 0;
+		for (let i = 0; i < votes.length; i++) {
+			let res = yield game.reveal(votes[i]);
+			if (res) count++;
+			votes[i] = res;
+		}
+		let pass = (count * 2) > votes.length;
+		let message = [];
+		message.push("The vote ",
+			pass ? Log.Positive("passes") : Log.Negative("fails"),
+			" with " + count + "/" + votes.length + " approvals",
+			Log.Newline);
+		for (let i = 0; i < votes.length; i++) {
+			message.push(Log.Newline, game.players[i], " ",
+				votes[i] ? Log.Positive("approved") : Log.Negative("rejected"));
+		}
+		yield game.log.apply(game, message);
+		return pass;
 	}));
 
 Card.register("payment_vote", new Card(Role.Condition,
@@ -118,7 +140,33 @@ Card.register("payment_vote", new Card(Role.Condition,
 Card.register("wealth_vote", new Card(Role.Condition,
 	"Wealth-weighted vote (each player gets votes equal to their wealth)",
 	function*(game, slots) {
-		// TODO
+		yield game.log("A wealth-weighted vote is triggered");
+		let votes = new Array(game.players);
+		for (let i = 0; i < game.players.length; i++) {
+			votes[i] = yield game.interactBoolean(game.players[i]);
+		}
+		let count = 0;
+		let total = 0;
+		for (let i = 0; i < votes.length; i++) {
+			let res = yield game.reveal(votes[i]);
+			let wealth = game.players[i].coins;
+			if (res) count += wealth;
+			total += wealth;
+			votes[i] = res;
+		}
+		let pass = (count * 2) > total;
+		let message = [];
+		message.push("The vote ",
+			pass ? Log.Positive("passes") : Log.Negative("fails"),
+			" with " + count + "/" + total + " approval votes",
+			Log.Newline);
+		for (let i = 0; i < votes.length; i++) {
+			message.push(Log.Newline, game.players[i], " has ",
+				Log.Coins(game.players[i].coins), " and ",
+				votes[i] ? Log.Positive("approved") : Log.Negative("rejected"));
+		}
+		yield game.log.apply(game, message);
+		return pass;
 	}));
 	
 // Players

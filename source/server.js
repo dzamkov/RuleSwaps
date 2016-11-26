@@ -54,7 +54,7 @@ ServerGame.get = function(gameId, callback) {
 			[player1, player2],[
 				Expression.fromList(["you_gain_5"]),
 				Expression.fromList(["you_draw_2"]),
-				Expression.fromList(["insert_amendment_conditional", "you", "decide_bool", "you"]),
+				Expression.fromList(["insert_amendment_conditional", "you", "wealth_vote"]),
 				Expression.fromList(["specify_action_optional", "you"]),
 				Expression.fromList(["you_draw_2"])
 			], CardSet.create(defaultDeck));

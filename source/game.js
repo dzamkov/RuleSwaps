@@ -210,9 +210,47 @@ function getOrdinal(i) {
 
 // Contains functions for constructing log objects.
 let Log = {
-	Coins: function(n) { return n + " coins" },
-	Cards: function(n) { return n + " cards" }
+	Coins: function(n) {
+		let inst = Object.create(Log.Coins.prototype);
+		inst.count = n;
+		return inst;
+	},
+	Cards: function(n) {
+		let inst = Object.create(Log.Cards.prototype);
+		inst.count = n;
+		return inst;
+	},
+	Newline: {
+		toString: function() { return "\n"; }
+	},
+	Positive: function(str) {
+		let inst = Object.create(Log.Positive.prototype);
+		inst.str = str;
+		return inst;
+	},
+	Negative: function(str) {
+		let inst = Object.create(Log.Negative.prototype);
+		inst.str = str;
+		return inst;
+	}
 };
+
+Log.Coins.prototype.toString = function() {
+	return this.count + " coins";
+}
+
+Log.Cards.prototype.toString = function() {
+	return this.count + " cards";
+}
+
+Log.Positive.prototype.toString = function() {
+	return this.str;
+}
+
+Log.Negative.prototype.toString = function() {
+	return this.str;
+}
+
 
 // Writes to the game log.
 Game.prototype.log = function() {

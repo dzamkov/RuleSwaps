@@ -197,44 +197,6 @@ $player-info-width: 100px;
 	justify-content: center;
 }
 
-.player-stat {
-	background-position: center;
-	text-align: center;
-	text-shadow: 0 0 10px black, 0 0 5px black;
-	
-	&.-big {
-		margin: 4px;
-		width: 80px;
-		height: 80px;
-		line-height: 80px;
-		background-size: 80px 80px;
-		font-size: 40px;
-	}
-	
-	&.-small {
-		margin: 3px;
-		width: 60px;
-		height: 60px;
-		line-height: 60px;
-		background-size: 60px 60px;
-		font-size: 30px;
-	}
-	
-	&.-coins {
-		background-image: url("/static/images/coin.png");
-		color: #eeeebb;
-	}
-	
-	&.-cards {
-		background-image: url("/static/images/cards.png");
-		color: #ddeeff;
-	}
-	
-	&.-pulse {
-		animation: pulse 0.2s;
-	}
-}
-
 @keyframes pulse {
 	0% { transform: scale(1); }
 	50% { transform: scale(1.1); }
@@ -464,11 +426,19 @@ $input-expression-button-padding: 6px;
 	&.-chat {
 		background: rgba(#c7ffbd, 0.6);
 	}
-}
-
-.log-entry-player {
-	color: #1841e4;
-	font-weight: bold;
+	
+	.-player {
+		color: #1841e4;
+		font-weight: bold;
+	}
+	
+	.-positive {
+		color: #006010;
+	}
+	
+	.-negative {
+		color: #702020;
+	}
 }
 
 .deck {

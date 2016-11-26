@@ -408,17 +408,39 @@ let UI = new function() {
 		entry.className = className;
 		entry.style.marginLeft = (depth * 20) + "px";
 		for (let i = 0; i < parts.length; i++) {
-			var part = parts[i];
-			if (typeof part === "string") {
-				entry.appendChild(document.createTextNode(part));
-			} else if (part instanceof Player) {
-				var player = document.createElement("span");
-				player.className = "log-entry-player";
+			let part = parts[i];
+			if (part instanceof Player) {
+				let player = document.createElement("span");
+				player.className = "-player";
 				player.innerText = part.name;
 				entry.appendChild(player);
 			} else if (part instanceof window.Expression) {
-				var list = createMiniList(part.toList());
+				let list = createMiniList(part.toList());
 				entry.appendChild(list);
+			} else if (part instanceof window.Log.Coins) {
+				let icon = document.createElement("div");
+				icon.className = "icon -mini -coins";
+				icon.innerText = part.count;
+				entry.appendChild(icon);
+			} else if (part instanceof window.Log.Cards) {
+				let icon = document.createElement("div");
+				icon.className = "icon -mini -cards";
+				icon.innerText = part.count;
+				entry.appendChild(icon);
+			} else if (part === window.Log.Newline) {
+				entry.appendChild(document.createElement("br"));
+			} else if (part instanceof window.Log.Positive) {
+				let span = document.createElement("span");
+				span.className = "-positive";
+				span.innerText = part.str;
+				entry.appendChild(span);
+			} else if (part instanceof window.Log.Negative) {
+				let span = document.createElement("span");
+				span.className = "-negative";
+				span.innerText = part.str;
+				entry.appendChild(span);
+			} else {
+				entry.appendChild(document.createTextNode(part.toString()));
 			}
 		}
 		this.element.appendChild(entry);
@@ -495,11 +517,11 @@ let UI = new function() {
 		container.appendChild(info);
 		
 		let coins = document.createElement("div");
-		coins.className = "player-stat -small -coins";
+		coins.className = "icon -small -coins";
 		info.appendChild(coins);
 		
 		let cards = document.createElement("div");
-		cards.className = "player-stat -small -cards";
+		cards.className = "icon -small -cards";
 		info.appendChild(cards);
 		
 		let playerInfo = new PlayerInfo(player, coins, cards, back);

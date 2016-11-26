@@ -229,6 +229,16 @@ $player-info-width: 100px;
 		background-image: url("/static/images/cards.png");
 		color: #ddeeff;
 	}
+	
+	&.-pulse {
+		animation: pulse 0.2s;
+	}
+}
+
+@keyframes pulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.1); }
+	100% { transform: scale(1); }
 }
 
 $input-chat-height: 30px;

@@ -507,14 +507,23 @@ let UI = new function() {
 		return playerInfo;
 	}
 	
+	// Triggers an animation class on an element.
+	function trigger(element, style) {
+		let nStyle = " " + style;
+		element.className = element.className.replace(nStyle, "");
+		setTimeout(function() { element.className += nStyle; }, 0);
+	}
+	
 	// Sets the number of coins the given player has.
 	PlayerInfo.prototype.setCoins = function(coins) {
 		this.coins.innerText = coins;
+		trigger(this.coins, "-pulse");
 	}
 	
 	// Sets the number of cards the given player has.
 	PlayerInfo.prototype.setCards = function(cards) {
 		this.cards.innerText = cards;
+		trigger(this.cards, "-pulse");
 	}
 	
 	// Contains interfaces for specific types of player input.

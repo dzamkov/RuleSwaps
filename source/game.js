@@ -349,8 +349,9 @@ Game.prototype.proposeAmendment = function*(amend) {
 }
 
 // Cancels an amendment previously specified by a player.
-Game.prototype.cancelAmend = function(amend) {
+Game.prototype.cancelAmend = function*(amend) {
 	this.constitution.splice(amend.line, 1);
+	yield this.discard(amend.exp.toList());
 }
 
 // Confirms an amendment previously specified by a player.

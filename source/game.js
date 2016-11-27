@@ -139,6 +139,11 @@ Game.prototype.popPlayerStack = function(player) {
 	console.assert(!player || player === res);
 }
 
+// Gets the list of players, going clockwise, starting at the given player.
+Game.prototype.getPlayersFrom = function(player) {
+	return this.players.slice(player.id).concat(this.players.slice(0, player.id));
+}
+
 // Gets how far into the player stack the game is at.
 Game.prototype.getDepth = function() {
 	return this.playerStack.length;

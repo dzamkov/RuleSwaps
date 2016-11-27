@@ -45,7 +45,7 @@ function Interface(setup, playerSelf, parts) {
 	this.playerSelf = this.players[playerSelf];
 	this.playerSelf.info = new UI.PlayerInfo(this.playerSelf,
 		parts.selfCoins, parts.selfCards, parts.selfBack);
-	let otherPlayers = this.players.slice(playerSelf + 1).concat(this.players.slice(0, playerSelf));
+	let otherPlayers = this.getPlayersFrom(this.playerSelf).slice(1);
 	let split = Math.ceil(otherPlayers.length / 2);
 	for (let i = split - 1; i >= 0; i--) {
 		let playerInfo = UI.PlayerInfo.create(otherPlayers[i], true);

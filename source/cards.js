@@ -8,6 +8,14 @@ Card.register("you_draw_2", new Card(Role.Action,
 		yield game.log(player, " draws ", Log.Cards(2));
 		yield game.drawCards(player, 2);
 	}));
+
+Card.register("player_draws_3", new Card(Role.Action,
+	"{Player} draws 3 cards",
+	function*(game, slots) {
+		var player = yield game.resolve(slots[0]);
+		yield game.log(player, " draws ", Log.Cards(3));
+		yield game.drawCards(player, 3);
+	}));
 	
 Card.register("you_gain_5", new Card(Role.Action,
 	"You gain 5 coins",
@@ -15,6 +23,14 @@ Card.register("you_gain_5", new Card(Role.Action,
 		var player = game.getActivePlayer();
 		yield game.log(player, " gains ", Log.Coins(5));
 		yield game.giveCoins(player, 5);
+	}));
+
+Card.register("player_gains_8", new Card(Role.Action,
+	"{Player} gains 8 coins",
+	function*(game, slots) {
+		var player = yield game.resolve(slots[0]);
+		yield game.log(player, " gains ", Log.Coins(8));
+		yield game.giveCoins(player, 8);
 	}));
 
 Card.register("specify_action_optional", new Card(Role.Action,
@@ -69,6 +85,20 @@ Card.register("insert_amendment_conditional", new Card(Role.Action,
 			yield game.log(player, " waives the right to propose an amendment");
 		}
 	}));
+
+Card.register("foreach_conditional", new Card(Role.Action,
+	"For each player, going clockwise, if that player satisfies {Condition}, they do {Action}",
+	function*(game, slots) {
+		let players = game.getPlayersFrom(game.getActivePlayer());
+		for (let i = 0; i < players.length; i++) {
+			let player = players[i];
+			yield game.log(player, " is evaluated");
+			yield game.pushPlayerStack(player);
+			if (yield game.resolve(slots[0]))
+				yield game.resolve(slots[1]);
+			yield game.popPlayerStack(player);
+		}
+	}));
 	
 // Conditions
 // -----------------------
@@ -86,7 +116,7 @@ Card.register("coin_flip", new Card(Role.Condition,
 		}
 	}));
 
-Card.register("decide_bool", new Card(Role.Condition,
+Card.register("player_decides", new Card(Role.Condition,
 	"{Player} decides",
 	function*(game, slots) {
 		let player = yield game.resolve(slots[0]);
@@ -102,7 +132,31 @@ Card.register("or", new Card(Role.Condition,
 		if (yield game.resolve(slots[1])) return true;
 		return false;
 	}));
-	
+
+Card.register("not", new Card(Role.Condition,
+	"Not {Condition}", function*(game, slots) {
+		let res = yield game.resolve(slots[0]);
+		if (res) {
+			yield game.log("The test is inverted and ", Log.Negative("fails"));
+		} else {
+			yield game.log("The test is inverted and ", Log.Positive("passes"));
+		}
+		return !res;
+	}));
+
+Card.register("you_are", new Card(Role.Condition,
+	"You are {Player}", function*(game, slots) {
+		let you = game.getActivePlayer();
+		let other = game.resolve(slots[0]);
+		if (you === other) {
+			yield game.log(you, " is the expected player");
+			return true;
+		} else {
+			yield game.log(you, " is not ", other);
+			return false;
+		}
+	}));
+
 Card.register("majority_vote", new Card(Role.Condition,
 	"Majority vote",
 	function*(game, slots) {
@@ -121,8 +175,7 @@ Card.register("majority_vote", new Card(Role.Condition,
 		let message = [];
 		message.push("The vote ",
 			pass ? Log.Positive("passes") : Log.Negative("fails"),
-			" with " + count + "/" + votes.length + " approvals",
-			Log.Newline);
+			" with " + count + "/" + votes.length + " approvals");
 		for (let i = 0; i < votes.length; i++) {
 			message.push(Log.Newline, game.players[i], " ",
 				votes[i] ? Log.Positive("approved") : Log.Negative("rejected"));
@@ -158,8 +211,7 @@ Card.register("wealth_vote", new Card(Role.Condition,
 		let message = [];
 		message.push("The vote ",
 			pass ? Log.Positive("passes") : Log.Negative("fails"),
-			" with " + count + "/" + total + " approval votes",
-			Log.Newline);
+			" with " + count + "/" + total + " approval votes");
 		for (let i = 0; i < votes.length; i++) {
 			message.push(Log.Newline, game.players[i], " has ",
 				Log.Coins(game.players[i].coins), " and ",
@@ -176,29 +228,66 @@ Card.register("you", new Card(Role.Player,
 	"You", function(game, slots) {
 		return game.getActivePlayer();
 	}));
+	
+function getTop(list, measure) {
+	let curTop = [];
+	let curMeasure = -Infinity;
+	for (let i = 0; i < list.length; i++) {
+		let iMeasure = measure(list[i]);
+		if (iMeasure > curMeasure) {
+			curTop = [list[i]];
+			curMeasure = iMeasure;
+		} else if (iMeasure === curMeasure) {
+			curTop.push(list[i]);
+		}
+	}
+	return curTop;
+}
 
 Card.register("poorest_player", new Card(Role.Player,
 	"Poorest player",
 	function*(game, slots) {
-		// TODO
+		let players = yield game.getPlayersFrom(game.getActivePlayer());
+		let poorest = getTop(players, player => -player.coins);
+		if (poorest.length > 1) {
+			yield game.log("There is a tie for poorest player. ", poorest[0], " is the first going clockwise");
+		} else {
+			yield game.log(poorest[0], " is the poorest player");
+		}
+		return poorest[0];
 	}));
 
 Card.register("wealthiest_player", new Card(Role.Player,
 	"Wealthiest player",
 	function*(game, slots) {
-		// TODO
+		let players = yield game.getPlayersFrom(game.getActivePlayer());
+		let wealthiest = getTop(players, player => player.coins);
+		if (wealthiest.length > 1) {
+			yield game.log("There is a tie for wealthiest player. ", wealthiest[0], " is the first going clockwise");
+		} else {
+			yield game.log(wealthiest[0], " is the wealthiest player");
+		}
+		return wealthiest[0];
 	}));
 
 Card.register("left_player", new Card(Role.Player,
 	"The player to the left of {Player}",
 	function*(game, slots) {
-		// TODO
+		let other = yield game.resolve(slots[0]);
+		let players = yield game.getPlayersFrom(other);
+		let res = players[1];
+		yield game.log(res, " is the player to the left of ", other);
+		return res;
 	}));
 
 Card.register("right_player", new Card(Role.Player,
 	"The player to the right of {Player}",
 	function*(game, slots) {
-		// TODO
+		let other = yield game.resolve(slots[0]);
+		let players = yield game.getPlayersFrom(other);
+		let res = players[players.length - 1];
+		yield game.log(res, " is the player to the right of ", other);
+		return res;
 	}));
 
 Card.register("biggest_payor", new Card(Role.Player,
@@ -207,16 +296,41 @@ Card.register("biggest_payor", new Card(Role.Player,
 		// TODO
 	}));
 
+Card.register("first", new Card(Role.Player,
+	"The first player, going clockwise, who satisfies {Condition}",
+	function*(game, slots) {
+		let players = game.getPlayersFrom(game.getActivePlayer());
+		for (let i = 0; i < players.length; i++) {
+			let player = players[i];
+			yield game.log(player, " is evaluated");
+			yield game.pushPlayerStack(player);
+			let res = yield game.resolve(slots[0]);
+			yield game.popPlayerStack(player);
+			if (res) {
+				yield game.log(player, " is first to satisfy the condition");
+				return player;
+			}
+		}
+		yield game.log("Nobody satisfied the condition, so the active player, ",
+			players[0], ", is selected");
+		return players[0];
+	}));
+
 	
 let defaultDeck = {
 	"you_draw_2": 5,
+	"player_draws_3": 3,
 	"you_gain_5": 5,
+	"player_gains_8": 3,
 	"specify_action_optional": 3,
 	"conditional_twice": 3,
 	"insert_amendment_conditional": 3,
+	"foreach_conditional": 2,
 	
 	"coin_flip": 5,
 	"or": 4,
+	"not": 3,
+	"you_are": 3,
 	"majority_vote": 4,
 	"payment_vote": 3,
 	"wealth_vote": 2,
@@ -226,5 +340,6 @@ let defaultDeck = {
 	"wealthiest_player": 4,
 	"left_player": 3,
 	"right_player": 3,
-	"biggest_payor": 3
+	"biggest_payor": 3,
+	"first": 3
 }

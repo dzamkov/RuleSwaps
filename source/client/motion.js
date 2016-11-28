@@ -163,52 +163,55 @@ var Motion = new function() {
 		this.element.replaceChild(element, hole);
 	}
 	
-	
 	// Handles mouse move events for the window
 	function windowMouseMove(e) {
 		let dragging = window.dragging;
 		if (dragging) {
 			let animated = dragging.animated;
-			let element = animated.element;
-			e.preventDefault();
-			animated.moveTo(
-				e.clientX - dragging.offsetX,
-				e.clientY - dragging.offsetY);
+			if (animated) {
+				let element = animated.element;
+				e.preventDefault();
+				animated.moveTo(
+					e.clientX - dragging.offsetX,
+					e.clientY - dragging.offsetY);
+					
+				// Remove current enter hole if we're too far away
+				if (dragging.enterHole) {
+					let eRect = element.getBoundingClientRect();
+					let hRect = dragging.enterHole.getBoundingClientRect();
+					if (eRect.right < hRect.left || 
+						eRect.left > hRect.right || 
+						eRect.bottom < hRect.top || 
+						eRect.top > hRect.bottom)
+					{
+						dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
+						dragging.enterAcceptor = null;
+						dragging.enterHole = null;
+					}
+				}
 				
-			// Remove current enter hole if we're too far away
-			if (dragging.enterHole) {
-				let eRect = element.getBoundingClientRect();
-				let hRect = dragging.enterHole.getBoundingClientRect();
-				if (eRect.right < hRect.left || 
-					eRect.left > hRect.right || 
-					eRect.bottom < hRect.top || 
-					eRect.top > hRect.bottom)
-				{
-					dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
-					dragging.enterAcceptor = null;
-					dragging.enterHole = null;
+				// Check behind dragged element for possible acceptor
+				element.style.visibility = "hidden";
+				let acceptorElement = document.elementFromPoint(e.clientX, e.clientY);
+				element.style.visibility = "visible";
+				
+				// Traverse hiearchy for acceptor.
+				let acceptor;
+				while (acceptorElement && !(acceptor = acceptorElement.acceptor))
+					acceptorElement = acceptorElement.parentNode;
+				if (acceptor) {
+					let rect = acceptorElement.getBoundingClientRect();
+					let left = e.clientX - rect.left + acceptorElement.scrollLeft;
+					let top = e.clientY - rect.top + acceptorElement.scrollTop;
+					let nEnterHole = acceptor.dragIn(animated, left, top, dragging.exitAcceptor);
+					if (nEnterHole && nEnterHole !== dragging.enterHole && nEnterHole !== dragging.exitHole) {
+						if (dragging.enterHole) dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
+						dragging.enterHole = nEnterHole;
+						dragging.enterAcceptor = acceptor;
+					}
 				}
-			}
-			
-			// Check behind dragged element for possible acceptor
-			element.style.visibility = "hidden";
-			let acceptorElement = document.elementFromPoint(e.clientX, e.clientY);
-			element.style.visibility = "visible";
-			
-			// Traverse hiearchy for acceptor.
-			let acceptor;
-			while (acceptorElement && !(acceptor = acceptorElement.acceptor))
-				acceptorElement = acceptorElement.parentNode;
-			if (acceptor) {
-				let rect = acceptorElement.getBoundingClientRect();
-				let left = e.clientX - rect.left + acceptorElement.scrollLeft;
-				let top = e.clientY - rect.top + acceptorElement.scrollTop;
-				let nEnterHole = acceptor.dragIn(animated, left, top, dragging.exitAcceptor);
-				if (nEnterHole && nEnterHole !== dragging.enterHole && nEnterHole !== dragging.exitHole) {
-					if (dragging.enterHole) dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
-					dragging.enterHole = nEnterHole;
-					dragging.enterAcceptor = acceptor;
-				}
+			} else if (dragging.move) {
+				dragging.move.call(dragging, e);
 			}
 		}
 	}
@@ -220,13 +223,15 @@ var Motion = new function() {
 			e.preventDefault();
 			window.dragging = null;
 			
-			// Begin merging
-			if (dragging.enterHole) {
-				dragging.animated.mergeInto(dragging.enterAcceptor, dragging.enterHole, dragging.exitAcceptor);
-				if (dragging.exitHole)
-					dragging.exitAcceptor.leave(dragging.animated, dragging.exitHole, dragging.enterAcceptor);
-			} else if (dragging.exitHole) {
-				dragging.animated.mergeInto(dragging.exitAcceptor, dragging.exitHole, null);
+			if (dragging.animated) {
+				// Begin merging
+				if (dragging.enterHole) {
+					dragging.animated.mergeInto(dragging.enterAcceptor, dragging.enterHole, dragging.exitAcceptor);
+					if (dragging.exitHole)
+						dragging.exitAcceptor.leave(dragging.animated, dragging.exitHole, dragging.enterAcceptor);
+				} else if (dragging.exitHole) {
+					dragging.animated.mergeInto(dragging.exitAcceptor, dragging.exitHole, null);
+				}
 			}
 		}
 	}

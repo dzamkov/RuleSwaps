@@ -222,16 +222,66 @@ $input-expression-button-padding: 6px;
 }
 
 #input-boolean {
-	@extend .input;
 	position: relative;
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
-	a { margin: 5px }
+	a { margin: 5px; }
+}
+
+#input-payment {
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	a { margin: 5px; }
+}
+
+#input-payment-slider {
+	position: relative;
+	display: flex;
+	width: 60%;
+	margin: 5px 30px;
+	min-height: 60px;
+}
+
+#input-payment-slider-bar {
+	flex: 1;
+	height: 2px;
+	margin-top: auto;
+	margin-bottom: auto;
+	
+	border-radius: 2px;
+	background: #444444;
+	border: solid 1px #111111;
+}
+
+#input-payment-slider-handle {
+	position: absolute;
+	top: 50%;
+	height: 50px;
+	width: 50px;
+	line-height: 50px;
+	margin: -25px;
+	text-align: center;
+	
+	background-position: center;
+	background-size: 50px 50px;
+	background-image: url("/static/images/coin.png");
+	
+	color: #eeeebb;
+	font-size: 20px;
+	text-shadow: 0 0 4px black;
+	
+	cursor: pointer;
+	transition: transform 0.05s;
+	
+	&:hover {
+		transform: scale(1.1);
+	}
 }
 
 #input-expression {
-	@extend .input;
 	position: relative;
 	height: $card-height +
 		2 * $input-expression-area-padding +
@@ -427,17 +477,23 @@ $input-expression-button-padding: 6px;
 		background: rgba(#c7ffbd, 0.6);
 	}
 	
-	.-player {
+	& > .-player {
 		color: #1841e4;
 		font-weight: bold;
 	}
 	
-	.-positive {
+	& > .-positive {
 		color: #006010;
 	}
 	
-	.-negative {
+	& > .-negative {
 		color: #702020;
+	}
+	
+	& > hr {
+		border: none;
+		height: 1px;
+		background: rgba(#222222, 0.5);
 	}
 }
 

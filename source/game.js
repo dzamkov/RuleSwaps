@@ -225,7 +225,7 @@ let Log = {
 		inst.count = n;
 		return inst;
 	},
-	Newline: {
+	Break: {
 		toString: function() { return "\n"; }
 	},
 	Positive: function(str) {
@@ -284,12 +284,12 @@ Game.prototype.setCoins = function(player, count) {
 
 // Gives coins to a player.
 Game.prototype.giveCoins = function*(player, count) {
-	yield this.setCoins(player, player.coins + count);
+	if (count != 0) yield this.setCoins(player, player.coins + count);
 }
 
 // Takes coins from a player
 Game.prototype.takeCoins = function*(player, count) {
-	yield this.setCoins(player, player.coins - count);
+	if (count != 0) yield this.setCoins(player, player.coins - count);
 }
 
 // Discards the given list of cards in the given order.
@@ -349,6 +349,19 @@ Game.prototype.random = function*(range) {
 // Requests the given player specify a boolean value. Returns that value wrapped in a commitment.
 Game.prototype.interactBoolean = function(player) {
 	return this.declareCommitment(player, Format.bool);
+}
+
+// Requests the given player to specify a payment amount. Returns that amount wrapped in a commitment.
+Game.prototype.interactPayment = function(player) {
+	return this.declareCommitment(player, Format.num(player.coins + 1));
+}
+
+// Requests the given player to specify a payment amount and a boolean. Returns both wrapped in
+// separate commitments.
+Game.prototype.interactBooleanPayment = function*(player) {
+	let bool = yield this.interactBoolean(player);
+	let payment = yield this.interactPayment(player);
+	return { bool: bool, payment: payment };
 }
 
 // Requests the given player to specify an expression of the given role. Returns that expression wrapped in

@@ -400,6 +400,57 @@ let UI = new function() {
 		Chat: 1
 	};
 	
+	// Builds decorated text consisting of the given parts and adds it to the given
+	// element.
+	function buildText(element, parts) {
+		if (typeof parts === "string") {
+			element.appendChild(document.createTextNode(parts));
+		} else {
+			for (let i = 0; i < parts.length; i++) {
+				let part = parts[i];
+				if (part instanceof Player) {
+					let player = document.createElement("span");
+					player.className = "-player";
+					player.innerText = part.name;
+					element.appendChild(player);
+				} else if (part instanceof window.Expression) {
+					let list = createMiniList(part.toList());
+					element.appendChild(list);
+				} else if (part instanceof window.Log.Coins) {
+					let icon = document.createElement("div");
+					icon.className = "icon -mini -coins";
+					icon.innerText = part.count;
+					element.appendChild(icon);
+				} else if (part instanceof window.Log.Cards) {
+					let icon = document.createElement("div");
+					icon.className = "icon -mini -cards";
+					icon.innerText = part.count;
+					element.appendChild(icon);
+				} else if (part === window.Log.Break) {
+					element.appendChild(document.createElement("hr"));
+				} else if (part instanceof window.Log.Positive) {
+					let span = document.createElement("span");
+					span.className = "-positive";
+					span.innerText = part.str;
+					element.appendChild(span);
+				} else if (part instanceof window.Log.Negative) {
+					let span = document.createElement("span");
+					span.className = "-negative";
+					span.innerText = part.str;
+					element.appendChild(span);
+				} else {
+					element.appendChild(document.createTextNode(part.toString()));
+				}
+			}
+		}
+	}
+	
+	// Sets the text for an element.
+	function setText(element, parts) {
+		while (element.firstChild) element.removeChild(element.firstChild);
+		buildText(element, parts);
+	}
+	
 	// Appends an item to the log.
 	Log.prototype.log = function(depth, parts, style) {
 		let entry = document.createElement("div");
@@ -407,42 +458,7 @@ let UI = new function() {
 		if (style === Log.Style.Chat) className += " -chat";
 		entry.className = className;
 		entry.style.marginLeft = (depth * 20) + "px";
-		for (let i = 0; i < parts.length; i++) {
-			let part = parts[i];
-			if (part instanceof Player) {
-				let player = document.createElement("span");
-				player.className = "-player";
-				player.innerText = part.name;
-				entry.appendChild(player);
-			} else if (part instanceof window.Expression) {
-				let list = createMiniList(part.toList());
-				entry.appendChild(list);
-			} else if (part instanceof window.Log.Coins) {
-				let icon = document.createElement("div");
-				icon.className = "icon -mini -coins";
-				icon.innerText = part.count;
-				entry.appendChild(icon);
-			} else if (part instanceof window.Log.Cards) {
-				let icon = document.createElement("div");
-				icon.className = "icon -mini -cards";
-				icon.innerText = part.count;
-				entry.appendChild(icon);
-			} else if (part === window.Log.Newline) {
-				entry.appendChild(document.createElement("br"));
-			} else if (part instanceof window.Log.Positive) {
-				let span = document.createElement("span");
-				span.className = "-positive";
-				span.innerText = part.str;
-				entry.appendChild(span);
-			} else if (part instanceof window.Log.Negative) {
-				let span = document.createElement("span");
-				span.className = "-negative";
-				span.innerText = part.str;
-				entry.appendChild(span);
-			} else {
-				entry.appendChild(document.createTextNode(part.toString()));
-			}
-		}
+		buildText(entry, parts);
 		this.element.appendChild(entry);
 		this.scrollToBottom();
 	}
@@ -551,7 +567,16 @@ let UI = new function() {
 	// Contains interfaces for specific types of player input.
 	let Input = new function() {
 		
-		// Augments an element to be a yes/no input.
+		function setButtonText(button, parts) {
+			if (parts) {
+				button.element.style.display = "";
+				setText(button.element, parts);
+			} else {
+				button.element.style.display = "none";
+			}
+		}
+		
+		// Augments a set of elements to be a yes/no input.
 		function Boolean(container, yesButton, noButton) {
 			this.container = container;
 			this.yesButton = new Button(yesButton);
@@ -564,20 +589,124 @@ let UI = new function() {
 		
 		Boolean.prototype.reset = function() {
 			this.container.className = "input -hidden";
+			this.callback = null;
 		}
 		
 		Boolean.prototype.inputYes = function() {
-			this.reset();
 			if (this.callback) this.callback(true);
+			this.reset();
 		}
 		
 		Boolean.prototype.inputNo = function() {
-			this.reset();
 			if (this.callback) this.callback(false);
+			this.reset();
 		}
 		
+		Boolean.prototype.defaultStyle = {
+			yes: "Yay",
+			no: "Nay",
+		};
+		
 		// Shows the boolean input, requesting a response from the user.
-		Boolean.prototype.request = function(callback) {
+		Boolean.prototype.request = function(callback, style) {
+			style = style || this.defaultStyle;
+			setButtonText(this.yesButton, style.yes);
+			setButtonText(this.noButton, style.no);
+			this.container.className = "input";
+			this.callback = callback;
+		}
+		
+		// Augments a set of elements to be a adjustable payment input.
+		function Payment(container, handle, bar, yesButton, noButton, passButton) {
+			this.container = container;
+			this.handle = handle;
+			this.bar = bar;
+			this.coins = 0;
+			this.limit = 0;
+			this.yesButton = new Button(yesButton);
+			this.noButton = new Button(noButton);
+			this.passButton = new Button(passButton);
+			this.callback = null;
+			
+			this.yesButton.onClick = this.inputYes.bind(this);
+			this.noButton.onClick = this.inputNo.bind(this);
+			this.passButton.onClick = this.inputPass.bind(this);
+			
+			let payment = this;
+			handle.addEventListener("mousedown", function(e) {
+				if (e.button === 0 && !window.dragging) {
+					e.preventDefault();
+					window.dragging = {
+						payment: payment,
+						move: function(e) {
+							let payment = this.payment;
+							let barRect = payment.bar.getBoundingClientRect();
+							let r = Math.max(e.clientX - barRect.left, 0) / payment.bar.offsetWidth;
+							r = Math.min(r, 1);
+							let coins = Math.round(r * payment.limit, payment.limit);
+							payment.set(coins);
+							payment.setPos(r);
+						}
+					};
+				}
+			});
+		}
+		
+		// Sets the the relative position of the handle.
+		Payment.prototype.setPos = function(r) {
+			let x = r * this.bar.offsetWidth;
+			this.handle.style.left = x + "px";
+		}
+		
+		// Sets the payment for this input.
+		Payment.prototype.set = function(coins) {
+			this.coins = coins;
+			if (coins) {
+				this.yesButton.enable();
+				this.noButton.enable();
+			} else {
+				this.yesButton.disable();
+				this.noButton.disable();
+			}
+			this.handle.innerText = coins;
+			let r = coins / this.limit;
+			if (!r) r = 0;
+			this.setPos(r);
+		}
+		
+		Payment.prototype.reset = function() {
+			this.container.className = "input -hidden";
+		}
+		
+		Payment.prototype.inputYes = function() {
+			if (this.callback) this.callback(this.coins, true);
+			this.reset();
+		}
+		
+		Payment.prototype.inputNo = function() {
+			if (this.callback) this.callback(this.coins, false);
+			this.reset();
+		}
+		
+		Payment.prototype.inputPass = function() {
+			if (this.callback) this.callback(0, false);
+			this.reset();
+		}
+		
+		Payment.prototype.defaultStyle = {
+			yes: "Pay",
+			no: null,
+			pass: "Pass"
+		};
+		
+		// Shows the payment input, requesting a response from the user.
+		Payment.prototype.request = function(coins, callback, style) {
+			style = style || this.defaultStyle;
+			this.limit = coins;
+			this.set(Math.min(this.coins, coins));
+			setButtonText(this.yesButton, style.yes);
+			setButtonText(this.noButton, style.no);
+			setButtonText(this.passButton, style.pass);
 			this.container.className = "input";
 			this.callback = callback;
 		}
@@ -741,14 +870,14 @@ let UI = new function() {
 			}
 			
 			// Reset and callback
-			this.reset(true);
 			if (this.callback) this.callback(exp);
+			this.reset(true);
 		}
 		
 		// Cancels input in this expression.
 		Expression.prototype.inputPass = function() {
-			this.reset(false);
 			if (this.callback) this.callback(null);
+			this.reset(true);
 		}
 		
 		// Removes a card from this expression, either returning it to the hand, or putting
@@ -775,10 +904,11 @@ let UI = new function() {
 					this.list.removeChild(this.list.firstChild);
 				}
 			}
+			this.callback = null;
 		}
 		
 		// Shows the expression input, requesting that the user specifies an expression of the given role.
-		Expression.prototype.request = function(role, style, callback) {
+		Expression.prototype.request = function(role, callback, style) {
 			console.assert(this.list.children.length === 0);
 			this.expect(role);
 			this.acceptButton.disable();
@@ -817,6 +947,7 @@ let UI = new function() {
 		
 		
 		this.Boolean = Boolean;
+		this.Payment = Payment;
 		this.Expression = Expression;
 		this.Chat = Chat;
 	}

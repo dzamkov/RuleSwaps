@@ -19,6 +19,13 @@ function Interface(setup, playerSelf, parts) {
 				parts.inputBoolean,
 				parts.inputBooleanYes,
 				parts.inputBooleanNo),
+			payment: new UI.Input.Payment(
+				parts.inputPayment,
+				parts.inputPaymentHandle,
+				parts.inputPaymentBar,
+				parts.inputPaymentYes,
+				parts.inputPaymentNo,
+				parts.inputPaymentPass),
 			expression: new UI.Input.Expression(
 				parts.inputExpression,
 				parts.inputExpressionList,
@@ -125,19 +132,51 @@ Interface.prototype.resolveCommitment = function(commitment, value) {
 	this.run();
 }
 
-Interface.prototype.interactBoolean = function*(player) {
+Interface.prototype.interactBoolean = function*(player, style) {
 	let commitment = Game.prototype.interactBoolean.call(this, player);
 	if (!commitment.isResolved && player == this.playerSelf) {
-		this.ui.input.bool.request(this.resolveCommitment.bind(this, commitment));
+		this.ui.input.bool.request(this.resolveCommitment.bind(this, commitment), style);
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
 }
 
+Interface.prototype.interactPayment = function*(player, style) {
+	let commitment = Game.prototype.interactPayment.call(this, player);
+	if (!commitment.isResolved && player == this.playerSelf) {
+		this.ui.input.payment.request(
+			this.playerSelf.coins,
+			this.resolveCommitment.bind(this, commitment),
+			style);
+		yield this.awaitCommitment(commitment);
+	}
+	return commitment;
+}
+
+Interface.prototype.interactBooleanPayment = function*(player, style) {
+	let game = this;
+	let bool = yield Game.prototype.interactBoolean.call(this, player);
+	let payment = yield Game.prototype.interactPayment.call(this, player);
+	if (!bool.isResolved && !payment.isResolved && player == this.playerSelf) {
+		this.ui.input.payment.request(
+			this.playerSelf.coins, function(a, b) {
+				game.resolveCommitment(bool, b);
+				game.resolveCommitment(payment, a);
+			}, style || {
+				yes: "Yay",
+				no: "Nay",
+				pass: "Pass"
+			});
+		yield this.awaitCommitment(bool);
+		yield this.awaitCommitment(payment);
+	}
+	return { bool: bool, payment: payment };
+}
+
 Interface.prototype.interactSpecify = function*(player, role, style) {
 	let commitment = Game.prototype.interactSpecify.call(this, player, role);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		this.ui.input.expression.request(role, style, this.resolveCommitment.bind(this, commitment));
+		this.ui.input.expression.request(role, this.resolveCommitment.bind(this, commitment), style);
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
@@ -148,7 +187,7 @@ Interface.prototype.interactAmend = function*(player, style) {
 	let commitment = this.declareCommitment(player, this.getAmendFormat());
 	if (!commitment.isResolved && player === this.playerSelf) {
 		this.ui.constitution.allowInsertPick();
-		this.ui.input.expression.request(Role.Action, style, function(exp) {
+		this.ui.input.expression.request(Role.Action, function(exp) {
 			if (exp) {
 				let proposal = game.ui.constitution.proposeInsertPick(exp);
 				game.resolveCommitment(commitment, {
@@ -161,7 +200,7 @@ Interface.prototype.interactAmend = function*(player, style) {
 				game.ui.constitution.cancelInsertPick();
 				game.resolveCommitment(commitment, null);
 			}
-		});
+		}, style);
 	}
 	return yield this.processAmend(commitment);
 }

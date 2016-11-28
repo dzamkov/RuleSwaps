@@ -27,6 +27,13 @@ function start(response) {
 		inputBooleanYes: document.getElementById("input-boolean-yes"),
 		inputBooleanNo: document.getElementById("input-boolean-no"),
 		
+		inputPayment: document.getElementById("input-payment"),
+		inputPaymentHandle: document.getElementById("input-payment-slider-handle"),
+		inputPaymentBar: document.getElementById("input-payment-slider-bar"),
+		inputPaymentYes: document.getElementById("input-payment-yes"),
+		inputPaymentNo: document.getElementById("input-payment-no"),
+		inputPaymentPass: document.getElementById("input-payment-pass"),
+		
 		inputExpression: document.getElementById("input-expression"),
 		inputExpressionList: document.getElementById("input-expression-list"),
 		inputExpressionAccept: document.getElementById("input-expression-accept"),

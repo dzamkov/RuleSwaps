@@ -41,7 +41,7 @@ ServerGame.get = function(gameId, callback) {
 	let game = ServerGame.active[gameId];
 	if (!game) {
 		let player1 = new Player(0, CardSet.create({ }));
-		player1.name = "Gorp";
+		player1.name = "Steve";
 		player1.userId = 1;
 		player1.sessionId = "ses1";
 		
@@ -50,14 +50,20 @@ ServerGame.get = function(gameId, callback) {
 		player2.userId = 2;
 		player2.sessionId = "ses2";
 		
+		let player3 = new Player(0, CardSet.create({ }));
+		player3.name = "Scrumples";
+		player3.userId = 3;
+		player3.sessionId = "ses3";
+		
 		let setup = new Game.Setup(
-			[player1, player2],[
+			[player1, player2, player3],[
 				Expression.fromList(["you_gain_5"]),
 				Expression.fromList(["you_draw_2"]),
 				Expression.fromList([
 					"insert_amendment_conditional", "you",
 					"player_decides", "biggest_payor"]),
-				Expression.fromList(["specify_action_optional", "you"])
+				Expression.fromList(["specify_action_optional", "you"]),
+				Expression.fromList(["wealth_win"])
 			], CardSet.create(defaultDeck));
 		
 		game = ServerGame.active[gameId] = new ServerGame(setup);
@@ -85,6 +91,14 @@ ServerGame.prototype.random = function*(range) {
 	let commitment = yield Game.prototype.random.call(this, range);
 	if (!commitment.isResolved) {
 		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
+	}
+	return commitment;
+}
+
+ServerGame.prototype.getHand = function*(player) {
+	let commitment = yield Game.prototype.getHand.call(this, player);
+	if (!commitment.isResolved) {
+		this.resolveCommitment(commitment, CardSet.create(player.hand));
 	}
 	return commitment;
 }
@@ -234,7 +248,7 @@ ServerGame.prototype.handle = function(request, callback) {
 		let baseCommitmentId = Format.nat.decode(request.baseCommitmentId);
 		let messageId = Format.nat.decode(request.messageId);
 		if (baseCommitmentId < this.baseCommitmentId || messageId < this.messages.length) {
-			callback(this.buildPollResponse(player, baseCommitmentId));
+			callback(this.buildPollResponse(player, baseCommitmentId, messageId));
 		} else {
 			this.waiting.push({
 				player: player,

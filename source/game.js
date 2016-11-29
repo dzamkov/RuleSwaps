@@ -65,6 +65,7 @@ function Game(setup) {
 	this.turn = 0;
 	this.line = 0;
 	this.playerStack = [];
+	this.winner = null;
 	
 	this.isRunning = false;
 	this.executionStack = [(function*() {
@@ -262,6 +263,12 @@ Game.prototype.log = function() {
 	// Override me
 }
 
+// Registers a winner and ends the game.
+Game.prototype.win = function*(player) {
+	this.winner = player;
+	while (true) yield this.pause();
+}
+
 // Gets the current consitution.
 Game.prototype.getConstitution = function() {
 	return this.constitution;
@@ -305,6 +312,12 @@ Game.prototype.getHandSize = function(player) {
 // Sets the hand size of the given player
 Game.prototype.setHandSize = function(player, handSize) {
 	player.handSize = handSize;
+}
+
+// Declares a commitment that contains the current hand of the given player as a
+// card set.
+Game.prototype.getHand = function(player) {
+	return this.declareCommitment(null, Format.cardSet);
 }
 
 // Causes a player to draw the given number of cards.
@@ -407,6 +420,9 @@ Game.prototype.proposeAmendment = function*(amend) {
 // Cancels an amendment previously specified by a player.
 Game.prototype.cancelAmend = function*(amend) {
 	this.constitution.splice(amend.line, 1);
+	if (amend.line <= this.line) {
+		yield this.setActiveLine(this.line - 1);
+	}
 	yield this.discard(amend.exp.toList());
 }
 

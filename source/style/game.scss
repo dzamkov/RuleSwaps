@@ -477,6 +477,11 @@ $input-expression-button-padding: 6px;
 		background: rgba(#c7ffbd, 0.6);
 	}
 	
+	&.-victory {
+		background: rgba(#ffe772, 0.7);
+		text-shadow: 0 0 5px #ffee99;
+	}
+	
 	& > .-player {
 		color: #1841e4;
 		font-weight: bold;

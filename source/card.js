@@ -176,6 +176,27 @@ CardSet.fromList = function(list) {
 	return new CardSet(counts, totalCount);
 }
 
+// Creates a list of the cards in a card set in an arbitrary order.
+CardSet.prototype.toList = function() {
+	let list = []
+	for (let card in this.counts) {
+		let count = this.counts[card];
+		for (let i = 0; i < count; i++) {
+			list.push(Card.get(card));
+		}
+	}
+	return list;
+}
+
+// Gets an array of the counts of the cards in the set, indexed by role id.
+CardSet.prototype.getRoleCounts = function() {
+	let roleCounts = [0, 0, 0];
+	for (let card in this.counts) {
+		roleCounts[Card.get(card).role.id] += this.counts[card];
+	}
+	return roleCounts;
+}
+
 // Adds a card to this card set.
 CardSet.prototype.insert = function(card) {
 	let name = Card.get(card).name;

@@ -88,6 +88,11 @@ Interface.prototype.log = function*() {
 	yield this.delay(500);
 }
 
+Interface.prototype.win = function*(player) {
+	this.ui.log.log(this.getDepth(), [player, " wins!"], UI.Log.Style.Victory);
+	yield Game.prototype.win.call(this, player);
+}
+
 Interface.prototype.chat = function(player, message) {
 	this.ui.log.log(this.getDepth(), [player, ": ", message], UI.Log.Style.Chat);
 }

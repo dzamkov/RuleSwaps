@@ -33,6 +33,25 @@ Card.register("player_gains_8", new Card(Role.Action,
 		yield game.giveCoins(player, 8);
 	}));
 
+Card.register("player_loses_10", new Card(Role.Action,
+	"{Player} loses 10 coins",
+	function*(game, slots) {
+		var player = yield game.resolve(slots[0]);
+		let amount = Math.min(player.coins, 10);
+		yield game.log(player, " loses ", Log.Coins(amount));
+		yield game.takeCoins(player, amount);
+	}));
+
+Card.register("player_reveals_hand_conditional", new Card(Role.Action,
+	"If {Condition}, {Player} must reveal their hand",
+	function*(game, slots) {
+		if (yield game.resolve(slots[0])) {
+			let player = yield game.resolve(slots[1]);
+			let hand = yield game.reveal(yield game.getHand(player));
+			yield game.log(player, " reveals their hand ", hand);
+		}
+	}));
+	
 Card.register("specify_action_optional", new Card(Role.Action,
 	"{Player} may specify and perform an action",
 	function*(game, slots) {
@@ -99,6 +118,67 @@ Card.register("foreach_conditional", new Card(Role.Action,
 			yield game.popPlayerStack(player);
 		}
 	}));
+
+Card.register("left_player_wins", new Card(Role.Action,
+	"The player to your left wins",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		yield game.win(game.getPlayersFrom(player)[1]);
+	}));
+
+Card.register("wealth_win", new Card(Role.Action,
+	"If you have 100 coins, you win",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		if (player.coins >= 100) {
+			yield game.log(player, " has ", Log.Coins(100));
+			yield game.win(player);
+		} else {
+			yield game.log(player, " doesn't have ", Log.Coins(100));
+		}
+	}));
+
+Card.register("composition_win", new Card(Role.Action,
+	"Reveal your hand. If you have exactly 3 action, 3 condition and 3 player cards, you win",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		let hand = yield game.reveal(yield game.getHand(player));
+		let roleCounts = hand.getRoleCounts();
+		if (roleCounts[0] === 3 && roleCounts[1] === 3 && roleCounts[2] === 3) {
+			yield game.log(player, " reveals their hand ", hand,
+				" which has exactly 3 action, 3 condition and 3 player cards!");
+			yield game.win(player);
+		} else {
+			yield game.log(player, " reveals their hand ", hand,
+				" which doesn't satisfy the necessary criteria");
+		}
+	}));
+	
+Card.register("conditional_win", new Card(Role.Action,
+	"If {Condition}, {Condition}, {Condition} and {Condition}, you win",
+	function*(game, slots) {
+		if ((yield game.resolve(slots[0])) &&
+			(yield game.resolve(slots[1])) &&
+			(yield game.resolve(slots[2])) &&
+			(yield game.resolve(slots[3])))
+			yield game.win(game.getActivePlayer());
+	}));
+
+Card.register("player_win", new Card(Role.Action,
+	"If {Player}, {Player}, {Player} and {Player} are the same, that player wins",
+	function*(game, slots) {
+		let p1 = yield game.resolve(slots[0]);
+		let p2 = yield game.resolve(slots[1]);
+		if (p1 === p2) {
+			let p3 = yield game.resolve(slots[2]);
+			if (p1 === p3) {
+				let p4 = yield game.resolve(slots[3]);
+				if (p1 === p4) {
+					yield game.win(p1);
+				}
+			}
+		}
+	}));
 	
 // Conditions
 // -----------------------
@@ -156,9 +236,7 @@ Card.register("player_decides", new Card(Role.Condition,
 Card.register("or", new Card(Role.Condition,
 	"{Condition} or {Condition} (stop if the first condition is satisfied)",
 	function*(game, slots) {
-		if (yield game.resolve(slots[0])) return true;
-		if (yield game.resolve(slots[1])) return true;
-		return false;
+		return (yield game.resolve(slots[0])) || (yield game.resolve(slots[1]));
 	}));
 
 Card.register("not", new Card(Role.Condition,
@@ -181,6 +259,23 @@ Card.register("you_are", new Card(Role.Condition,
 			return true;
 		} else {
 			yield game.log(you, " is not ", other);
+			return false;
+		}
+	}));
+
+Card.register("you_reveal_hand", new Card(Role.Condition,
+	"You reveal your hand",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		let res = yield game.reveal(yield game.interactBoolean(player, {
+			yes: "Reveal hand",
+			no: "Don't reveal hand"
+		}));
+		if (res) {
+			let hand = yield game.reveal(yield game.getHand(player));
+			yield game.log(player, " reveals their hand ", hand);
+			return true;
+		} else {
 			return false;
 		}
 	}));
@@ -241,9 +336,13 @@ Card.register("payment_vote", new Card(Role.Condition,
 			pass ? Log.Positive("passes") : Log.Negative("fails"),
 			" with " + count + "/" + total + " approval votes");
 		for (let i = 0; i < votes.length; i++) {
-			message.push(Log.Break, game.players[i], " paid ",
-				Log.Coins(payments[i]), " and ",
-				votes[i] ? Log.Positive("approved") : Log.Negative("rejected"));
+			if (payments[i]) {
+				message.push(Log.Break, players[i], " paid ",
+					Log.Coins(payments[i]), " and ",
+					votes[i] ? Log.Positive("approved") : Log.Negative("rejected"));
+			} else {
+				message.push(Log.Break, players[i], " passed");
+			}
 		}
 		yield game.log.apply(game, message);
 		return pass;
@@ -410,16 +509,24 @@ let defaultDeck = {
 	"player_draws_3": 3,
 	"you_gain_5": 5,
 	"player_gains_8": 3,
+	"player_loses_10": 3,
+	"player_reveals_hand_conditional": 3,
 	"specify_action_optional": 3,
 	"conditional_twice": 3,
 	"insert_amendment_conditional": 3,
 	"foreach_conditional": 2,
+	"left_player_wins": 1,
+	"wealth_win": 1,
+	"composition_win": 1,
+	"conditional_win": 1,
+	"player_win": 1,
 	
 	"coin_flip": 5,
 	"you_pay_10": 4,
 	"or": 2,
 	"not": 3,
 	"you_are": 3,
+	"you_reveal_hand": 2,
 	"majority_vote": 4,
 	"payment_vote": 3,
 	"wealth_vote": 2,

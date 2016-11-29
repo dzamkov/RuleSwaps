@@ -397,7 +397,8 @@ let UI = new function() {
 	// Identifies a style of log entry.
 	Log.Style = {
 		Normal: 0,
-		Chat: 1
+		Chat: 1,
+		Victory: 2
 	};
 	
 	// Builds decorated text consisting of the given parts and adds it to the given
@@ -414,6 +415,9 @@ let UI = new function() {
 					player.innerText = part.name;
 					element.appendChild(player);
 				} else if (part instanceof window.Expression) {
+					let list = createMiniList(part.toList());
+					element.appendChild(list);
+				} else if (part instanceof window.CardSet) {
 					let list = createMiniList(part.toList());
 					element.appendChild(list);
 				} else if (part instanceof window.Log.Coins) {
@@ -456,6 +460,7 @@ let UI = new function() {
 		let entry = document.createElement("div");
 		let className = "log-entry";
 		if (style === Log.Style.Chat) className += " -chat";
+		if (style === Log.Style.Victory) className += " -victory";
 		entry.className = className;
 		entry.style.marginLeft = (depth * 20) + "px";
 		buildText(entry, parts);
@@ -877,7 +882,7 @@ let UI = new function() {
 		// Cancels input in this expression.
 		Expression.prototype.inputPass = function() {
 			if (this.callback) this.callback(null);
-			this.reset(true);
+			this.reset(false);
 		}
 		
 		// Removes a card from this expression, either returning it to the hand, or putting

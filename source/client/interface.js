@@ -9,7 +9,7 @@ function Interface(setup, playerSelf, parts) {
 			draw: new UI.Deck(parts.deckDraw),
 			discard: new UI.Deck(parts.deckDiscard),
 		},
-		hand: new UI.Hand(parts.selfHand),
+		hand: new UI.CardList(parts.selfHand),
 		constitution: new UI.Constitution(
 			parts.constitutionNumbers,
 			parts.constitutionList),
@@ -26,21 +26,27 @@ function Interface(setup, playerSelf, parts) {
 				parts.inputPaymentYes,
 				parts.inputPaymentNo,
 				parts.inputPaymentPass),
+			cards: new UI.Input.Cards(
+				parts.inputCards,
+				parts.inputCardsList,
+				parts.inputCardsAccept,
+				parts.inputCardsPass),
 			expression: new UI.Input.Expression(
 				parts.inputExpression,
 				parts.inputExpressionList,
 				parts.inputExpressionAccept,
 				parts.inputExpressionPass),
-			chat: new UI.Input.Chat(
-				parts.inputChatSelector,
-				parts.inputChatTextbox,
-				parts.inputChatButton)
-		}
+		},
+		chat: new UI.Chat(
+			parts.inputChatSelector,
+			parts.inputChatTextbox,
+			parts.inputChatButton)
 	};
 	
-	this.ui.input.expression.log = this.ui.log;
-	this.ui.input.expression.returnHand = this.ui.hand;
-	this.ui.input.chat.onSay = (function(recipient, message) {
+	this.ui.input.cards.returnTarget = this.ui.hand;
+	this.ui.input.expression.returnTarget = this.ui.hand;
+	
+	this.ui.chat.onSay = (function(recipient, message) {
 		this.onSay(recipient, message);
 	}).bind(this);
 	
@@ -125,8 +131,7 @@ Interface.prototype.drawCard = function*(player, cardCommitment) {
 		let cardType = cardCommitment.value;
 		
 		let card = this.ui.deck.draw.pull(cardType);
-		card.home = this.ui.hand;
-		card.mergeInto(this.ui.hand, this.ui.hand.createInvisibleHole());
+		card.sendTo(this.ui.hand);
 	}
 }
 
@@ -178,10 +183,31 @@ Interface.prototype.interactBooleanPayment = function*(player, style) {
 	return { bool: bool, payment: payment };
 }
 
+Interface.prototype.interactCards = function*(player, options, style) {
+	let game = this;
+	let commitment = Game.prototype.interactCards.call(this, player, options);
+	if (!commitment.isResolved && player === this.playerSelf) {
+		this.ui.input.cards.request(options, function(list) {
+			if (list) {
+				game.resolveCommitment(commitment, options.ordered ? list : CardSet.fromList(list));
+				game.ui.input.cards.sendAllTo(null);
+			} else {
+				game.resolveCommitment(commitment, null);
+			}
+		}, style);
+		yield this.awaitCommitment(commitment);
+	}
+	return commitment;
+}
+
 Interface.prototype.interactSpecify = function*(player, role, style) {
+	let game = this;
 	let commitment = Game.prototype.interactSpecify.call(this, player, role);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		this.ui.input.expression.request(role, this.resolveCommitment.bind(this, commitment), style);
+		this.ui.input.expression.request(role, function(exp) {
+			game.resolveCommitment(commitment, exp);
+			game.ui.input.expression.sendAllTo(null);
+		}, style);
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
@@ -200,7 +226,7 @@ Interface.prototype.interactAmend = function*(player, style) {
 					exp: exp,
 					proposal: proposal
 				});
-				
+				game.ui.input.expression.sendAllTo(null);
 			} else {
 				game.ui.constitution.cancelInsertPick();
 				game.resolveCommitment(commitment, null);

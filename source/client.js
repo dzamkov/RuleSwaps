@@ -34,6 +34,11 @@ function start(response) {
 		inputPaymentNo: document.getElementById("input-payment-no"),
 		inputPaymentPass: document.getElementById("input-payment-pass"),
 		
+		inputCards: document.getElementById("input-cards"),
+		inputCardsList: document.getElementById("input-cards-list"),
+		inputCardsAccept: document.getElementById("input-cards-accept"),
+		inputCardsPass: document.getElementById("input-cards-pass"),
+		
 		inputExpression: document.getElementById("input-expression"),
 		inputExpressionList: document.getElementById("input-expression-list"),
 		inputExpressionAccept: document.getElementById("input-expression-accept"),

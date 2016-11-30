@@ -1,45 +1,143 @@
 // Actions
 // -----------------------
-	
+
+let playerDraws = function*(game, player, amount) {
+	yield game.log(player, " draws ", Log.Cards(amount));
+	yield game.drawCards(player, amount);
+};
+
 Card.register("you_draw_2", new Card(Role.Action,
 	"You draw 2 cards",
 	function*(game, slots) {
-		var player = game.getActivePlayer();
-		yield game.log(player, " draws ", Log.Cards(2));
-		yield game.drawCards(player, 2);
+		let player = game.getActivePlayer();
+		yield playerDraws(game, player, 2);
 	}));
 
 Card.register("player_draws_3", new Card(Role.Action,
 	"{Player} draws 3 cards",
 	function*(game, slots) {
-		var player = yield game.resolve(slots[0]);
-		yield game.log(player, " draws ", Log.Cards(3));
-		yield game.drawCards(player, 3);
+		let player = yield game.resolve(slots[0]);
+		yield playerDraws(game, player, 3);
 	}));
+
+Card.register("conditional_player_draws_5", new Card(Role.Action,
+	"If {Condition}, {Player} draws 5 cards",
+	function*(game, slots) {
+		if (yield game.resolve(slots[0])) {
+			let player = yield game.resolve(slots[1]);
+			yield playerDraws(game, player, 5);
+		}
+	}));
+
+let playerDrawsTo = function*(game, player, amount) {
+	if (player.handSize < amount) {
+		yield game.log(player, " draws up to ", Log.Cards(amount));
+		yield game.drawCards(player, amount - player.handSize);
+	} else {
+		yield game.log(player, " already has ", Log.Cards(amount));
+	}
+};
+	
+Card.register("player_draws_to_8", new Card(Role.Action,
+	"{Player} draws cards until they have 8",
+	function*(game, slots) {
+		let player = yield game.resolve(slots[0]);
+		yield playerDrawsTo(game, player, 8);
+	}));
+
+Card.register("conditional_player_draws_to_12", new Card(Role.Action,
+	"If {Condition}, {Player} draws cards until they have 12",
+	function*(game, slots) {
+		if (yield game.resolve(slots[0])) {
+			let player = yield game.resolve(slots[1]);
+			yield playerDrawsTo(game, player, 12);
+		}
+	}));
+
+let playerDiscards = function*(game, player, amount) {
+	let discard = Math.min(amount, player.handSize);
+	if (discard > 0) {
+		yield game.log(player, " must discard ", Log.Cards(discard));
+		let res = yield game.reveal(yield game.interactCards(player, {
+			ordered: false,
+			optional: false,
+			amount: discard
+		}, {
+			accept: "Discard",
+			pass: null
+		}));
+		yield game.takeCards(player, res);
+		yield game.log(player, " discards ", res)
+		yield game.discard(res);
+	} else {
+		yield game.log(player, " doesn't have any cards");
+	}
+};
+	
+Card.register("player_discards_2", new Card(Role.Action,
+	"{Player} must discard 2 cards of their choice",
+	function*(game, slots) {
+		let player = yield game.resolve(slots[0]);
+		yield playerDiscards(game, player, 2);
+	}));
+
+Card.register("conditional_player_discards_4", new Card(Role.Action,
+	"If {Condition}, {Player} must discard 4 cards of their choice",
+	function*(game, slots) {
+		if (yield game.resolve(slots[0])) {
+			let player = yield game.resolve(slots[1]);
+			yield playerDiscards(game, player, 4);
+		}
+	}));
+
+let playerGains = function*(game, player, amount) {
+	yield game.log(player, " gains ", Log.Coins(amount));
+	yield game.giveCoins(player, amount);
+};
 	
 Card.register("you_gain_5", new Card(Role.Action,
 	"You gain 5 coins",
 	function*(game, slots) {
 		var player = game.getActivePlayer();
-		yield game.log(player, " gains ", Log.Coins(5));
-		yield game.giveCoins(player, 5);
+		yield playerGains(game, player, 5);
 	}));
 
 Card.register("player_gains_8", new Card(Role.Action,
 	"{Player} gains 8 coins",
 	function*(game, slots) {
 		var player = yield game.resolve(slots[0]);
-		yield game.log(player, " gains ", Log.Coins(8));
-		yield game.giveCoins(player, 8);
+		yield playerGains(game, player, 8);
 	}));
+
+Card.register("conditional_player_gains_15", new Card(Role.Action,
+	"If {Condition}, {Player} gains 15 coins",
+	function*(game, slots) {
+		if (yield game.resolve(slots[0])) {
+			var player = yield game.resolve(slots[1]);
+			yield playerGains(game, player, 15);
+		}
+	}));
+	
+let playerLoses = function*(game, player, target) {
+	let amount = Math.min(player.coins, target);
+	yield game.log(player, " loses ", Log.Coins(amount));
+	yield game.takeCoins(player, amount);
+};
 
 Card.register("player_loses_10", new Card(Role.Action,
 	"{Player} loses 10 coins",
 	function*(game, slots) {
 		var player = yield game.resolve(slots[0]);
-		let amount = Math.min(player.coins, 10);
-		yield game.log(player, " loses ", Log.Coins(amount));
-		yield game.takeCoins(player, amount);
+		yield playerLoses(player, 10);
+	}));
+
+Card.register("conditional_player_loses_18", new Card(Role.Action,
+	"If {Condition}, {Player} loses 18 coins",
+	function*(game, slots) {
+		if (yield game.resolve(slots[0])) {
+			var player = yield game.resolve(slots[1]);
+			yield playerLoses(player, 18);
+		}
 	}));
 
 Card.register("player_reveals_hand_conditional", new Card(Role.Action,
@@ -58,15 +156,14 @@ Card.register("specify_action_optional", new Card(Role.Action,
 		let player = yield game.resolve(slots[0]);
 		yield game.log(player, " may specify and perform an action");
 		let exp = yield game.reveal(yield game.interactSpecify(player, Role.Action));
-		// TODO: Remove from hand
 		if (exp) {
 			let cardList = exp.toList();
-			yield game.removeCards(player, CardSet.fromList(cardList));
+			yield game.takeCards(player, CardSet.fromList(cardList));
 			yield game.log(player, " performs an action ", exp);
 			yield game.pushPlayerStack(player);
 			yield game.resolve(exp);
 			yield game.popPlayerStack(player);
-			yield game.discard(cardList);
+			yield game.discard(CardSet.fromList(cardList));
 		} else {
 			yield game.log(player, " waives the right to perform an action");
 		}
@@ -215,13 +312,63 @@ let mayPay = function*(game, player, amount) {
 		yield game.log(player, " doesn't have ", Log.Coins(amount));
 		return false;
 	}
-}
+};
 
 Card.register("you_pay_10", new Card(Role.Condition,
 	"You pay 10 coins",
 	function*(game, slots) {
 		let player = game.getActivePlayer();
 		return yield mayPay(game, player, 10);
+	}));
+	
+Card.register("you_reveal_hand", new Card(Role.Condition,
+	"You reveal your hand",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		let res = yield game.reveal(yield game.interactBoolean(player, {
+			yes: "Reveal hand",
+			no: "Don't reveal hand"
+		}));
+		if (res) {
+			let hand = yield game.reveal(yield game.getHand(player));
+			yield game.log(player, " reveals their hand ", hand);
+			return true;
+		} else {
+			return false;
+		}
+	}));
+
+let mayDiscard = function*(game, player, amount) {
+	if (player.handSize >= amount) {
+		yield game.log(player, " may discard ", Log.Cards(amount));
+		let res = yield game.reveal(yield game.interactCards(player, {
+			ordered: false,
+			optional: true,
+			amount: 3
+		}, {
+			accept: "Discard",
+			pass: "Pass"
+		}));
+		if (res) {
+			yield game.takeCards(player, res);
+			yield game.log(player, " discards ", res)
+			yield game.discard(res);
+			return true;
+		} else {
+			yield game.log(player, " doesn't discard ", Log.Cards(amount));
+			return false;
+		}
+	} else {
+		yield game.log(player, " doesn't have ", Log.Cards(amount));
+		return false;
+	}
+};
+
+Card.register("you_discard_3", new Card(Role.Condition,
+	"You discard 3 cards",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		return yield mayDiscard(game, player, 3);
 	}));
 	
 Card.register("player_decides", new Card(Role.Condition,
@@ -259,23 +406,6 @@ Card.register("you_are", new Card(Role.Condition,
 			return true;
 		} else {
 			yield game.log(you, " is not ", other);
-			return false;
-		}
-	}));
-
-Card.register("you_reveal_hand", new Card(Role.Condition,
-	"You reveal your hand",
-	function*(game, slots) {
-		let player = game.getActivePlayer();
-		let res = yield game.reveal(yield game.interactBoolean(player, {
-			yes: "Reveal hand",
-			no: "Don't reveal hand"
-		}));
-		if (res) {
-			let hand = yield game.reveal(yield game.getHand(player));
-			yield game.log(player, " reveals their hand ", hand);
-			return true;
-		} else {
 			return false;
 		}
 	}));
@@ -450,7 +580,7 @@ Card.register("right_player", new Card(Role.Player,
 		return res;
 	}));
 
-Card.register("biggest_payor", new Card(Role.Player,
+Card.register("most_paid", new Card(Role.Player,
 	"Whoever pays the most coins",
 	function*(game, slots) {
 		let players = yield game.getPlayersFrom(game.getActivePlayer());
@@ -468,7 +598,7 @@ Card.register("biggest_payor", new Card(Role.Player,
 		let message = [];
 		if (biggestPayorId.length > 1) {
 			message.push("There is a tie for the biggest payment. ",
-				players[biggestPayorId[0]], " is the first big payor going clockwise");
+				players[biggestPayorId[0]], " is the first big payer going clockwise");
 		} else {
 			message.push(players[biggestPayorId[0]], " made the biggest payment");
 		}
@@ -482,7 +612,7 @@ Card.register("biggest_payor", new Card(Role.Player,
 		yield game.log.apply(game, message);
 		return players[biggestPayorId[0]];
 	}));
-
+	
 Card.register("first", new Card(Role.Player,
 	"The first player, going clockwise, who satisfies {Condition}",
 	function*(game, slots) {
@@ -507,9 +637,16 @@ Card.register("first", new Card(Role.Player,
 let defaultDeck = {
 	"you_draw_2": 5,
 	"player_draws_3": 3,
+	"conditional_player_draws_5": 2,
+	"player_draws_to_8": 3,
+	"conditional_player_draws_to_12": 2,
+	"player_discards_2": 3,
+	"conditional_player_discards_4": 2,
 	"you_gain_5": 5,
 	"player_gains_8": 3,
+	"conditional_player_gains_15": 2,
 	"player_loses_10": 3,
+	"conditional_player_loses_18": 2,
 	"player_reveals_hand_conditional": 3,
 	"specify_action_optional": 3,
 	"conditional_twice": 3,
@@ -523,10 +660,12 @@ let defaultDeck = {
 	
 	"coin_flip": 5,
 	"you_pay_10": 4,
+	"you_reveal_hand": 2,
+	"you_discard_3": 3,
+	"player_decides": 3,
 	"or": 2,
 	"not": 3,
 	"you_are": 3,
-	"you_reveal_hand": 2,
 	"majority_vote": 4,
 	"payment_vote": 3,
 	"wealth_vote": 2,
@@ -536,6 +675,6 @@ let defaultDeck = {
 	"wealthiest_player": 4,
 	"left_player": 3,
 	"right_player": 3,
-	"biggest_payor": 3,
-	"first": 3
-}
+	"most_paid": 5,
+	"first": 4
+};

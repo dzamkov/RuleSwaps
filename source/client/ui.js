@@ -62,6 +62,18 @@ let UI = new function() {
 	
 	Card.prototype = Object.create(Motion.Animated.prototype);
 	
+	// Merges this card into the given target acceptor.
+	Card.prototype.sendTo = function(target) {
+		if (target instanceof CardList) {
+			let hole = target.createInvisibleHole();
+			this.mergeInto(target, hole);
+		} else if (target) {
+			this.mergeInto(target, target.element);
+		} else {
+			this.element.parentNode.removeChild(this.element);
+		}
+	}
+	
 	// Creates an element representing a card, and returns its logical interface.
 	function createCard(cardType) {
 		return new Card(cardType.createElement(false), cardType);
@@ -105,17 +117,17 @@ let UI = new function() {
 			toResize[i]();
 	}
 	
-	// Augments an element to be a hand of cards, where cards are draggable and need
-	// not be in any particular order. Provides an interface to the element at a logical level.
-	function Hand(element, cards) {
+	// Augments an element to contain a list of cards, where cards are draggable and
+	// possibly ordered. Provides an interface to the element at a logical level.
+	function CardList(element) {
 		Motion.Acceptor.call(this, element);
 		this.element = element;
 		toResize.push(this.balanceChildren.bind(this, true));
 	}
 	
-	Hand.prototype = Object.create(Motion.Acceptor.prototype);
+	CardList.prototype = Object.create(Motion.Acceptor.prototype);
 	
-	Hand.prototype.dragOut = function(element) {
+	CardList.prototype.dragOut = function(element) {
 		if (element.animated instanceof Card) {
 			let hole = document.createElement("div");
 			hole.className = "card-hole";
@@ -130,7 +142,7 @@ let UI = new function() {
 		}
 	}
 	
-	Hand.prototype.dragIn = function(animated, left, top) {
+	CardList.prototype.dragIn = function(animated, left, top) {
 		let card = animated;
 		if (card instanceof Card) {
 			let children = this.element.children;
@@ -159,13 +171,49 @@ let UI = new function() {
 		}
 	}
 	
-	Hand.prototype.leave = function(animated, hole) {
+	CardList.prototype.leave = function(animated, hole) {
 		this.element.removeChild(hole);
 		this.balanceChildren(true);
+	};
+	
+	// Gets the number of cards in this card list.
+	CardList.prototype.getNumCards = function() {
+		let numCards = 0;
+		let children = this.element.children;
+		for (let i = 0; i < children.length; i++) {
+			let child = children[i];
+			if (child.animated instanceof Card)
+				numCards++;
+		}
+		return numCards;
 	}
 	
-	// Creates a new invisible hold for this hand
-	Hand.prototype.createInvisibleHole = function() {
+	// Gets a list of the card types in this card list.
+	CardList.prototype.toList = function() {
+		let cards = [];
+		let children = this.element.children;
+		for (let i = 0; i < children.length; i++) {
+			let child = children[i];
+			if (child.animated instanceof Card)
+				cards.push(child.animated.type);
+		}
+		return cards;
+	};
+	
+	// Sends all cards in this list to the given target.
+	CardList.prototype.sendAllTo = function(target) {
+		while (this.element.lastChild) {
+			let child = this.element.lastChild;
+			if (child.animated instanceof Card) {
+				child.animated.sendTo(target);
+			} else {
+				this.element.removeChild(child);
+			}
+		}
+	};
+	
+	// Creates a new invisible hold for this card list
+	CardList.prototype.createInvisibleHole = function() {
 		let hole = document.createElement("div");
 		hole.className = "card-hole";
 		new Motion.Animated(hole);
@@ -569,8 +617,28 @@ let UI = new function() {
 		trigger(this.cards, "-pulse");
 	}
 	
+	
+	// The base class for input interfaces.
+	function Input(container) {
+		this.container = container;
+		this.callback = null;
+	}
+	
+	// Called when a response to an input request is given.
+	Input.prototype.respond = function() {
+		if (this.callback) this.callback.apply(null, arguments);
+		this.callback = null;
+		this.container.className = "input -hidden";
+	}
+	
+	// Shows this input interface, requesting a response from the user.
+	Input.prototype.request = function(callback) {
+		this.container.className = "input";
+		this.callback = callback;
+	};
+	
 	// Contains interfaces for specific types of player input.
-	let Input = new function() {
+	(function() {
 		
 		function setButtonText(button, parts) {
 			if (parts) {
@@ -583,28 +651,13 @@ let UI = new function() {
 		
 		// Augments a set of elements to be a yes/no input.
 		function Boolean(container, yesButton, noButton) {
-			this.container = container;
+			Input.call(this, container);
 			this.yesButton = new Button(yesButton);
 			this.noButton = new Button(noButton);
 			this.callback = null;
 			
-			this.yesButton.onClick = this.inputYes.bind(this);
-			this.noButton.onClick = this.inputNo.bind(this);
-		}
-		
-		Boolean.prototype.reset = function() {
-			this.container.className = "input -hidden";
-			this.callback = null;
-		}
-		
-		Boolean.prototype.inputYes = function() {
-			if (this.callback) this.callback(true);
-			this.reset();
-		}
-		
-		Boolean.prototype.inputNo = function() {
-			if (this.callback) this.callback(false);
-			this.reset();
+			this.yesButton.onClick = this.respond.bind(this, true);
+			this.noButton.onClick = this.respond.bind(this, false);
 		}
 		
 		Boolean.prototype.defaultStyle = {
@@ -612,18 +665,17 @@ let UI = new function() {
 			no: "Nay",
 		};
 		
-		// Shows the boolean input, requesting a response from the user.
+		Boolean.prototype.respond = Input.prototype.respond;
 		Boolean.prototype.request = function(callback, style) {
 			style = style || this.defaultStyle;
 			setButtonText(this.yesButton, style.yes);
 			setButtonText(this.noButton, style.no);
-			this.container.className = "input";
-			this.callback = callback;
+			Input.prototype.request.call(this, callback);
 		}
 		
 		// Augments a set of elements to be a adjustable payment input.
 		function Payment(container, handle, bar, yesButton, noButton, passButton) {
-			this.container = container;
+			Input.call(this, container);
 			this.handle = handle;
 			this.bar = bar;
 			this.coins = 0;
@@ -679,23 +731,16 @@ let UI = new function() {
 			this.setPos(r);
 		}
 		
-		Payment.prototype.reset = function() {
-			this.container.className = "input -hidden";
-		}
-		
 		Payment.prototype.inputYes = function() {
-			if (this.callback) this.callback(this.coins, true);
-			this.reset();
+			this.respond(this.coins, true);
 		}
 		
 		Payment.prototype.inputNo = function() {
-			if (this.callback) this.callback(this.coins, false);
-			this.reset();
+			this.respond(this.coins, false);
 		}
 		
 		Payment.prototype.inputPass = function() {
-			if (this.callback) this.callback(0, false);
-			this.reset();
+			this.respond(0, false);
 		}
 		
 		Payment.prototype.defaultStyle = {
@@ -704,7 +749,7 @@ let UI = new function() {
 			pass: "Pass"
 		};
 		
-		// Shows the payment input, requesting a response from the user.
+		Payment.prototype.respond = Input.prototype.respond;
 		Payment.prototype.request = function(coins, callback, style) {
 			style = style || this.defaultStyle;
 			this.limit = coins;
@@ -712,24 +757,99 @@ let UI = new function() {
 			setButtonText(this.yesButton, style.yes);
 			setButtonText(this.noButton, style.no);
 			setButtonText(this.passButton, style.pass);
-			this.container.className = "input";
-			this.callback = callback;
+			Input.prototype.request.call(this, callback);
 		}
 		
+		// Augments a set of elements to be a cards input.
+		function Cards(container, list, acceptButton, passButton) {
+			Input.call(this, container);
+			this.cardList = new CardList(list);
+			this.acceptButton = new Button(acceptButton);
+			this.passButton = new Button(passButton);
+			this.returnTarget = null;
+			this.amount = null;
+			
+			this.acceptButton.onClick = this.inputAccept.bind(this);
+			this.passButton.onClick = this.inputPass.bind(this);
+			
+			let cards = this;
+			
+			// Updates the status of the accept button
+			let updateAcceptButton = function() {
+				if (!cards.amount || cards.amount === cards.cardList.getNumCards()) {
+					cards.acceptButton.enable();
+				} else {
+					cards.acceptButton.disable();
+				}
+			};
+			
+			// Don't accept extra cards
+			let oldDragIn = this.cardList.dragIn;
+			this.cardList.dragIn = function(animated, left, top, fromAcceptor) {
+				if (fromAcceptor === this ||
+					cards.amount === null ||
+					this.getNumCards() < cards.amount)
+					return oldDragIn.call(this, animated, left, top, fromAcceptor);
+			};
+			
+			// Disable on leave
+			let oldLeave = this.cardList.leave;
+			this.cardList.leave = function(animated, hole, toAcceptor) {
+				oldLeave.call(this, animated, hole, toAcceptor);
+				updateAcceptButton();
+			};
+			
+			// Enable if there are enough cards
+			let oldAccept = this.cardList.accept;
+			this.cardList.accept = function(card, hole, fromAcceptor) {
+				oldAccept.call(this, card, hole, fromAcceptor);
+				updateAcceptButton();
+			};
+		}
+		
+		Cards.prototype.inputAccept = function() {
+			let cards = this.cardList.toList();
+			if (cards && (this.amount === null || cards.length === this.amount)) {
+				this.respond(cards);
+			}
+		}
+		
+		Cards.prototype.inputPass = function() {
+			this.sendAllTo(this.returnTarget);
+			this.respond(null);
+		}
+		
+		// Sends all cards currently in the card list into the given target. This should not be called
+		// during a request.
+		Cards.prototype.sendAllTo = function(target) {
+			this.cardList.sendAllTo(target);
+		}
+		
+		Cards.prototype.respond = Input.prototype.respond;
+		Cards.prototype.request = function(options, callback, style) {
+			this.sendAllTo(null);
+			if (options.amount) {
+				this.acceptButton.disable();
+			} else {
+				this.acceptButton.enable();
+			}
+			setButtonText(this.acceptButton, style.accept);
+			setButtonText(this.passButton, style.pass);
+			this.amount = options.amount;
+			Input.prototype.request.call(this, callback);
+		}
 		
 		// Augments a set of elements to be an expression input.
 		function Expression(container, list, acceptButton, passButton) {
 			Motion.Acceptor.call(this, list);
+			Input.call(this, container);
 			
-			this.container = container;
 			this.list = list;
 			this.acceptButton = new Button(acceptButton);
 			this.passButton = new Button(passButton);
 			this.callback = null;
 			
-			this.log = null;
-			this.returnHand = null;
-			this.playDeck = null;
+			this.returnTarget = null;
 			
 			this.acceptButton.onClick = this.inputAccept.bind(this);
 			this.passButton.onClick = this.inputPass.bind(this);
@@ -821,10 +941,11 @@ let UI = new function() {
 			return hole;
 		}
 		
-		// Allows the user to specify an expression of the given role in this element by dragging. This may only
-		// be called if the expression is empty.
+		// Sets the expected role of the expression specified using this input.
 		Expression.prototype.expect = function(role) {
+			while (this.list.lastChild) this.list.removeChild(this.list.lastChild);
 			this.list.appendChild(Expression.createSlotHole(role, false));
+			this.acceptButton.disable();
 			this.balanceChildren(false);
 		}
 		
@@ -844,7 +965,7 @@ let UI = new function() {
 			for (let i = 0; i < count; i++) {
 				let child = after.nextSibling;
 				if (child.animated instanceof Card) {
-					this.removeCard(child.animated, false)
+					child.animated.sendTo(this.returnTarget);
 					this.removeSlots(after, child.animated.type.slots.length);
 				} else {
 					this.list.removeChild(child);
@@ -853,7 +974,6 @@ let UI = new function() {
 			this.balanceChildren(false);
 		}
 		
-		// Tries the input currently in the expression.
 		Expression.prototype.inputAccept = function() {
 			
 			// Build expression
@@ -875,86 +995,66 @@ let UI = new function() {
 			}
 			
 			// Reset and callback
-			if (this.callback) this.callback(exp);
-			this.reset(true);
+			this.respond(exp);
 		}
 		
-		// Cancels input in this expression.
 		Expression.prototype.inputPass = function() {
-			if (this.callback) this.callback(null);
-			this.reset(false);
+			this.sendAllTo(this.returnTarget);
+			this.respond(null);
 		}
 		
-		// Removes a card from this expression, either returning it to the hand, or putting
-		// it in the in-play deck.
-		Expression.prototype.removeCard = function(card, inPlay) {
-			if (inPlay && this.playDeck) {
-				card.mergeInto(this.playDeck, this.playDeck.element);
-			} else if (!inPlay && this.returnHand) {
-				let hole = this.returnHand.createInvisibleHole();
-				card.mergeInto(this.returnHand, hole);
-			} else {
-				this.list.removeChild(card.element);
-			}
-		}
-		
-		// Resets the expression input, removing all children
-		Expression.prototype.reset = function(inPlay) {
-			this.container.className = "input -hidden";
-			while (this.list.firstChild) {
-				let element = this.list.firstChild;
-				if (element.animated instanceof Card) {
-					this.removeCard(element.animated, inPlay)
+		// Sends all cards currently in the expression into the given target. This should not be called
+		// during a request.
+		Expression.prototype.sendAllTo = function(target) {
+			while (this.list.lastChild) {
+				let child = this.list.lastChild;
+				if (child.animated instanceof Card) {
+					child.animated.sendTo(target);
 				} else {
-					this.list.removeChild(this.list.firstChild);
+					this.list.removeChild(child);
 				}
 			}
-			this.callback = null;
 		}
 		
-		// Shows the expression input, requesting that the user specifies an expression of the given role.
+		Expression.prototype.respond = Input.prototype.respond;
 		Expression.prototype.request = function(role, callback, style) {
-			console.assert(this.list.children.length === 0);
 			this.expect(role);
-			this.acceptButton.disable();
-			this.container.className = "input";
-			this.callback = callback;
+			Input.prototype.request.call(this, callback);
 		}
-		
-		// Augments a set of elements to be a chat input.
-		function Chat(selector, textbox, button) {
-			this.selector = selector;
-			this.textbox = textbox;
-			this.button = new Button(button);
-			
-			
-			this.button.onClick = this.post.bind(this);
-			this.textbox.addEventListener("keypress", (function(e) {
-				if (e.keyCode === 13) {
-					e.preventDefault();
-					this.post();
-				}
-			}).bind(this));
-		}
-		
-		// Says the current contents of the chatbox, if non-empty.
-		Chat.prototype.post = function() {
-			if (this.textbox.value) {
-				this.onSay(null, this.textbox.value); // TODO: Recipient
-				this.textbox.value = "";
-			}
-		}
-		
-		// An event fired when something is said using the chatbox.
-		Chat.prototype.onSay = function(recipient, message) {
-			// Override me
-		}
-		
 		
 		this.Boolean = Boolean;
 		this.Payment = Payment;
+		this.Cards = Cards;
 		this.Expression = Expression;
-		this.Chat = Chat;
+		
+	}).call(Input);
+	
+	// Augments a set of elements to be a chat input.
+	function Chat(selector, textbox, button) {
+		this.selector = selector;
+		this.textbox = textbox;
+		this.button = new Button(button);
+		
+		this.button.onClick = this.post.bind(this);
+		this.textbox.addEventListener("keypress", (function(e) {
+			if (e.keyCode === 13) {
+				e.preventDefault();
+				this.post();
+			}
+		}).bind(this));
+	}
+	
+	// Says the current contents of the chatbox, if non-empty.
+	Chat.prototype.post = function() {
+		if (this.textbox.value) {
+			this.onSay(null, this.textbox.value); // TODO: Recipient
+			this.textbox.value = "";
+		}
+	}
+	
+	// An event fired when something is said using the chatbox.
+	Chat.prototype.onSay = function(recipient, message) {
+		// Override me
 	}
 	
 	// Register window events
@@ -963,10 +1063,11 @@ let UI = new function() {
 	this.Card = Card;
 	this.createCard = createCard;
 	this.Deck = Deck;
-	this.Hand = Hand;
+	this.CardList = CardList;
 	this.Constitution = Constitution;
 	this.Log = Log;
 	this.Button = Button;
 	this.PlayerInfo = PlayerInfo;
 	this.Input = Input;
+	this.Chat = Chat;
 }

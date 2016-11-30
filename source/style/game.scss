@@ -207,11 +207,6 @@ $input-chat-height: 30px;
 $input-chat-selector-width: 100px;
 $input-chat-button-width: 60px;
 
-$input-expression-area-margin: 2px;
-$input-expression-area-padding: 6px;
-$input-expression-button-width: 80px;
-$input-expression-button-padding: 6px;
-
 .input {
 	transition: height 0.5s cubic-bezier(0.645, 0.045, 0.355, 1);
 	overflow: hidden;
@@ -281,22 +276,15 @@ $input-expression-button-padding: 6px;
 	}
 }
 
-#input-expression {
-	position: relative;
-	height: $card-height +
-		2 * $input-expression-area-padding +
-		2 * $input-expression-area-margin;
+#input-expression, #input-cards {
+	display: flex;
 }
 
-#input-expression-list {
-	position: absolute;
-	top: $input-expression-area-margin;
-	bottom: $input-expression-area-margin;
-	left: $input-expression-area-margin;
-	right: $input-expression-button-width +
-		2 * $input-expression-button-padding;
+#input-expression-list, #input-cards-list {
+	flex-grow: 1;
 	height: $card-height;
-	padding: $input-expression-area-padding;
+	margin: 2px;
+	padding: 6px;
 	border-spacing: 10px;
 	
 	background-color: #6d6d6d;
@@ -304,18 +292,12 @@ $input-expression-button-padding: 6px;
 	box-shadow: inset 0 0 2px #000000;
 }
 
-#input-expression-buttons {
-	position: absolute;
+#input-expression-buttons, #input-cards-buttons {
 	display: flex;
 	flex-direction: column;
-	padding: $input-expression-button-padding;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	width: $input-expression-button-width;
-	a {
-		margin-bottom: 5px;
-	}
+	padding: 6px;
+	width: 80px;
+	a { margin-bottom: 5px; }
 }
 
 #input-chat {

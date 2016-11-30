@@ -301,6 +301,7 @@ Game.prototype.takeCoins = function*(player, count) {
 
 // Discards the given list of cards in the given order.
 Game.prototype.discard = function(cards) {
+	console.assert(cards instanceof CardSet);
 	// TODO
 }
 
@@ -317,7 +318,7 @@ Game.prototype.setHandSize = function(player, handSize) {
 // Declares a commitment that contains the current hand of the given player as a
 // card set.
 Game.prototype.getHand = function(player) {
-	return this.declareCommitment(null, Format.cardSet);
+	return this.declareCommitment(null, Format.cardSet());
 }
 
 // Causes a player to draw the given number of cards.
@@ -343,8 +344,13 @@ Game.prototype.drawCard = function*(player, cardCommitment) {
 	yield this.setHandSize(player, player.handSize + 1);
 }
 
+// Inserts a given set of cards into a player's hand.
+Game.prototype.giveCards = function*(player, cardSet) {
+	// TODO
+}
+
 // Removes a given set of cards from a player's hand.
-Game.prototype.removeCards = function*(player, cardSet) {
+Game.prototype.takeCards = function*(player, cardSet) {
 	if (player.hand) {
 		player.hand.removeSet(cardSet);
 		yield this.setHandSize(player, player.hand.totalCount);
@@ -377,6 +383,21 @@ Game.prototype.interactBooleanPayment = function*(player) {
 	return { bool: bool, payment: payment };
 }
 
+// Requests the given player to select a list or set of cards subject to restrictions.
+//
+// 	options
+//		ordered  - does the order of cards matter?
+//		optional - can the player skip this interaction without selecting cards?
+//		amount   - if set, the exact number of cards that can be selected.
+//
+//	returns a commitment of either a set or lists of cards.
+Game.prototype.interactCards = function(player, options) {
+	// TODO: More specific format taking into account options
+	return this.declareCommitment(player, options.ordered ?
+		Format.cardList :
+		Format.cardSet(options.optional || true, options.amount || null));
+}
+
 // Requests the given player to specify an expression of the given role. Returns that expression wrapped in
 // a commitment.
 Game.prototype.interactSpecify = function(player, role) {
@@ -395,7 +416,7 @@ Game.prototype.getAmendFormat = function() {
 Game.prototype.processAmend = function*(commitment) {
 	let amend = yield this.reveal(commitment);
 	if (amend) {
-		yield this.removeCards(commitment.player, CardSet.fromList(amend.exp.toList()))
+		yield this.takeCards(commitment.player, CardSet.fromList(amend.exp.toList()))
 		yield this.proposeAmendment(amend);
 	}
 	return amend;
@@ -420,7 +441,7 @@ Game.prototype.proposeAmendment = function*(amend) {
 // Cancels an amendment previously specified by a player.
 Game.prototype.cancelAmend = function*(amend) {
 	this.constitution.splice(amend.line, 1);
-	if (amend.line <= this.line) {
+	if (amend.line <= this.line) { // TODO: Track proposals
 		yield this.setActiveLine(this.line - 1);
 	}
 	yield this.discard(amend.exp.toList());

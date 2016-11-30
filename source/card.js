@@ -86,7 +86,6 @@ Card.register = function(name, card) {
 // Looks up a card based on the given information.
 Card.get = function(card) {
 	if (typeof card === "string") card = Card.list[card];
-	console.assert(card instanceof Card);
 	return card;
 }
 
@@ -107,6 +106,7 @@ Expression.parseFromList = function(cards, indexRef) {
 	let index = indexRef.index++;
 	if (index < cards.length) {
 		let card = Card.get(cards[index]);
+		if (!card) return null;
 		let slots = []
 		for (let i = 0; i < card.slots.length; i++) {
 			let slot = Expression.parseFromList(cards, indexRef);

@@ -56,12 +56,10 @@ ServerGame.get = function(gameId, callback) {
 		player3.sessionId = "ses3";
 		
 		let setup = new Game.Setup(
-			[player1, player2, player3],[
+			[player1],[
 				Expression.fromList(["you_gain_5"]),
-				Expression.fromList(["you_draw_2"]),
-				Expression.fromList([
-					"insert_amendment_conditional", "you",
-					"player_decides", "biggest_payor"]),
+				Expression.fromList(["player_draws_3", "you"]),
+				Expression.fromList(["insert_amendment_conditional", "you", "majority_vote"]),
 				Expression.fromList(["specify_action_optional", "you"]),
 				Expression.fromList(["wealth_win"])
 			], CardSet.create(defaultDeck));
@@ -70,7 +68,7 @@ ServerGame.get = function(gameId, callback) {
 		game.update();
 	}
 	callback(game);
-}
+};
 
 ServerGame.prototype = Object.create(Game.prototype);
 
@@ -85,7 +83,7 @@ ServerGame.prototype.drawCards = function*(player, count) {
 		yield this.drawCard(player, cardCommitment);
 		count--;
 	}
-}
+};
 
 ServerGame.prototype.random = function*(range) {
 	let commitment = yield Game.prototype.random.call(this, range);
@@ -93,7 +91,7 @@ ServerGame.prototype.random = function*(range) {
 		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
 	}
 	return commitment;
-}
+};
 
 ServerGame.prototype.getHand = function*(player) {
 	let commitment = yield Game.prototype.getHand.call(this, player);
@@ -101,27 +99,27 @@ ServerGame.prototype.getHand = function*(player) {
 		this.resolveCommitment(commitment, CardSet.create(player.hand));
 	}
 	return commitment;
-}
+};
 
 ServerGame.prototype.declareCommitment = function(player, format) {
 	let commitment = Game.prototype.declareCommitment.call(this, player, format);
 	if (!commitment.isResolved) this.unresolved++;
 	return commitment;
-}
+};
 
 // Resolves a commitment for this game.
 ServerGame.prototype.resolveCommitment = function(commitment, value) {
 	console.assert(commitment.player === null);
 	commitment.resolve(value);
 	this.unresolved--;
-}
+};
 
 ServerGame.prototype.waitReveal = function*(commitment) {
 	while (this.unresolved > 0) yield this.pause();
 	console.assert(commitment.isResolved);
 	this.baseCommitmentId = this.nextCommitmentId;
 	return commitment.value;
-}
+};
 
 ServerGame.prototype.reveal = function*(commitment) {
 	this.revealed.push({
@@ -130,7 +128,7 @@ ServerGame.prototype.reveal = function*(commitment) {
 		player: null
 	});
 	return yield this.waitReveal(commitment);
-}
+};
 
 ServerGame.prototype.revealTo = function*(player, commitment) {
 	this.revealed.push({
@@ -139,7 +137,7 @@ ServerGame.prototype.revealTo = function*(player, commitment) {
 		player: player
 	});
 	return yield this.waitReveal(commitment);
-}
+};
 
 // Builds a response to a poll message.
 ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId, messageId) {
@@ -171,7 +169,7 @@ ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId, mess
 		baseCommitmentId: this.baseCommitmentId,
 		messageId: this.messages.length
 	};
-}
+};
 
 // Adds a chat message to the server.
 ServerGame.prototype.chat = function(player, message) {
@@ -181,7 +179,7 @@ ServerGame.prototype.chat = function(player, message) {
 		message: message
 	});
 	this.respond();
-}
+};
 
 // Responds to polling requests to the server.
 ServerGame.prototype.respond = function() {
@@ -197,13 +195,13 @@ ServerGame.prototype.respond = function() {
 			i--;
 		}
 	}
-}
+};
 
 // Runs the game and responds to polls.
 ServerGame.prototype.update = function() {
 	this.run();
 	this.respond();
-}
+};
 
 // Gets a player in this game base on the given session id.
 ServerGame.prototype.getPlayerBySessionId = function(sessionId) {
@@ -212,7 +210,7 @@ ServerGame.prototype.getPlayerBySessionId = function(sessionId) {
 			return this.players[i];
 	}
 	return null;
-}
+};
 
 // Handles a message sent to this game.
 ServerGame.prototype.handle = function(request, callback) {
@@ -260,7 +258,7 @@ ServerGame.prototype.handle = function(request, callback) {
 	} else {
 		callback(true);	
 	}
-}
+};
 
 
 // Responds with a generic 500 message.
@@ -355,3 +353,13 @@ http.createServer(function(request, response) {
 }).listen(port);
 
 console.log("Server running...");
+
+// Print deck stats
+let deck = CardSet.create(defaultDeck);
+console.log("Total card types: ", Object.keys(deck.counts).length);
+console.log("Total cards in deck: ", deck.totalCount);
+
+let roleCounts = deck.getRoleCounts();
+console.log("Total action cards: ", roleCounts[0]);
+console.log("Total condition cards: ", roleCounts[1]);
+console.log("Total player cards: ", roleCounts[2]);

@@ -53,14 +53,24 @@ Format.card.decode = function(source) {
 	return res;
 }
 
-// A format for a non-null card set.
-Format.cardSet = new Format({ });
+// A format for a card set.
+Format.cardSet = function(allowNull, totalCount) {
+	return new Format.CardSet(allowNull || false, totalCount || null);
+};
 
-Format.cardSet.encode = function(cards) {
-	return cards.counts;
+Format.CardSet = function(allowNull, totalCount) {
+	this.allowNull = allowNull;
+	this.totalCount = totalCount;
+};
+
+Format.CardSet.prototype = Object.create(Format.prototype);
+
+Format.CardSet.prototype.encode = function(cards) {
+	return cards ? cards.counts : null;
 }
 
-Format.cardSet.decode = function(source) {
+Format.CardSet.prototype.decode = function(source) {
+	if (source === null && this.allowNull) return null;
 	if (!(source instanceof Object)) throw Format.Exception;
 	let counts = { };
 	let totalCount = 0;
@@ -70,6 +80,7 @@ Format.cardSet.decode = function(source) {
 		counts[card] = count;
 		totalCount += count;
 	}
+	if (this.totalCount && totalCount !== this.totalCount) throw Format.Exception;
 	return new CardSet(counts, totalCount);
 }
 
@@ -154,6 +165,7 @@ Format.List.prototype.decode = function(source) {
 	return nList;
 }
 
+Format.cardList = Format.list(Format.card);
 
 // A format for a custom object, or null.
 Format.obj = function(props) {
@@ -195,8 +207,8 @@ Format.setup = Format.obj({
 		name: Format.any,
 		userId: Format.any,
 		coins: Format.nat,
-		hand: Format.cardSet
+		hand: Format.cardSet()
 	})),
 	constitution: Format.list(Format.exp),
-	deck: Format.cardSet
+	deck: Format.cardSet()
 });

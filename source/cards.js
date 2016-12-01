@@ -603,7 +603,7 @@ Card.register("most_paid", new Card(Role.Player,
 	"Whoever pays the most coins",
 	function*(game, slots) {
 		let players = game.players;
-		yield game.log("Whoever pays the most coins will be selected")
+		yield game.log("Whoever pays the most coins will be selected");
 		let payments = new Array(players.length);
 		for (let i = 0; i < payments.length; i++) {
 			payments[i] = yield game.interactPayment(players[i]);
@@ -634,6 +634,50 @@ Card.register("most_paid", new Card(Role.Player,
 		} else {
 			return mostPaid[0];
 		}
+	}));
+	
+Card.register("auction_winner", new Card(Role.Player,
+	"Auction winner",
+	function*(game, slots) {
+		let players = game.players;
+		yield game.log("Whoever places the highest bid will be selected (and pay that bid)");
+		let bids = new Array(players.length);
+		for (let i = 0; i < bids.length; i++) {
+			bids[i] = yield game.interactPayment(players[i],
+				{ accept: { text: "Bid" }});
+		}
+		for (let i = 0; i < bids.length; i++) {
+			bids[i] = yield game.reveal(bids[i]);;
+		}
+		let mostBidId = getTop(bids, n => n);
+		let highBid = bids[mostBidId[0]];
+		let mostBid = mostBidId.map(i => players[i]);
+		let message = [];
+		if (mostBid.length > 1) {
+			concatPlayers(message, mostBid);
+			message.push(" are tied for the largest bid");
+		} else {
+			message.push(mostBid[0], " made the largest bid");
+		}
+		for (let i = 0; i < bids.length; i++) {
+			if (bids[i] > 0) {
+				message.push(Log.Break, players[i], " bid ", Log.Coins(bids[i]));
+			} else {
+				message.push(Log.Break, players[i], " didn't place a bid");
+			}
+		}
+		yield game.log.apply(game, message);
+		let winner;
+		if (mostBid.length > 1) {
+			winner = yield tiebreak(game, mostBid);
+		} else {
+			winner = mostBid[0];
+		}
+		if (highBid > 0) {
+			yield game.log(winner, " pays ", Log.Coins(highBid));
+			yield game.takeCoins(winner, highBid);
+		}
+		return winner;
 	}));
 	
 Card.register("first", new Card(Role.Player,
@@ -698,6 +742,7 @@ let defaultDeck = {
 	"wealthiest_player": 4,
 	"left_player": 3,
 	"right_player": 3,
-	"most_paid": 5,
+	"most_paid": 3,
+	"auction_winner": 5,
 	"first": 4
 };

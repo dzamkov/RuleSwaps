@@ -46,6 +46,13 @@ Commitment.prototype.resolve = function(value) {
 	this.isResolved = true;
 }
 
+// Identifies a possible color for a button.
+let Color = {
+	Green: "green",
+	Yellow: "yellow",
+	Red: "red"
+};
+
 // An interface for running a game.
 function Game(setup) {
 	

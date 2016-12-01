@@ -140,11 +140,11 @@ Interface.prototype.resolveCommitment = function(commitment, value) {
 Interface.defaultBooleanStyle = {
 	yes: {
 		text: "Yay",
-		color: UI.Button.Color.Green
+		color: Color.Green
 	},
 	no: {
 		text: "Nay",
-		color: UI.Button.Color.Red
+		color: Color.Red
 	}
 };
 
@@ -186,11 +186,11 @@ Interface.prototype.interactBoolean = function*(player, style) {
 Interface.defaultPaymentStyle = {
 	accept: {
 		text: "Pay",
-		color: UI.Button.Color.Green
+		color: Color.Green
 	},
 	pass: {
 		text: "Pass",
-		color: UI.Button.Color.Yellow
+		color: Color.Yellow
 	}
 };
 
@@ -220,15 +220,15 @@ Interface.prototype.interactPayment = function*(player, style) {
 Interface.defaultBooleanPaymentStyle = {
 	yes: {
 		text: "Yay",
-		color: UI.Button.Color.Green
+		color: Color.Green
 	},
 	no: {
 		text: "Nay",
-		color: UI.Button.Color.Red
+		color: Color.Red
 	},
 	pass: {
 		text: "Pass",
-		color: UI.Button.Color.Yellow
+		color: Color.Yellow
 	}
 };
 
@@ -270,11 +270,11 @@ Interface.prototype.interactBooleanPayment = function*(player, style) {
 Interface.defaultCardsStyle = {
 	accept: {
 		text: "Accept",
-		color: UI.Button.Color.Green
+		color: Color.Green
 	},
 	pass: {
 		text: "Pass",
-		color: UI.Button.Color.Yellow
+		color: Color.Yellow
 	}
 };
 
@@ -311,11 +311,11 @@ Interface.prototype.interactCards = function*(player, options, style) {
 Interface.defaultSpecifyStyle = {
 	accept: {
 		text: "Accept",
-		color: UI.Button.Color.Green
+		color: Color.Green
 	},
 	pass: {
 		text: "Pass",
-		color: UI.Button.Color.Yellow
+		color: Color.Yellow
 	}
 };
 

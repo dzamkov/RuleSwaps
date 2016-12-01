@@ -531,13 +531,6 @@ let UI = new function() {
 		}).bind(this));
 	}
 	
-	// Identifies a possible color for a button.
-	Button.Color = {
-		Green: "green",
-		Yellow: "yellow",
-		Red: "red"
-	};
-	
 	// Creates a new button.
 	Button.create = function(textParts, color) {
 		let element = document.createElement("a");
@@ -767,7 +760,7 @@ let UI = new function() {
 			let oldDragIn = this.cardList.dragIn;
 			this.cardList.dragIn = function(animated, left, top, fromAcceptor) {
 				if (fromAcceptor === this ||
-					cards.amount === null ||
+					!cards.amount ||
 					this.getNumCards() < cards.amount)
 					return oldDragIn.call(this, animated, left, top, fromAcceptor);
 			};
@@ -789,7 +782,8 @@ let UI = new function() {
 		
 		// Updates the status of the buttons in this input
 		Cards.prototype.updateButtons = function() {
-			setButtonsEnabled(this.buttons, !this.amount || this.amount === this.cardList.getNumCards());
+			let numCards = this.cardList.getNumCards();
+			setButtonsEnabled(this.buttons, numCards > 0 && (!this.amount || this.amount === numCards));
 		};
 		
 		Cards.prototype.onButtonClick = function(options) {
@@ -798,7 +792,7 @@ let UI = new function() {
 				this.respond(null, options.value);
 			} else {
 				let cards = this.cardList.toList();
-				if (cards && (this.amount === null || cards.length === this.amount)) {
+				if (cards.length > 0 && (!this.amount|| cards.length === this.amount)) {
 					this.respond(cards, options.value);
 				}
 			}

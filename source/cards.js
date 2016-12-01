@@ -167,6 +167,49 @@ Card.register("specify_action_optional", new Card(Role.Action,
 			yield game.log(player, " waives the right to perform an action");
 		}
 	}));
+
+Card.register("specify_action", new Card(Role.Action,
+	"{Player} must specify and perform an action, or discard down to 5 cards",
+	function*(game, slots) {
+		let downTo = 5;
+		let player = yield game.resolve(slots[0]);
+		yield game.log(player, " must specify and perform an action, or discard down to ", Log.Cards(downTo));
+		let exp = yield game.reveal(yield game.interactSpecify(player, Role.Action, 
+		(player.handSize > downTo) ? {
+			pass: { 
+				text: "Discard",
+				color: Color.Red
+			}
+		} : undefined));
+		if (exp) {
+			let cardList = exp.toList();
+			yield game.takeCards(player, CardSet.fromList(cardList));
+			yield game.log(player, " performs an action ", exp);
+			yield game.pushPlayerStack(player);
+			yield game.resolve(exp);
+			yield game.popPlayerStack(player);
+			yield game.discard(CardSet.fromList(cardList));
+		} else {
+			if (player.handSize <= downTo) {
+				yield game.log(player,
+					" chose not to perform an action and doesn't have more than ",
+					Log.Cards(downTo));
+			} else {
+				yield game.log(player, " chose to discard down to ", Log.Cards(downTo));
+				let amount = player.handSize - downTo;
+				let res = yield game.reveal(yield game.interactCards(player, {
+					ordered: false,
+					optional: false,
+					amount: amount
+				}, {
+					accept: { text: "Discard" }
+				}));
+				yield game.takeCards(player, res);
+				yield game.log(player, " discards ", res)
+				yield game.discard(res);
+			}
+		}
+	}));
 	
 Card.register("conditional_twice", new Card(Role.Action,
 	"If {Condition}, do {Action} twice",
@@ -636,6 +679,51 @@ Card.register("most_paid", new Card(Role.Player,
 		}
 	}));
 	
+Card.register("most_discarded", new Card(Role.Player,
+	"Whoever discards the most cards",
+	function*(game, slots) {
+		let players = game.players;
+		yield game.log("Whoever discards the most cards will be selected");
+		let discards = new Array(players.length);
+		for (let i = 0; i < discards.length; i++) {
+			discards[i] = yield game.interactCards(players[i], {
+				ordered: false,
+				optional: true
+			}, {
+				accept: { text: "Discard" }
+			});
+		}
+		for (let i = 0; i < discards.length; i++) {
+			let res = yield game.reveal(discards[i]);
+			discards[i] = res;
+			if (res) {
+				yield game.takeCards(players[i], res);
+				yield game.discard(res);
+			}
+		}
+		let mostDiscarded = getTop(discards, d => d ? d.totalCount : 0).map(i => players[i]);
+		let message = [];
+		if (mostDiscarded.length > 1) {
+			concatPlayers(message, mostDiscarded);
+			message.push(" discarded the most cards");
+		} else {
+			message.push(mostDiscarded[0], " discarded the most cards");
+		}
+		for (let i = 0; i < discards.length; i++) {
+			if (discards[i]) {
+				message.push(Log.Break, players[i], " discarded ", discards[i]);
+			} else {
+				message.push(Log.Break, players[i], " didn't discard anything");
+			}
+		}
+		yield game.log.apply(game, message);
+		if (mostDiscarded.length > 1) {
+			return yield tiebreak(game, mostDiscarded);
+		} else {
+			return mostDiscarded[0];
+		}
+	}));
+	
 Card.register("auction_winner", new Card(Role.Player,
 	"Auction winner",
 	function*(game, slots) {
@@ -716,6 +804,7 @@ let defaultDeck = {
 	"conditional_player_loses_18": 2,
 	"player_reveals_hand_conditional": 3,
 	"specify_action_optional": 3,
+	"specify_action": 3,
 	"conditional_twice": 3,
 	"insert_amendment_conditional": 3,
 	"foreach_conditional": 2,
@@ -743,6 +832,7 @@ let defaultDeck = {
 	"left_player": 3,
 	"right_player": 3,
 	"most_paid": 3,
+	"most_discarded": 4,
 	"auction_winner": 5,
 	"first": 4
 };

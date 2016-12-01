@@ -530,32 +530,53 @@ function getTop(list, measure) {
 	return curTop;
 }
 
+let concatPlayers = function(message, players) {
+	for (let i = 0; i < players.length - 2; i++) {
+		message.push(players[i], ", ");
+	}
+	message.push(players[players.length - 2]);
+	message.push(" and ", players[players.length - 1]);
+};
+
+let tiebreak = function*(game, players) {
+	let i = yield game.reveal(yield game.random(players.length));
+	let player = players[i];
+	yield game.log(player, " was randomly selected in a tiebreaker");
+	return player;
+};
+
 Card.register("poorest_player", new Card(Role.Player,
 	"Poorest player",
 	function*(game, slots) {
-		let players = yield game.getPlayersFrom(game.getActivePlayer());
-		let poorestId = getTop(players, player => -player.coins);
-		if (poorestId.length > 1) {
-			yield game.log("There is a tie for poorest player. ",
-				players[poorestId[0]], " is the first going clockwise");
+		let players = game.players;
+		let poorest = getTop(players, player => -player.coins).map(i => players[i]);
+		if (poorest.length > 1) {
+			let message = [];
+			concatPlayers(message, poorest);
+			message.push(" are tied for poorest player.");
+			yield game.log.apply(game, message);
+			return yield tiebreak(game, poorest);
 		} else {
-			yield game.log(players[poorestId[0]], " is the poorest player");
+			yield game.log(poorest[0], " is the poorest player");
+			return poorest[0];
 		}
-		return players[poorestId[0]];
 	}));
 
 Card.register("wealthiest_player", new Card(Role.Player,
 	"Wealthiest player",
 	function*(game, slots) {
-		let players = yield game.getPlayersFrom(game.getActivePlayer());
-		let wealthiestId = getTop(players, player => player.coins);
-		if (wealthiestId.length > 1) {
-			yield game.log("There is a tie for wealthiest player. ",
-				players[wealthiestId[0]], " is the first going clockwise");
+		let players = game.players;
+		let wealthiest = getTop(players, player => player.coins).map(i => players[i]);
+		if (wealthiest.length > 1) {
+			let message = [];
+			concatPlayers(message, wealthiest);
+			message.push(" are tied for wealthiest player.");
+			yield game.log.apply(game, message);
+			return yield tiebreak(game, wealthiest);
 		} else {
-			yield game.log(players[wealthiestId[0]], " is the wealthiest player");
+			yield game.log(wealthiest[0], " is the wealthiest player");
+			return wealthiest[0];
 		}
-		return players[wealthiestId[0]];
 	}));
 
 Card.register("left_player", new Card(Role.Player,
@@ -581,7 +602,7 @@ Card.register("right_player", new Card(Role.Player,
 Card.register("most_paid", new Card(Role.Player,
 	"Whoever pays the most coins",
 	function*(game, slots) {
-		let players = yield game.getPlayersFrom(game.getActivePlayer());
+		let players = game.players;
 		yield game.log("Whoever pays the most coins will be selected")
 		let payments = new Array(players.length);
 		for (let i = 0; i < payments.length; i++) {
@@ -592,13 +613,13 @@ Card.register("most_paid", new Card(Role.Player,
 			payments[i] = res;
 			yield game.takeCoins(players[i], res);
 		}
-		let biggestPayorId = getTop(payments, n => n);
+		let mostPaid = getTop(payments, n => n).map(i => players[i]);
 		let message = [];
-		if (biggestPayorId.length > 1) {
-			message.push("There is a tie for the biggest payment. ",
-				players[biggestPayorId[0]], " is the first big payer going clockwise");
+		if (mostPaid.length > 1) {
+			concatPlayers(message, mostPaid);
+			message.push(" made the biggest payment");
 		} else {
-			message.push(players[biggestPayorId[0]], " made the biggest payment");
+			message.push(mostPaid[0], " made the biggest payment");
 		}
 		for (let i = 0; i < payments.length; i++) {
 			if (payments[i] > 0) {
@@ -608,7 +629,11 @@ Card.register("most_paid", new Card(Role.Player,
 			}
 		}
 		yield game.log.apply(game, message);
-		return players[biggestPayorId[0]];
+		if (mostPaid.length > 1) {
+			return yield tiebreak(game, mostPaid);
+		} else {
+			return mostPaid[0];
+		}
 	}));
 	
 Card.register("first", new Card(Role.Player,

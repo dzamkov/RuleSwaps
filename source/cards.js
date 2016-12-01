@@ -63,8 +63,7 @@ let playerDiscards = function*(game, player, amount) {
 			optional: false,
 			amount: discard
 		}, {
-			accept: "Discard",
-			pass: null
+			accept: { text: "Discard" }
 		}));
 		yield game.takeCards(player, res);
 		yield game.log(player, " discards ", res)
@@ -297,8 +296,8 @@ let mayPay = function*(game, player, amount) {
 	if (player.coins >= amount) {
 		yield game.log(player, " may pay ", Log.Coins(amount));
 		let res = yield game.reveal(yield game.interactBoolean(player, {
-			yes: ["Pay ", Log.Coins(amount)],
-			no: "Don't pay"
+			yes: { text: ["Pay ", Log.Coins(amount)] },
+			no: { text: "Don't pay" }
 		}));
 		if (res) {
 			yield game.log(player, " pays ", Log.Coins(amount));
@@ -326,8 +325,8 @@ Card.register("you_reveal_hand", new Card(Role.Condition,
 	function*(game, slots) {
 		let player = game.getActivePlayer();
 		let res = yield game.reveal(yield game.interactBoolean(player, {
-			yes: "Reveal hand",
-			no: "Don't reveal hand"
+			yes: { text: "Reveal hand" },
+			no: { text: "Don't reveal hand" }
 		}));
 		if (res) {
 			let hand = yield game.reveal(yield game.getHand(player));
@@ -346,8 +345,7 @@ let mayDiscard = function*(game, player, amount) {
 			optional: true,
 			amount: 3
 		}, {
-			accept: "Discard",
-			pass: "Pass"
+			accept: { text: "Discard" }
 		}));
 		if (res) {
 			yield game.takeCards(player, res);

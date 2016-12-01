@@ -352,8 +352,6 @@ http.createServer(function(request, response) {
 	
 }).listen(port);
 
-console.log("Server running...");
-
 // Print deck stats
 let deck = CardSet.create(defaultDeck);
 console.log("Total card types: ", Object.keys(deck.counts).length);
@@ -363,3 +361,5 @@ let roleCounts = deck.getRoleCounts();
 console.log("Total action cards: ", roleCounts[0]);
 console.log("Total condition cards: ", roleCounts[1]);
 console.log("Total player cards: ", roleCounts[2]);
+
+console.log("Server running...");

@@ -524,25 +524,37 @@ let UI = new function() {
 	// Augments an element to be a button.
 	function Button(element) {
 		this.element = element;
-		this.isDisabled = false;
+		element.button = this;
+		this.isEnabled = true;
 		element.addEventListener("click", (function() { 
-			if (!this.isDisabled) this.onClick(this);
+			if (this.isEnabled) this.onClick(this);
 		}).bind(this));
 	}
 	
-	// Sets a button to be disabled.
-	Button.prototype.disable = function() {
-		if (!this.isDisabled) {
-			this.isDisabled = true;
-			this.element.className += " -disabled";
-		}
-	}
+	// Identifies a possible color for a button.
+	Button.Color = {
+		Green: "green",
+		Yellow: "yellow",
+		Red: "red"
+	};
 	
-	// Sets a button to be enabled.
-	Button.prototype.enable = function() {
-		if (this.isDisabled) {
-			this.isDisabled = false;
-			this.element.className = this.element.className.replace(" -disabled", "");
+	// Creates a new button.
+	Button.create = function(textParts, color) {
+		let element = document.createElement("a");
+		element.className = "button -medium -" + color;
+		setText(element, textParts);
+		return new Button(element);
+	};
+	
+	// Sets whether this button is enabled.
+	Button.prototype.setEnabled = function(enabled) {
+		if (this.isEnabled !== enabled) {
+			this.isEnabled = enabled;
+			if (enabled) {
+				this.element.className = this.element.className.replace(" -disabled", "");
+			} else {
+				this.element.className += " -disabled";
+			}
 		}
 	}
 	
@@ -640,54 +652,54 @@ let UI = new function() {
 	// Contains interfaces for specific types of player input.
 	(function() {
 		
-		function setButtonText(button, parts) {
-			if (parts) {
-				button.element.style.display = "";
-				setText(button.element, parts);
-			} else {
-				button.element.style.display = "none";
+		// Sets a container to display only the given list of buttons.
+		function setButtons(container, list, self, onClick) {
+			while (container.lastChild) container.removeChild(container.lastChild);
+			for (let i = 0; i < list.length; i++) {
+				let options = list[i];
+				let button = Button.create(options.text, options.color);
+				button.onClick = onClick.bind(self, options);
+				button.options = options;
+				container.appendChild(button.element);
 			}
 		}
 		
-		// Augments a set of elements to be a yes/no input.
-		function Boolean(container, yesButton, noButton) {
-			Input.call(this, container);
-			this.yesButton = new Button(yesButton);
-			this.noButton = new Button(noButton);
-			this.callback = null;
-			
-			this.yesButton.onClick = this.respond.bind(this, true);
-			this.noButton.onClick = this.respond.bind(this, false);
+		// Sets whether the buttons in the given list are enabled. Buttons with a truthy "pass"
+		// option are ignored.
+		function setButtonsEnabled(container, enabled) {
+			for (let i = 0; i < container.children.length; i++) {
+				let button = container.children[i].button;
+				if (!button.options.pass) {
+					button.setEnabled(enabled);
+				}
+			}
 		}
 		
-		Boolean.prototype.defaultStyle = {
-			yes: "Yay",
-			no: "Nay",
+		// Augments a set of elements to be a simple input that allows the user to choose between
+		// a given set of options.
+		function Options(container) {
+			Input.call(this, container);
+			this.callback = null;
+		}
+		
+		Options.prototype.onButtonClick = function(options) {
+			this.respond(options.value);
+		}
+		
+		Options.prototype.respond = Input.prototype.respond;
+		Options.prototype.request = function(options, callback) {
+			setButtons(this.container, options.buttons, this, this.onButtonClick);
+			Input.prototype.request.call(this, callback);
 		};
 		
-		Boolean.prototype.respond = Input.prototype.respond;
-		Boolean.prototype.request = function(callback, style) {
-			style = style || this.defaultStyle;
-			setButtonText(this.yesButton, style.yes);
-			setButtonText(this.noButton, style.no);
-			Input.prototype.request.call(this, callback);
-		}
-		
 		// Augments a set of elements to be a adjustable payment input.
-		function Payment(container, handle, bar, yesButton, noButton, passButton) {
+		function Payment(container, handle, bar, buttons) {
 			Input.call(this, container);
 			this.handle = handle;
+			this.buttons = buttons;
 			this.bar = bar;
 			this.coins = 0;
 			this.limit = 0;
-			this.yesButton = new Button(yesButton);
-			this.noButton = new Button(noButton);
-			this.passButton = new Button(passButton);
-			this.callback = null;
-			
-			this.yesButton.onClick = this.inputYes.bind(this);
-			this.noButton.onClick = this.inputNo.bind(this);
-			this.passButton.onClick = this.inputPass.bind(this);
 			
 			let payment = this;
 			handle.addEventListener("mousedown", function(e) {
@@ -718,70 +730,38 @@ let UI = new function() {
 		// Sets the payment for this input.
 		Payment.prototype.set = function(coins) {
 			this.coins = coins;
-			if (coins) {
-				this.yesButton.enable();
-				this.noButton.enable();
-			} else {
-				this.yesButton.disable();
-				this.noButton.disable();
-			}
+			setButtonsEnabled(this.buttons, !!coins);
 			this.handle.innerText = coins;
 			let r = coins / this.limit;
 			if (!r) r = 0;
 			this.setPos(r);
 		}
 		
-		Payment.prototype.inputYes = function() {
-			this.respond(this.coins, true);
+		Payment.prototype.onButtonClick = function(options) {
+			if (options.pass) {
+				this.respond(0, options.value);
+			} else {
+				this.respond(this.coins, options.value);
+			}
 		}
-		
-		Payment.prototype.inputNo = function() {
-			this.respond(this.coins, false);
-		}
-		
-		Payment.prototype.inputPass = function() {
-			this.respond(0, false);
-		}
-		
-		Payment.prototype.defaultStyle = {
-			yes: "Pay",
-			no: null,
-			pass: "Pass"
-		};
 		
 		Payment.prototype.respond = Input.prototype.respond;
-		Payment.prototype.request = function(coins, callback, style) {
-			style = style || this.defaultStyle;
-			this.limit = coins;
-			this.set(Math.min(this.coins, coins));
-			setButtonText(this.yesButton, style.yes);
-			setButtonText(this.noButton, style.no);
-			setButtonText(this.passButton, style.pass);
+		Payment.prototype.request = function(options, callback) {
+			this.limit = options.limit;
+			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
+			this.set(Math.min(this.coins, this.limit));
 			Input.prototype.request.call(this, callback);
 		}
 		
 		// Augments a set of elements to be a cards input.
-		function Cards(container, list, acceptButton, passButton) {
+		function Cards(container, list, buttons) {
 			Input.call(this, container);
 			this.cardList = new CardList(list);
-			this.acceptButton = new Button(acceptButton);
-			this.passButton = new Button(passButton);
+			this.buttons = buttons;
 			this.returnTarget = null;
 			this.amount = null;
 			
-			this.acceptButton.onClick = this.inputAccept.bind(this);
-			this.passButton.onClick = this.inputPass.bind(this);
-			
 			let cards = this;
-			
-			// Updates the status of the accept button
-			let updateAcceptButton = function() {
-				if (!cards.amount || cards.amount === cards.cardList.getNumCards()) {
-					cards.acceptButton.enable();
-				} else {
-					cards.acceptButton.disable();
-				}
-			};
 			
 			// Don't accept extra cards
 			let oldDragIn = this.cardList.dragIn;
@@ -796,27 +776,32 @@ let UI = new function() {
 			let oldLeave = this.cardList.leave;
 			this.cardList.leave = function(animated, hole, toAcceptor) {
 				oldLeave.call(this, animated, hole, toAcceptor);
-				updateAcceptButton();
+				cards.updateButtons();
 			};
 			
 			// Enable if there are enough cards
 			let oldAccept = this.cardList.accept;
 			this.cardList.accept = function(card, hole, fromAcceptor) {
 				oldAccept.call(this, card, hole, fromAcceptor);
-				updateAcceptButton();
+				cards.updateButtons();
 			};
 		}
 		
-		Cards.prototype.inputAccept = function() {
-			let cards = this.cardList.toList();
-			if (cards && (this.amount === null || cards.length === this.amount)) {
-				this.respond(cards);
-			}
-		}
+		// Updates the status of the buttons in this input
+		Cards.prototype.updateButtons = function() {
+			setButtonsEnabled(this.buttons, !this.amount || this.amount === this.cardList.getNumCards());
+		};
 		
-		Cards.prototype.inputPass = function() {
-			this.sendAllTo(this.returnTarget);
-			this.respond(null);
+		Cards.prototype.onButtonClick = function(options) {
+			if (options.pass) {
+				this.sendAllTo(this.returnTarget);
+				this.respond(null, options.value);
+			} else {
+				let cards = this.cardList.toList();
+				if (cards && (this.amount === null || cards.length === this.amount)) {
+					this.respond(cards, options.value);
+				}
+			}
 		}
 		
 		// Sends all cards currently in the card list into the given target. This should not be called
@@ -826,33 +811,24 @@ let UI = new function() {
 		}
 		
 		Cards.prototype.respond = Input.prototype.respond;
-		Cards.prototype.request = function(options, callback, style) {
+		Cards.prototype.request = function(options, callback) {
 			this.sendAllTo(null);
-			if (options.amount) {
-				this.acceptButton.disable();
-			} else {
-				this.acceptButton.enable();
-			}
-			setButtonText(this.acceptButton, style.accept);
-			setButtonText(this.passButton, style.pass);
 			this.amount = options.amount;
+			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
+			this.updateButtons();
 			Input.prototype.request.call(this, callback);
 		}
 		
 		// Augments a set of elements to be an expression input.
-		function Expression(container, list, acceptButton, passButton) {
+		function Expression(container, list, buttons) {
 			Motion.Acceptor.call(this, list);
 			Input.call(this, container);
 			
 			this.list = list;
-			this.acceptButton = new Button(acceptButton);
-			this.passButton = new Button(passButton);
+			this.buttons = buttons;
 			this.callback = null;
 			
 			this.returnTarget = null;
-			
-			this.acceptButton.onClick = this.inputAccept.bind(this);
-			this.passButton.onClick = this.inputPass.bind(this);
 		}
 		
 		Expression.prototype = Object.create(Motion.Acceptor.prototype);
@@ -910,7 +886,7 @@ let UI = new function() {
 				this.removeSlots(hole, animated.type.slots.length);
 				this.balanceChildren(false);
 			}
-			this.acceptButton.disable();
+			this.updateButtons();
 		}
 		
 		Expression.prototype.accept = function(card, hole, fromAcceptor) {
@@ -919,15 +895,7 @@ let UI = new function() {
 				console.assert(fromAcceptor !== this);
 				this.addSlots(card.element, card.type.slots);
 			}
-			
-			// Check if all slots have been filled
-			let children = this.list.children;
-			let allFilled = true;
-			for (let i = 0; i < children.length; i++) {
-				allFilled &= children[i].animated instanceof Card;
-			}
-			if (allFilled)
-				this.acceptButton.enable();
+			this.updateButtons();
 		}
 		
 		// Creates a hole element for a slot of the given role.
@@ -945,7 +913,6 @@ let UI = new function() {
 		Expression.prototype.expect = function(role) {
 			while (this.list.lastChild) this.list.removeChild(this.list.lastChild);
 			this.list.appendChild(Expression.createSlotHole(role, false));
-			this.acceptButton.disable();
 			this.balanceChildren(false);
 		}
 		
@@ -974,33 +941,44 @@ let UI = new function() {
 			this.balanceChildren(false);
 		}
 		
-		Expression.prototype.inputAccept = function() {
-			
-			// Build expression
-			let cards = [];
-			let children = this.element.children;
+		// Updates the status of the buttons in this input
+		Expression.prototype.updateButtons = function() {
+			// Check if all slots have been filled
+			let children = this.list.children;
+			let allFilled = true;
 			for (let i = 0; i < children.length; i++) {
-				let child = children[i];
-				if (child.animated instanceof Card) {
-					cards.push(child.animated.type);
-				} else {
-					console.assert(false, "Expression still contains holes");
+				allFilled &= children[i].animated instanceof Card;
+			}
+			setButtonsEnabled(this.buttons, allFilled);
+		};
+		
+		Expression.prototype.onButtonClick = function(options) {
+			if (options.pass) {
+				this.sendAllTo(this.returnTarget);
+				this.respond(null, options.value);
+			} else {
+				
+				// Build expression
+				let cards = [];
+				let children = this.element.children;
+				for (let i = 0; i < children.length; i++) {
+					let child = children[i];
+					if (child.animated instanceof Card) {
+						cards.push(child.animated.type);
+					} else {
+						console.assert(false, "Expression still contains holes");
+						return;
+					}
+				}
+				let exp = window.Expression.fromList(cards);
+				if (!exp) {
+					console.assert(false, "Expression is invalid");
 					return;
 				}
+				
+				// Reset and callback
+				this.respond(exp, options.value);
 			}
-			let exp = window.Expression.fromList(cards);
-			if (!exp) {
-				console.assert(false, "Expression is invalid");
-				return;
-			}
-			
-			// Reset and callback
-			this.respond(exp);
-		}
-		
-		Expression.prototype.inputPass = function() {
-			this.sendAllTo(this.returnTarget);
-			this.respond(null);
 		}
 		
 		// Sends all cards currently in the expression into the given target. This should not be called
@@ -1017,12 +995,14 @@ let UI = new function() {
 		}
 		
 		Expression.prototype.respond = Input.prototype.respond;
-		Expression.prototype.request = function(role, callback, style) {
-			this.expect(role);
+		Expression.prototype.request = function(options, callback) {
+			this.expect(options.role);
+			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
+			this.updateButtons();
 			Input.prototype.request.call(this, callback);
 		}
 		
-		this.Boolean = Boolean;
+		this.Options = Options;
 		this.Payment = Payment;
 		this.Cards = Cards;
 		this.Expression = Expression;

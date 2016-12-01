@@ -23,26 +23,20 @@ function start(response) {
 		constitutionList: document.getElementById("section-constitution-list"),
 		log: document.getElementById("section-log"),
 		
-		inputBoolean: document.getElementById("input-boolean"),
-		inputBooleanYes: document.getElementById("input-boolean-yes"),
-		inputBooleanNo: document.getElementById("input-boolean-no"),
+		inputOptions: document.getElementById("input-options"),
 		
 		inputPayment: document.getElementById("input-payment"),
 		inputPaymentHandle: document.getElementById("input-payment-slider-handle"),
 		inputPaymentBar: document.getElementById("input-payment-slider-bar"),
-		inputPaymentYes: document.getElementById("input-payment-yes"),
-		inputPaymentNo: document.getElementById("input-payment-no"),
-		inputPaymentPass: document.getElementById("input-payment-pass"),
+		inputPaymentButtons: document.getElementById("input-payment-buttons"),
 		
 		inputCards: document.getElementById("input-cards"),
 		inputCardsList: document.getElementById("input-cards-list"),
-		inputCardsAccept: document.getElementById("input-cards-accept"),
-		inputCardsPass: document.getElementById("input-cards-pass"),
+		inputCardsButtons: document.getElementById("input-cards-buttons"),
 		
 		inputExpression: document.getElementById("input-expression"),
 		inputExpressionList: document.getElementById("input-expression-list"),
-		inputExpressionAccept: document.getElementById("input-expression-accept"),
-		inputExpressionPass: document.getElementById("input-expression-pass"),
+		inputExpressionButtons: document.getElementById("input-expression-buttons"),
 		
 		inputChatSelector: document.getElementById("input-chat-selector"),
 		inputChatTextbox: document.getElementById("input-chat-box"),

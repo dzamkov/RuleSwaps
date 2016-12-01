@@ -216,7 +216,7 @@ $input-chat-button-width: 60px;
 	}
 }
 
-#input-boolean {
+#input-options {
 	position: relative;
 	display: flex;
 	flex-direction: row;
@@ -238,6 +238,11 @@ $input-chat-button-width: 60px;
 	width: 60%;
 	margin: 5px 30px;
 	min-height: 60px;
+}
+
+#input-payment-buttons {
+	display: flex;
+	flex-direction: row;
 }
 
 #input-payment-slider-bar {
@@ -296,6 +301,7 @@ $input-chat-button-width: 60px;
 	display: flex;
 	flex-direction: column;
 	padding: 6px;
+	margin-right: 6px;
 	width: 80px;
 	a { margin-bottom: 5px; }
 }

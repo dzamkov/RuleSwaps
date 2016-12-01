@@ -15,27 +15,21 @@ function Interface(setup, playerSelf, parts) {
 			parts.constitutionList),
 		log: new UI.Log(parts.log),
 		input: {
-			bool: new UI.Input.Boolean(
-				parts.inputBoolean,
-				parts.inputBooleanYes,
-				parts.inputBooleanNo),
+			options: new UI.Input.Options(
+				parts.inputOptions),
 			payment: new UI.Input.Payment(
 				parts.inputPayment,
 				parts.inputPaymentHandle,
 				parts.inputPaymentBar,
-				parts.inputPaymentYes,
-				parts.inputPaymentNo,
-				parts.inputPaymentPass),
+				parts.inputPaymentButtons),
 			cards: new UI.Input.Cards(
 				parts.inputCards,
 				parts.inputCardsList,
-				parts.inputCardsAccept,
-				parts.inputCardsPass),
+				parts.inputCardsButtons),
 			expression: new UI.Input.Expression(
 				parts.inputExpression,
 				parts.inputExpressionList,
-				parts.inputExpressionAccept,
-				parts.inputExpressionPass),
+				parts.inputExpressionButtons),
 		},
 		chat: new UI.Chat(
 			parts.inputChatSelector,
@@ -142,72 +136,209 @@ Interface.prototype.resolveCommitment = function(commitment, value) {
 	this.run();
 }
 
+// The default style for a boolean interaction
+Interface.defaultBooleanStyle = {
+	yes: {
+		text: "Yay",
+		color: UI.Button.Color.Green
+	},
+	no: {
+		text: "Nay",
+		color: UI.Button.Color.Red
+	}
+};
+
+// Merges two objects, prefering the first.
+function merge(a, b) {
+	if (!a) return b;
+	else if (!b) return a;
+	else if (a instanceof Object && b instanceof Object) {
+		let res = { };
+		for (let prop in b)
+			res[prop] = b[prop];
+		for (let prop in a)
+			res[prop] = merge(a[prop], b[prop]);
+		return res;
+	} else return a;
+}
+
 Interface.prototype.interactBoolean = function*(player, style) {
 	let commitment = Game.prototype.interactBoolean.call(this, player);
 	if (!commitment.isResolved && player == this.playerSelf) {
-		this.ui.input.bool.request(this.resolveCommitment.bind(this, commitment), style);
+		style = merge(style, Interface.defaultBooleanStyle);
+		this.ui.input.options.request({
+			buttons: [{
+				text: style.yes.text,
+				color: style.yes.color,
+				value: true
+			}, {
+				text: style.no.text,
+				color: style.no.color,
+				value: false
+			}]
+		}, this.resolveCommitment.bind(this, commitment));
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
 }
 
+// The default style for a payment interaction
+Interface.defaultPaymentStyle = {
+	accept: {
+		text: "Pay",
+		color: UI.Button.Color.Green
+	},
+	pass: {
+		text: "Pass",
+		color: UI.Button.Color.Yellow
+	}
+};
+
+
 Interface.prototype.interactPayment = function*(player, style) {
 	let commitment = Game.prototype.interactPayment.call(this, player);
 	if (!commitment.isResolved && player == this.playerSelf) {
-		this.ui.input.payment.request(
-			this.playerSelf.coins,
-			this.resolveCommitment.bind(this, commitment),
-			style);
+		style = merge(style, Interface.defaultPaymentStyle);
+		this.ui.input.payment.request({
+			limit: this.playerSelf.coins,
+			buttons: [{
+				text: style.accept.text,
+				color: style.accept.color,
+				pass: false
+			}, {
+				text: style.pass.text,
+				color: style.pass.color,
+				pass: true
+			}]
+		}, this.resolveCommitment.bind(this, commitment));
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
 }
+
+// The default style for a boolean payment interaction
+Interface.defaultBooleanPaymentStyle = {
+	yes: {
+		text: "Yay",
+		color: UI.Button.Color.Green
+	},
+	no: {
+		text: "Nay",
+		color: UI.Button.Color.Red
+	},
+	pass: {
+		text: "Pass",
+		color: UI.Button.Color.Yellow
+	}
+};
 
 Interface.prototype.interactBooleanPayment = function*(player, style) {
 	let game = this;
 	let bool = yield Game.prototype.interactBoolean.call(this, player);
 	let payment = yield Game.prototype.interactPayment.call(this, player);
 	if (!bool.isResolved && !payment.isResolved && player == this.playerSelf) {
-		this.ui.input.payment.request(
-			this.playerSelf.coins, function(a, b) {
-				game.resolveCommitment(bool, b);
-				game.resolveCommitment(payment, a);
-			}, style || {
-				yes: "Yay",
-				no: "Nay",
-				pass: "Pass"
-			});
+		style = merge(style, Interface.defaultBooleanPaymentStyle);
+		this.ui.input.payment.request({
+			limit: this.playerSelf.coins,
+			buttons: [{
+				text: style.yes.text,
+				color: style.yes.color,
+				value: true,
+				pass: false
+			}, {
+				text: style.no.text,
+				color: style.no.color,
+				value: false,
+				pass: false
+			}, {
+				text: style.pass.text,
+				color: style.pass.color,
+				value: false,
+				pass: true
+			}]
+		}, function(a, b) {
+			game.resolveCommitment(bool, b);
+			game.resolveCommitment(payment, a);
+		});
 		yield this.awaitCommitment(bool);
 		yield this.awaitCommitment(payment);
 	}
 	return { bool: bool, payment: payment };
 }
 
+// The default style for a cards interaction
+Interface.defaultCardsStyle = {
+	accept: {
+		text: "Accept",
+		color: UI.Button.Color.Green
+	},
+	pass: {
+		text: "Pass",
+		color: UI.Button.Color.Yellow
+	}
+};
+
 Interface.prototype.interactCards = function*(player, options, style) {
 	let game = this;
 	let commitment = Game.prototype.interactCards.call(this, player, options);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		this.ui.input.cards.request(options, function(list) {
+		style = merge(style, Interface.defaultCardsStyle);
+		this.ui.input.cards.request({
+			amount: options.amount,
+			buttons: [{
+				text: style.accept.text,
+				color: style.accept.color,
+				pass: false
+			}].concat(options.optional ? [{
+				text: style.pass.text,
+				color: style.pass.color,
+				pass: true
+			}] : [])
+		}, function(list) {
 			if (list) {
 				game.resolveCommitment(commitment, options.ordered ? list : CardSet.fromList(list));
 				game.ui.input.cards.sendAllTo(null);
 			} else {
 				game.resolveCommitment(commitment, null);
 			}
-		}, style);
+		});
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
 }
 
+// The default style for a specify interaction
+Interface.defaultSpecifyStyle = {
+	accept: {
+		text: "Accept",
+		color: UI.Button.Color.Green
+	},
+	pass: {
+		text: "Pass",
+		color: UI.Button.Color.Yellow
+	}
+};
+
 Interface.prototype.interactSpecify = function*(player, role, style) {
 	let game = this;
 	let commitment = Game.prototype.interactSpecify.call(this, player, role);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		this.ui.input.expression.request(role, function(exp) {
+		style = merge(style, Interface.defaultSpecifyStyle);
+		this.ui.input.expression.request({
+			role: role,
+			buttons: [{
+				text: style.accept.text,
+				color: style.accept.color,
+				pass: false
+			}, {
+				text: style.pass.text,
+				color: style.pass.color,
+				pass: true
+			}]
+		}, function(exp) {
 			game.resolveCommitment(commitment, exp);
 			game.ui.input.expression.sendAllTo(null);
-		}, style);
+		});
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
@@ -217,8 +348,20 @@ Interface.prototype.interactAmend = function*(player, style) {
 	let game = this;
 	let commitment = this.declareCommitment(player, this.getAmendFormat());
 	if (!commitment.isResolved && player === this.playerSelf) {
+		style = merge(style, Interface.defaultSpecifyStyle);
 		this.ui.constitution.allowInsertPick();
-		this.ui.input.expression.request(Role.Action, function(exp) {
+		this.ui.input.expression.request({
+			role: Role.Action,
+			buttons: [{
+				text: style.accept.text,
+				color: style.accept.color,
+				pass: false
+			}, {
+				text: style.pass.text,
+				color: style.pass.color,
+				pass: true
+			}]
+		}, function(exp) {
 			if (exp) {
 				let proposal = game.ui.constitution.proposeInsertPick(exp);
 				game.resolveCommitment(commitment, {
@@ -231,7 +374,7 @@ Interface.prototype.interactAmend = function*(player, style) {
 				game.ui.constitution.cancelInsertPick();
 				game.resolveCommitment(commitment, null);
 			}
-		}, style);
+		});
 	}
 	return yield this.processAmend(commitment);
 }

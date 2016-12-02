@@ -768,6 +768,26 @@ Card.register("auction_winner", new Card(Role.Player,
 		return winner;
 	}));
 	
+Card.register("picks", new Card(Role.Player,
+	"{Player} picks",
+	function*(game, slots) {
+		let player = yield game.resolve(slots[0]);
+		yield game.log(player, " may pick any player");
+		let otherPlayer = yield game.reveal(yield game.interactPlayer(player, true));
+		yield game.log(player, " picked ", otherPlayer);
+		return otherPlayer;
+	}));
+
+Card.register("picks_other", new Card(Role.Player,
+	"{Player} picks, other than themself",
+	function*(game, slots) {
+		let player = yield game.resolve(slots[0]);
+		yield game.log(player, " may pick any other player");
+		let otherPlayer = yield game.reveal(yield game.interactPlayer(player, false));
+		yield game.log(player, " picked ", otherPlayer);
+		return otherPlayer;
+	}));
+	
 Card.register("first", new Card(Role.Player,
 	"The first player, going clockwise, who satisfies {Condition}",
 	function*(game, slots) {
@@ -834,5 +854,7 @@ let defaultDeck = {
 	"most_paid": 3,
 	"most_discarded": 4,
 	"auction_winner": 5,
+	"picks": 5,
+	"picks_other": 3,
 	"first": 4
 };

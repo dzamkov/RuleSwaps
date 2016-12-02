@@ -50,7 +50,8 @@ Commitment.prototype.resolve = function(value) {
 let Color = {
 	Green: "green",
 	Yellow: "yellow",
-	Red: "red"
+	Red: "red",
+	White: "white"
 };
 
 // An interface for running a game.
@@ -364,23 +365,29 @@ Game.prototype.takeCards = function*(player, cardSet) {
 	} else {
 		yield this.setHandSize(player, player.handSize - cardSet.totalCount);
 	}
-}
+};
 
 // Chooses a random integer between 0 (inclusive) and the given number (exclusive). Returns
 // it as a commitment.
 Game.prototype.random = function*(range) {
 	return this.declareCommitment(null, Format.nat.lessThan(range));
-}
+};
 
 // Requests the given player specify a boolean value. Returns that value wrapped in a commitment.
 Game.prototype.interactBoolean = function(player) {
 	return this.declareCommitment(player, Format.bool);
-}
+};
+
+// Requests the given player pick another player. Returns that player wrapped in a commitment.
+Game.prototype.interactPlayer = function(player, canPickThemself) {
+	// TODO: Restrict format when canPickThemself is false
+	return this.declareCommitment(player, Format.id(Format.nat, this.players));
+};
 
 // Requests the given player to specify a payment amount. Returns that amount wrapped in a commitment.
 Game.prototype.interactPayment = function(player) {
 	return this.declareCommitment(player, Format.nat.lessThan(player.coins + 1));
-}
+};
 
 // Requests the given player to specify a payment amount and a boolean. Returns both wrapped in
 // separate commitments.
@@ -388,7 +395,7 @@ Game.prototype.interactBooleanPayment = function*(player) {
 	let bool = yield this.interactBoolean(player);
 	let payment = yield this.interactPayment(player);
 	return { bool: bool, payment: payment };
-}
+};
 
 // Requests the given player to select a list or set of cards subject to restrictions.
 //
@@ -403,7 +410,7 @@ Game.prototype.interactCards = function(player, options) {
 	if (options.amount) format = format.withSize(optional.amount);
 	if (options.optional) format = format.orNull();
 	return this.declareCommitment(player, format);
-}
+};
 
 // Requests the given player to specify an expression of the given role. Returns that expression wrapped in
 // a commitment.

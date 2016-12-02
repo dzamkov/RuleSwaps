@@ -160,7 +160,7 @@ function merge(a, b) {
 			res[prop] = merge(a[prop], b[prop]);
 		return res;
 	} else return a;
-}
+};
 
 Interface.prototype.interactBoolean = function*(player, style) {
 	let commitment = Game.prototype.interactBoolean.call(this, player);
@@ -180,7 +180,29 @@ Interface.prototype.interactBoolean = function*(player, style) {
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
-}
+};
+
+Interface.prototype.interactPlayer = function*(player, canPickThemself, style) {
+	let commitment = Game.prototype.interactPlayer.call(this, player);
+	if (!commitment.isResolved && player === this.playerSelf) {
+		let buttons = [];
+		for (let i = 0; i < this.players.length; i++) {
+			let otherPlayer = this.players[i];
+			if (canPickThemself || otherPlayer !== this.playerSelf) {
+				buttons.push({
+					text: [otherPlayer],
+					color: Color.White,
+					value: otherPlayer
+				});
+			}
+		}
+		this.ui.input.options.request({
+			buttons: buttons
+		}, this.resolveCommitment.bind(this, commitment));
+		yield this.awaitCommitment(commitment);
+	}
+	return commitment;
+};
 
 // The default style for a payment interaction
 Interface.defaultPaymentStyle = {
@@ -214,7 +236,7 @@ Interface.prototype.interactPayment = function*(player, style) {
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
-}
+};
 
 // The default style for a boolean payment interaction
 Interface.defaultBooleanPaymentStyle = {
@@ -264,7 +286,7 @@ Interface.prototype.interactBooleanPayment = function*(player, style) {
 		yield this.awaitCommitment(payment);
 	}
 	return { bool: bool, payment: payment };
-}
+};
 
 // The default style for a cards interaction
 Interface.defaultCardsStyle = {
@@ -305,7 +327,7 @@ Interface.prototype.interactCards = function*(player, options, style) {
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
-}
+};
 
 // The default style for a specify interaction
 Interface.defaultSpecifyStyle = {
@@ -342,7 +364,7 @@ Interface.prototype.interactSpecify = function*(player, role, style) {
 		yield this.awaitCommitment(commitment);
 	}
 	return commitment;
-}
+};
 
 Interface.prototype.interactAmend = function*(player, style) {
 	let game = this;
@@ -377,22 +399,22 @@ Interface.prototype.interactAmend = function*(player, style) {
 		});
 	}
 	return yield this.processAmend(commitment);
-}
+};
 
 Interface.prototype.proposeAmendment = function*(amend) {
 	if (!amend.proposal) amend.proposal = this.ui.constitution.propose(amend.line, amend.exp);
 	yield Game.prototype.proposeAmendment.call(this, amend);
-}
+};
 
 Interface.prototype.confirmAmend = function*(amend) {
 	this.ui.constitution.confirmProposal(amend.proposal);
 	return yield Game.prototype.confirmAmend.call(this, amend);
-}
+};
 
 Interface.prototype.cancelAmend = function*(amend) {
 	this.ui.constitution.cancelProposal(amend.proposal);
 	return yield Game.prototype.cancelAmend.call(this, amend);
-}
+};
 
 // Stops the interface from running for the given length of time.
 Interface.prototype.delay = function*(time) {
@@ -402,4 +424,4 @@ Interface.prototype.delay = function*(time) {
 		this.run();
 	}).bind(this), time);
 	while (this.delayTime) yield this.pause();
-}
+};

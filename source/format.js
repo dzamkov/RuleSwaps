@@ -268,7 +268,7 @@ Format.Id.prototype.decode = function(source) {
 };
 
 Format.id = function(formatId, byId) {
-	return new Format.Id(byId);
+	return new Format.Id(formatId, byId);
 };
 
 // A format for a game setup

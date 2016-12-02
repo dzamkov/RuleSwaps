@@ -325,7 +325,7 @@ Game.prototype.setHandSize = function(player, handSize) {
 // Declares a commitment that contains the current hand of the given player as a
 // card set.
 Game.prototype.getHand = function(player) {
-	return this.declareCommitment(null, Format.cardSet());
+	return this.declareCommitment(null, Format.cardSet);
 }
 
 // Causes a player to draw the given number of cards.
@@ -369,7 +369,7 @@ Game.prototype.takeCards = function*(player, cardSet) {
 // Chooses a random integer between 0 (inclusive) and the given number (exclusive). Returns
 // it as a commitment.
 Game.prototype.random = function*(range) {
-	return this.declareCommitment(null, Format.num(range));
+	return this.declareCommitment(null, Format.nat.lessThan(range));
 }
 
 // Requests the given player specify a boolean value. Returns that value wrapped in a commitment.
@@ -379,7 +379,7 @@ Game.prototype.interactBoolean = function(player) {
 
 // Requests the given player to specify a payment amount. Returns that amount wrapped in a commitment.
 Game.prototype.interactPayment = function(player) {
-	return this.declareCommitment(player, Format.num(player.coins + 1));
+	return this.declareCommitment(player, Format.nat.lessThan(player.coins + 1));
 }
 
 // Requests the given player to specify a payment amount and a boolean. Returns both wrapped in
@@ -399,24 +399,24 @@ Game.prototype.interactBooleanPayment = function*(player) {
 //
 //	returns a commitment of either a set or lists of cards.
 Game.prototype.interactCards = function(player, options) {
-	// TODO: More specific format taking into account options
-	return this.declareCommitment(player, options.ordered ?
-		Format.cardList :
-		Format.cardSet(options.optional || true, options.amount || null));
+	let format = options.ordered ? Format.list.card : Format.cardSet;
+	if (options.amount) format = format.withSize(optional.amount);
+	if (options.optional) format = format.orNull();
+	return this.declareCommitment(player, format);
 }
 
 // Requests the given player to specify an expression of the given role. Returns that expression wrapped in
 // a commitment.
 Game.prototype.interactSpecify = function(player, role) {
-	return this.declareCommitment(player, Format.exp);
+	return this.declareCommitment(player, Format.exp.orNull());
 }
 
 // Gets the format for an amendment to the constitution at this moment.
 Game.prototype.getAmendFormat = function() {
-	return Format.obj({
-		line: Format.num(this.constitution.length + 1),
+	return Format.record({
+		line: Format.nat.lessThan(this.constitution.length + 1),
 		exp: Format.exp
-	});
+	}).orNull();
 }
 
 // Given a commitment for an amendment, does the processing needed to reveal it and make a proposal.

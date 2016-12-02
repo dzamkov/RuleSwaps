@@ -1,19 +1,24 @@
 
 // Contains functions for encoding, decoding and validating values of a given type. Can also be used for
 // picking a simple representative of that type.
-function Format(simple) {
-	this.simple = simple;
-}
+function Format() {
+	
+};
 
 // Encodes a value of the format type as a simple JSON-able object.
 Format.prototype.encode = function(value) { 
-	// TODO
-}
+	// Override me
+};
 
 // Decodes an object of the format type from a JSON object. Throws an exception if the object is malformed.
 Format.prototype.decode = function(source) {
-	// TODO
-}
+	// Override me
+};
+
+// Constructs a restricted form of this format that expects collection-like objects to have a certain size.
+Format.prototype.withSize = function(size) {
+	return this;
+};
 
 // The exception thrown when a decode fails.
 Format.Exception = { };
@@ -21,53 +26,65 @@ Format.Exception.name = "Format exception";
 Format.Exception.toString = function() { return this.name };
 
 // A format which assumes nothing about its contained value and does no encoding or decoding.
-Format.any = new Format(null);
-Format.any.encode = function(value) { return value; }
-Format.any.decode = function(value) { return value; }
+Format.Any = function() { };
+Format.Any.prototype = Object.create(Format.prototype);
+Format.Any.prototype.encode = function(value) { return value; }
+Format.Any.prototype.decode = function(value) { return value; }
+Format.any = new Format.Any();
 
 // A format for a boolean value.
-Format.bool = new Format(false);
+Format.Bool = function() { };
+Format.Bool.prototype = Object.create(Format.prototype);
 
-Format.bool.encode = function(value) {
+Format.Bool.prototype.encode = function(value) {
 	return value;
-}
+};
 
-Format.bool.decode = function(value) {
+Format.Bool.prototype.decode = function(value) {
 	if (typeof value !== "boolean") throw Format.Exception;
 	return value;
-}
+};
+
+Format.bool = new Format.Bool();
 
 
-// A format for a card, or null.
-Format.card = new Format(null);
+// A format for a card.
+Format.Card = function(allowNull) {
+	this.allowNull = allowNull;
+};
 
-Format.card.encode = function(card) {
-	return card.name;
-}
+Format.Card.prototype = Object.create(Format.prototype);
 
-Format.card.decode = function(source) {
-	if (source === null) return null;
+Format.Card.prototype.encode = function(card) {
+	return card ? card.name : null;
+};
+
+Format.Card.prototype.decode = function(source) {
+	if (this.allowNull && source === null) return null;
 	if (typeof source !== "string") throw Format.Exception;
 	let res = Card.get(source);
 	if (!res) throw Format.Exception;
 	return res;
-}
-
-// A format for a card set.
-Format.cardSet = function(allowNull, totalCount) {
-	return new Format.CardSet(allowNull || false, totalCount || null);
 };
 
-Format.CardSet = function(allowNull, totalCount) {
+Format.Card.prototype.orNull = function() {
+	return new Format.Card(true);
+};
+
+Format.card = new Format.Card(false);
+
+
+// A format for a card set.
+Format.CardSet = function(allowNull, size) {
 	this.allowNull = allowNull;
-	this.totalCount = totalCount;
+	this.size = size;
 };
 
 Format.CardSet.prototype = Object.create(Format.prototype);
 
 Format.CardSet.prototype.encode = function(cards) {
 	return cards ? cards.counts : null;
-}
+};
 
 Format.CardSet.prototype.decode = function(source) {
 	if (source === null && this.allowNull) return null;
@@ -80,69 +97,82 @@ Format.CardSet.prototype.decode = function(source) {
 		counts[card] = count;
 		totalCount += count;
 	}
-	if (this.totalCount && totalCount !== this.totalCount) throw Format.Exception;
+	if (this.size && totalCount !== this.size) throw Format.Exception;
 	return new CardSet(counts, totalCount);
-}
+};
+
+Format.CardSet.prototype.orNull = function() {
+	return new Format.CardSet(true, this.totalCount);
+};
+
+Format.CardSet.prototype.withSize = function(size) {
+	return new Format.CardSet(this.allowNull, size);
+};
+
+Format.cardSet = new Format.CardSet(false, null);
+
 
 // A format for an expression, or null.
-Format.exp = new Format(null);
+Format.Exp = function(allowNull) {
+	this.allowNull = allowNull;
+};
 
-Format.exp.encode = function(exp) {
+Format.Exp.prototype = Object.create(Format.prototype);
+
+Format.Exp.prototype.encode = function(exp) {
 	if (exp === null) return null;
 	let list = exp.toList();
 	let nList = new Array(list.length);
 	for (let i = 0; i < list.length; i++) nList[i] = Format.card.encode(list[i]);
 	return nList;
-}
+};
 
-Format.exp.decode = function(source) {
-	if (source === null) return null;
+Format.Exp.prototype.decode = function(source) {
+	if (source === null && this.allowNull) return null;
 	if (!(source instanceof Array)) throw Format.Exception;
 	let res = Expression.fromList(source);
 	if (!res) throw Format.Exception;
 	return res;
-}
+};
+
+Format.Exp.prototype.orNull = function() {
+	return new Format.Exp(true);
+};
+
+Format.exp = new Format.Exp(false);
 
 
-// A format for a non-negative integer less than the given value.
-Format.num = function(limit) {
-	let format = Format.num[limit];
-	if (format) return format;
-	else return Format.num[limit] = new Format.Num(limit);
-}
-
-Format.Num = function(limit) {
-	Format.call(this, 0);
+// A format for a non-negative integer less than a given limit.
+Format.Nat = function(limit) {
 	this.limit = limit;
-}
+};
 
-Format.Num.prototype = Object.create(Format.prototype);
+Format.Nat.prototype = Object.create(Format.prototype);
 
-Format.Num.prototype.encode = function(value) {
+Format.Nat.prototype.encode = function(value) {
 	return value;
-}
+};
 
-Format.Num.prototype.decode = function(value) {
+Format.Nat.prototype.decode = function(value) {
 	if (typeof value !== "number") throw Format.Exception;
 	let num = Math.floor(value);
 	if (num !== value) throw Format.Exception;
 	if (!(num >= 0 && num < this.limit)) throw Format.Exception;
 	return num;
-}
+};
 
-// A format for any natural number.
-Format.nat = Format.num(Infinity);
+Format.Nat.prototype.lessThan = function(limit) {
+	return new Format.Nat(Math.min(this.limit, limit));
+};
+
+Format.nat = new Format.Nat(Infinity);
 
 
-// A format for a list of non-null things.
-Format.list = function(inner) {
-	return new Format.List(inner);
-}
-
-Format.List = function(inner) {
-	Format.call(this, []);
+// A format for a list of things.
+Format.List = function(inner, allowNull) {
 	this.inner = inner;
-}
+	this.allowNull = allowNull;
+};
 
 Format.List.prototype = Object.create(Format.prototype);
 
@@ -153,9 +183,10 @@ Format.List.prototype.encode = function(list) {
 		console.assert(item !== null);
 	}
 	return nList;
-}
+};
 
 Format.List.prototype.decode = function(source) {
+	if (source === null && this.allowNull) return null;
 	if (!(source instanceof Array)) throw Format.Exception;
 	let nList = new Array(source.length);
 	for (let i = 0; i < source.length; i++) {
@@ -163,52 +194,91 @@ Format.List.prototype.decode = function(source) {
 		if (item === null) throw Format.Exception;
 	}
 	return nList;
+};
+
+Format.List.prototype.orNull = function() {
+	return new Format.List(this.inner, true);
 }
 
-Format.cardList = Format.list(Format.card);
+Format.list = function(inner) {
+	return new Format.List(inner, false);
+};
 
-// A format for a custom object, or null.
-Format.obj = function(props) {
-	return new Format.Obj(props);
-}
+Format.list.card = Format.list(Format.card);
 
-Format.Obj = function(props) {
-	Format.call(this, null);
+
+// A format for a custom record.
+Format.Record = function(props, allowNull) {
 	this.props = props;
-}
+	this.allowNull = allowNull;
+};
 
-Format.Obj.prototype.encode = function(value) {
+Format.Record.prototype = Object.create(Format.prototype);
+
+Format.Record.prototype.encode = function(value) {
 	if (value === null) return null;
-	let obj = { };
+	let record = { };
 	for (let prop in this.props) {
-		obj[prop] = this.props[prop].encode(value[prop]);
+		record[prop] = this.props[prop].encode(value[prop]);
 	}
-	return obj;
-}
+	return record;
+};
 
-Format.Obj.prototype.decode = function(source) {
-	if (source === null) return null;
+Format.Record.prototype.decode = function(source) {
+	if (source === null && this.allowNull) return null;
 	if (typeof source !== "object") throw Format.Exception;
-	let obj = { };
+	let record = { };
 	for (let prop in source) {
 		let format = this.props[prop];
 		if (!format) throw Format.Exception;
-		obj[prop] = format.decode(source[prop]);
+		record[prop] = format.decode(source[prop]);
 	}
 	for (let prop in this.props) {
-		if (!obj.hasOwnProperty(prop)) throw Format.Exception;
+		if (!record.hasOwnProperty(prop)) throw Format.Exception;
 	}
-	return obj;
-}
+	return record;
+};
+
+Format.Record.prototype.orNull = function() {
+	return new Format.Record(this.props, true);
+};
+
+Format.record = function(props) {
+	return new Format.Record(props, false);
+};
+
+
+// A format for an object with an identifier.
+Format.Id = function(formatId, byId) {
+	this.formatId = formatId;
+	this.byId = byId;
+};
+
+Format.Id.prototype = Object.create(Format.prototype);
+
+Format.Id.prototype.encode = function(value) {
+	return this.formatId.encode(value.id);
+};
+
+Format.Id.prototype.decode = function(source) {
+	let id = this.formatId.decode(source);
+	let res = this.byId[id];
+	if (!res) throw Format.Exception;
+	return res;
+};
+
+Format.id = function(formatId, byId) {
+	return new Format.Id(byId);
+};
 
 // A format for a game setup
-Format.setup = Format.obj({
-	players: Format.list(Format.obj({
+Format.setup = Format.record({
+	players: Format.list(Format.record({
 		name: Format.any,
 		userId: Format.any,
 		coins: Format.nat,
-		hand: Format.cardSet()
+		hand: Format.cardSet.orNull()
 	})),
 	constitution: Format.list(Format.exp),
-	deck: Format.cardSet()
+	deck: Format.cardSet.orNull()
 });

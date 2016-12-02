@@ -57,11 +57,9 @@ ServerGame.get = function(gameId, callback) {
 		
 		let setup = new Game.Setup(
 			[player1, player2],[
-				Expression.fromList(["player_draws_to_8", "you"]),
-				Expression.fromList(["specify_action", "you"]),
 				Expression.fromList(["you_gain_5"]),
 				Expression.fromList(["player_draws_3", "you"]),
-				Expression.fromList(["insert_amendment_conditional", "you", "majority_vote"]),
+				Expression.fromList(["insert_amendment_conditional", "you", "player_decides", "auction_winner"]),
 				Expression.fromList(["specify_action_optional", "you"]),
 				Expression.fromList(["wealth_win"])
 			], CardSet.create(defaultDeck));

@@ -1,22 +1,10 @@
 // Identifies and describes a player in a game.
-function Player(coins, hand, handSize) {
-	this.coins = coins || 0;
-	this.hand = null;
-	this.handSize = handSize || 0;
-	if (hand) {
-		this.hand = CardSet.create(hand);
-		this.handSize = this.hand.totalCount;
-	}
-}
-
-// Creates a player based on the given information.
-Player.create = function(player) {
-	let nPlayer = new Player(player.coins, player.hand, player.handSize);
-	for (let prop in player) {
-		if (!nPlayer[prop]) nPlayer[prop] = player[prop];
-	}
-	return nPlayer;
-}
+function Player(coins, hand, handSize, info) {
+	this.coins = coins;
+	this.hand = hand;
+	this.handSize = handSize;
+	this.info = info;
+};
 
 // Identifies a secret game value, but doesn't necessarily provide the value.
 function Commitment(id) {
@@ -26,7 +14,7 @@ function Commitment(id) {
 	this.value = null;
 	this.encodedValue = null;
 	this.isResolved = false;
-}
+};
 
 // Resolves a commitment with its encoded value.
 Commitment.prototype.resolveEncoded = function(encodedValue) {
@@ -37,14 +25,14 @@ Commitment.prototype.resolveEncoded = function(encodedValue) {
 		this.encodedValue = encodedValue;
 	}
 	this.isResolved = true;
-}
+};
 
 // Resolves a commitment with its value.
 Commitment.prototype.resolve = function(value) {
 	console.assert(!this.isResolved);
 	this.value = value;
 	this.isResolved = true;
-}
+};
 
 // Identifies a possible color for a button.
 let Color = {
@@ -55,20 +43,22 @@ let Color = {
 };
 
 // An interface for running a game.
-function Game(setup) {
+function Game(setup, playerInfos) {
 	
 	// Create copy of initial setup
 	this.constitution = new Array(setup.constitution.length);
 	for (let i = 0; i < setup.constitution.length; i++) {
 		this.constitution[i] = Expression.get(setup.constitution[i]);
 	}
-	this.players = new Array(setup.players.length);
-	for (let i = 0; i < this.players.length; i++) {
-		this.players[i] = Player.create(setup.players[i]);
-		this.players[i].id = i;
-	}
 	this.deck = CardSet.create(setup.deck);
 	this.deckSize = this.deck.totalCount;
+	
+	// Create player data
+	this.players = new Array(playerInfos.length);
+	for (let i = 0; i < this.players.length; i++) {
+		this.players[i] = new Player(0, CardSet.create({ }), 0, playerInfos[i]);
+		this.players[i].id = i;
+	}
 	
 	// More initialization
 	this.turn = 0;
@@ -76,6 +66,7 @@ function Game(setup) {
 	this.playerStack = [];
 	this.winner = null;
 	
+	this.canResolveRandomness = false;
 	this.isRunning = false;
 	this.executionStack = [(function*() {
 		
@@ -96,19 +87,18 @@ function Game(setup) {
 			this.turn++;
 		}
 		
-	}).call(this)]
+	}).call(this)];
 	
 	// Commitment-related initialization
 	this.nextCommitmentId = 0;
 	this.commitments = [];
 }
 
-// Describes an initial configuration for a game.
-Game.Setup = function(players, constitution, deck) {
-	this.players = players;
+// Describes an initial configuration of a game.
+Game.Setup = function(constitution, deck) {
 	this.constitution = constitution;
 	this.deck = deck;
-}
+};
 
 // Runs this game until it is forced to stop (user interaction, waiting for message, etc).
 Game.prototype.run = function() {
@@ -124,19 +114,19 @@ Game.prototype.run = function() {
 			response = null;
 		}
 	}
-}
+};
 
 // Stops a game from running. For this to be effective, it should be used in a loop with a
 // wait condition.
 Game.prototype.pause = function*() {
 	this.isRunning = false;
 	yield;
-}
+};
 
 // Gets the player currently at the top of the player stack.
 Game.prototype.getActivePlayer = function() {
 	return this.playerStack[this.playerStack.length - 1];
-}
+};
 
 // Adds a player to the top of the player stack.
 Game.prototype.pushPlayerStack = function(player) {
@@ -310,9 +300,24 @@ Game.prototype.takeCoins = function*(player, count) {
 // Draws a card from the deck and returns it wrapped in a commitment, or null if the deck is empty.
 Game.prototype.draw = function*() {
 	if (this.deckSize > 0) {
-		let cardCommitment = this.declareCommitment(null, Format.card.orNull());
-		yield this.setDeckSize(this.getDeckSize() - 1);
-		return cardCommitment;
+		let commitment = this.declareCommitment(null, Format.card);
+		if (commitment.isResolved) {
+			if (this.deck) {
+				let valid = this.deck.remove(commitment.value);
+				console.assert(valid);
+				yield this.setDeckSize(this.deck.totalCount);
+			} else {
+				yield this.setDeckSize(this.getDeckSize() - 1);
+			}
+		} else if (this.canResolveRandomness && this.deck) {
+			let card = this.deck.draw();
+			this.resolveCommitment(commitment, card);
+			yield this.setDeckSize(this.deck.totalCount);
+		} else {
+			this.deck = null;
+			yield this.setDeckSize(this.getDeckSize() - 1);
+		}
+		return commitment;
 	} else {
 		return null;
 	}
@@ -326,28 +331,36 @@ Game.prototype.discard = function(cards) {
 
 // Gets the size of the deck.
 Game.prototype.getDeckSize = function() {
+	console.assert(!this.deck || this.deck.totalCount === this.deckSize);
 	return this.deckSize;
 };
 
 // Sets the size of the deck.
 Game.prototype.setDeckSize = function(size) {
+	console.assert(!this.deck || this.deck.totalCount === size);
 	this.deckSize = size;
 };
 
 // Gets the hand size of the given player.
 Game.prototype.getHandSize = function(player) {
+	console.assert(!player.hand || player.hand.totalCount === player.handSize);
 	return player.handSize;
 };
 
 // Sets the hand size of the given player.
 Game.prototype.setHandSize = function(player, handSize) {
+	console.assert(!player.hand || player.hand.totalCount === handSize);
 	player.handSize = handSize;
 };
 
 // Declares a commitment that contains the current hand of the given player as a
 // card set.
 Game.prototype.getHand = function(player) {
-	return this.declareCommitment(null, Format.cardSet);
+	let commitment = this.declareCommitment(null, Format.cardSet);
+	if (!commitment.isResolved && player.hand) {
+		this.resolveCommitment(commitment, CardSet.create(player.hand));
+	}
+	return commitment;
 };
 
 // Causes a player to try drawing the given number of cards. Returns the actual amount drawn (which
@@ -369,11 +382,15 @@ Game.prototype.giveCard = function*(player, card) {
 	if (player.hand) {
 		if (card) {
 			player.hand.insert(card.name);
+			yield this.setHandSize(player, player.hand.totalCount);
 		} else {
+			let size = player.hand.totalCount;
 			player.hand = null;
+			yield this.setHandSize(player, size + 1);
 		}
+	} else {
+		yield this.setHandSize(player, this.getHandSize(player) + 1);
 	}
-	yield this.setHandSize(player, this.getHandSize(player) + 1);
 	return card;
 };
 
@@ -395,7 +412,11 @@ Game.prototype.takeCards = function*(player, cardSet) {
 // Chooses a random integer between 0 (inclusive) and the given number (exclusive). Returns
 // it as a commitment.
 Game.prototype.random = function*(range) {
-	return this.declareCommitment(null, Format.nat.lessThan(range));
+	let commitment = this.declareCommitment(null, Format.nat.lessThan(range));
+	if (!commitment.isResolved && this.canResolveRandomness) {
+		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
+	}
+	return commitment;
 };
 
 // Requests the given player specify a boolean value. Returns that value wrapped in a commitment.

@@ -7,9 +7,12 @@ let mime = require("mime");
 let port = parseInt(process.argv[2], 10);
 
 // A game handled by a server
-function ServerGame(setup) {
-	Game.call(this, setup);
+function ServerGame(setup, playerInfos) {
+	Game.call(this, setup, playerInfos);
+	this.canResolveRandomness = true;
+	
 	this.setup = setup;
+	this.playerInfos = playerInfos;
 	
 	// The first commitment in the frame we are waiting on.
 	this.baseCommitmentId = 0;
@@ -27,10 +30,6 @@ function ServerGame(setup) {
 	// The callbacks currently waiting on more data, along with the base commitment Id they are
 	// waiting form.
 	this.waiting = [];
-	
-	// For testing purposes, provide session id's for connecting players.
-	// TODO: Remove
-	this.nextPlayerConnect = 0;
 }
 
 // The set of all active server games.
@@ -40,23 +39,11 @@ ServerGame.active = { };
 ServerGame.get = function(gameId, callback) {
 	let game = ServerGame.active[gameId];
 	if (!game) {
-		let player1 = new Player(0, CardSet.create({ }));
-		player1.name = "Steve";
-		player1.userId = 1;
-		player1.sessionId = "ses1";
+		let player1 = { name: "Steve" };
+		let player2 = { name: "Dorp" };
+		let player3 = { name: "Scrumples" };
 		
-		let player2 = new Player(0, CardSet.create({ }));
-		player2.name = "Dorp";
-		player2.userId = 2;
-		player2.sessionId = "ses2";
-		
-		let player3 = new Player(0, CardSet.create({ }));
-		player3.name = "Scrumples";
-		player3.userId = 3;
-		player3.sessionId = "ses3";
-		
-		let setup = new Game.Setup(
-			[player1, player2],[
+		let setup = new Game.Setup([
 				Expression.fromList(["you_gain_5"]),
 				Expression.fromList(["player_draws_3", "you"]),
 				Expression.fromList(["insert_amendment_conditional", "you", "player_decides", "auction_winner"]),
@@ -64,7 +51,7 @@ ServerGame.get = function(gameId, callback) {
 				Expression.fromList(["wealth_win"])
 			], CardSet.create(defaultDeck));
 		
-		game = ServerGame.active[gameId] = new ServerGame(setup);
+		game = ServerGame.active[gameId] = new ServerGame(setup, [player1, player2]);
 		game.update();
 	}
 	callback(game);
@@ -72,35 +59,12 @@ ServerGame.get = function(gameId, callback) {
 
 ServerGame.prototype = Object.create(Game.prototype);
 
-ServerGame.prototype.random = function*(range) {
-	let commitment = yield Game.prototype.random.call(this, range);
-	if (!commitment.isResolved) {
-		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
-	}
-	return commitment;
-};
-
-ServerGame.prototype.draw = function() {
-	let card = this.deck.draw();
-	if (card) {
-		let commitment = this.declareCommitment(null, Format.card.orNull());
-		this.resolveCommitment(commitment, card);
-		return commitment;
-	} else {
-		return null;
-	}
-};
-
 ServerGame.prototype.getDeckSize = function() {
 	return this.deck.totalCount;
 };
 
-ServerGame.prototype.getHand = function*(player) {
-	let commitment = yield Game.prototype.getHand.call(this, player);
-	if (!commitment.isResolved) {
-		this.resolveCommitment(commitment, CardSet.create(player.hand));
-	}
-	return commitment;
+ServerGame.prototype.setDeckSize = function(size) {
+	console.assert(this.deck.totalCount === size);
 };
 
 ServerGame.prototype.declareCommitment = function(player, format) {
@@ -174,11 +138,11 @@ ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId, mess
 };
 
 // Adds a chat message to the server.
-ServerGame.prototype.chat = function(player, message) {
+ServerGame.prototype.chat = function(player, content) {
 	this.messages.push({
 		baseCommitmentId: this.baseCommitmentId,
 		playerId: player.id,
-		message: message
+		content: content
 	});
 	this.respond();
 };
@@ -188,10 +152,10 @@ ServerGame.prototype.respond = function() {
 	for (let i = 0; i < this.waiting.length; i++) {
 		let waiting = this.waiting[i];
 		if (waiting.baseCommitmentId < this.baseCommitmentId || waiting.messageId < this.messages.length) {
-			waiting.callback(this.buildPollResponse(
+			waiting.callback(Format.message.game.pollResponse.encode(this.buildPollResponse(
 				waiting.player, 
 				waiting.baseCommitmentId,
-				waiting.messageId));
+				waiting.messageId)));
 			this.waiting[i] = this.waiting[this.waiting.length - 1];
 			this.waiting.pop();
 			i--;
@@ -208,52 +172,56 @@ ServerGame.prototype.update = function() {
 // Gets a player in this game base on the given session id.
 ServerGame.prototype.getPlayerBySessionId = function(sessionId) {
 	for (let i = 0; i < this.players.length; i++) {
-		if (this.players[i].sessionId === sessionId)
+		let playerInfo = this.players[i].info;
+		if (playerInfo.sessionId === sessionId) {
 			return this.players[i];
+		} else if (!playerInfo.sessionId) {
+			
+			// Become the player
+			playerInfo.sessionId = sessionId;
+			return this.players[i];
+		}	
 	}
 	return null;
 };
 
 // Handles a message sent to this game.
-ServerGame.prototype.handle = function(request, callback) {
-	let type = request.messageType;
-	if (type === "intro") {
-		let playerId = (this.nextPlayerConnect++) % this.players.length;
-		console.log(playerId + " joined");
-		callback({
-			setup: Format.setup.encode(this.setup),
-			sessionId: this.players[playerId].sessionId,
-			playerId: playerId
-		});
-	} else if (type === "commit") {
+ServerGame.prototype.handle = function(message, callback) {
+	if (message.type === "intro") {
+		let player = this.getPlayerBySessionId(message.sessionId);
+		callback(Format.message.game.introResponse.encode({
+			setup: this.setup,
+			players: this.playerInfos,
+			youId: player ? player.id : null,
+			data: this.buildPollResponse(player, 0, 0)
+		}));
+	} else if (message.type === "commit") {
 		// TODO: Sanitize, check player
-		let player = this.getPlayerBySessionId(request.sessionId);
-		console.log(player.id + " commited");
-		let commitmentId = Format.nat.decode(request.commitmentId);
-		if (commitmentId < this.nextCommitmentId) {
-			let commitment = this.getCommitment(request.commitmentId);
+		let player = this.getPlayerBySessionId(message.sessionId);
+		let content = Format.message.game.commit.decode(message.content);
+		if (content.id < this.nextCommitmentId) {
+			let commitment = this.getCommitment(content.id);
 			if (!commitment.isResolved) {
-				commitment.resolveEncoded(request.commitmentValue);
+				commitment.resolveEncoded(content.value);
 				this.unresolved--;
 				this.update();
 			}
 		}
 		callback(true);
-	} else if (type === "chat") {
-		let player = this.getPlayerBySessionId(request.sessionId);
-		this.chat(player, request.message);
+	} else if (message.type === "chat") {
+		let player = this.getPlayerBySessionId(message.sessionId);
+		this.chat(player, Format.message.game.chat.decode(message.content));
 		callback(true);
-	} else if (type === "poll") {
-		let player = this.getPlayerBySessionId(request.sessionId);
-		let baseCommitmentId = Format.nat.decode(request.baseCommitmentId);
-		let messageId = Format.nat.decode(request.messageId);
-		if (baseCommitmentId < this.baseCommitmentId || messageId < this.messages.length) {
-			callback(this.buildPollResponse(player, baseCommitmentId, messageId));
+	} else if (message.type === "poll") {
+		let player = this.getPlayerBySessionId(message.sessionId);
+		let content = Format.message.game.pollRequest.encode(message.content);
+		if (content.baseCommitmentId < this.baseCommitmentId || content.messageId < this.messages.length) {
+			callback(this.buildPollResponse(player, content.baseCommitmentId, content.messageId));
 		} else {
 			this.waiting.push({
 				player: player,
-				baseCommitmentId: baseCommitmentId,
-				messageId: messageId,
+				baseCommitmentId: content.baseCommitmentId,
+				messageId: content.messageId,
 				callback: callback
 			});
 		}
@@ -342,6 +310,7 @@ http.createServer(function(request, response) {
 				});
 				request.on("end", function() {
 					message = JSON.parse(buf); // TODO: Handle errors here
+					message = Format.message.general.decode(message);
 					if (game && message) game.handle(message, respondJSON.bind(null, response));
 				});
 			} else {

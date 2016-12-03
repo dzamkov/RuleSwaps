@@ -9,12 +9,24 @@ function ajax(request, callback) {
 	xhttp.send(JSON.stringify(request));
 }
 
+let sessionId = (Math.random() + 1).toString(36).substring(2, 7);
+
+// Sends a game-related request.
+function request(type, content, callback) {
+	ajax(Format.message.general.encode({
+		type: type,
+		sessionId: sessionId,
+		content: content
+	}), callback);
+}
+
 // Starts the game given the response to the "intro" request.
 function start(response) {
-	let setup = Format.setup.decode(response.setup);
-	let sessionId = response.sessionId;
-	let playerId = response.playerId;
-	let inteface = new Interface(setup, playerId, {
+	let setup = response.setup;
+	let playerInfos = response.players;
+	let selfId = response.youId;
+	
+	let inteface = new Interface(setup, playerInfos, selfId, {
 		deckDraw: document.getElementById("deck-draw"),
 		deckDiscard: document.getElementById("deck-discard"),
 		deckPlay: document.getElementById("deck-play"),
@@ -53,48 +65,47 @@ function start(response) {
 	
 	// Send a message upon resolving a commitment.
 	inteface.resolveCommitment = function(commitment, value) {
-		ajax({
-			messageType: "commit",
-			sessionId: sessionId,
-			commitmentId: commitment.id,
-			commitmentValue: commitment.format.encode(value)
-		});
+		request("commit", Format.message.game.commit.encode({
+			id: commitment.id,
+			value: commitment.format.encode(value)
+		}));
 		Interface.prototype.resolveCommitment.call(this, commitment, value);
 	}
 	
 	// Set up chat listener
-	inteface.onSay = function(recipient, message) {
-		ajax({
-			messageType: "chat",
-			sessionId: sessionId,
-			message: message
-		});
+	inteface.onSay = function(recipient, content) {
+		request("chat", Format.message.game.chat.encode(content));
+	}
+	
+	// Applies the data in a poll response to the interface.
+	function processPollData(data) {
+		for (let commitmentId in data.commitments) {
+			let commitment = inteface.getCommitment(commitmentId);
+			if (!commitment.isResolved) commitment.resolveEncoded(data.commitments[commitmentId]);
+		}
+		for (let i = 0; i < data.messages.length; i++) {
+			let message = data.messages[i];
+			inteface.chat(inteface.players[message.playerId], message.content);
+		}
+		inteface.run();
+		poll(data.baseCommitmentId, data.messageId);
+	}
+	
+	// Applies a poll response message to the interface.
+	function processPollResponse(response) {
+		processPollData(Format.message.game.pollResponse.decode(response));
 	}
 	
 	// Performs a polling query for more game information.
 	function poll(baseCommitmentId, messageId) {
-		ajax({
-			messageType: "poll",
-			sessionId: sessionId,
+		request("poll", Format.message.game.pollRequest.encode({
 			baseCommitmentId: baseCommitmentId,
 			messageId: messageId
-		}, function(response) {
-			for (let commitmentId in response.commitments) {
-				let commitment = inteface.getCommitment(commitmentId);
-				if (!commitment.isResolved) commitment.resolveEncoded(response.commitments[commitmentId]);
-			}
-			for (let i = 0; i < response.messages.length; i++) {
-				let message = response.messages[i];
-				inteface.chat(inteface.players[message.playerId], message.message);
-			}
-			inteface.run();
-			poll(response.baseCommitmentId, response.messageId);
-		});
+		}), processPollResponse);
 	}
 	
 	// Run game
-	inteface.run();
-	poll(0, 0);
+	processPollData(response.data);
 }
 
 // Handle loading
@@ -106,7 +117,7 @@ window.onload = function() {
 	if (loaded && introResponse) start(introResponse);
 }
 
-ajax({ messageType: "intro" }, function(response) {
-	introResponse = response;
+request("intro", null, function(response) {
+	introResponse = Format.message.game.introResponse.decode(response);
 	if (loaded && introResponse) start(introResponse);
 });

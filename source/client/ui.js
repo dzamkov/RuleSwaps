@@ -460,7 +460,7 @@ let UI = new function() {
 				if (part instanceof Player) {
 					let player = document.createElement("span");
 					player.className = "-player";
-					player.innerText = part.name;
+					player.innerText = part.info.name;
 					element.appendChild(player);
 				} else if (part instanceof Game.Card) {
 					element.appendChild(createMiniList([part]));
@@ -585,7 +585,7 @@ let UI = new function() {
 		
 		let name = document.createElement("div");
 		name.className = "player-name";
-		name.innerText = player.name;
+		name.innerText = player.info.name;
 		container.appendChild(name);
 		
 		let info = document.createElement("div");

@@ -1,5 +1,5 @@
 // A client-specific interface to a game.
-function Interface(setup, playerSelf, parts) {
+function Interface(setup, playerInfos, selfId, parts) {
 	this.delayTimeout = null;
 	
 	// Set up UI
@@ -45,24 +45,42 @@ function Interface(setup, playerSelf, parts) {
 	}).bind(this);
 	
 	// Set up game
-	Game.call(this, setup);
+	Game.call(this, setup, playerInfos);
 	this.ui.constitution.populate(this.constitution);
 	
 	// Set up players
-	this.playerSelf = this.players[playerSelf];
-	this.playerSelf.info = new UI.PlayerInfo(this.playerSelf,
-		parts.selfCoins, parts.selfCards, parts.selfBack);
-	let otherPlayers = this.getPlayersFrom(this.playerSelf).slice(1);
-	let split = Math.ceil(otherPlayers.length / 2);
-	for (let i = split - 1; i >= 0; i--) {
-		let playerInfo = UI.PlayerInfo.create(otherPlayers[i], true);
-		parts.playersLeft.appendChild(playerInfo.container);
-		otherPlayers[i].info = playerInfo;
-	}
-	for (let i = split; i < otherPlayers.length; i++) {
-		let playerInfo = UI.PlayerInfo.create(otherPlayers[i], false);
-		parts.playersRight.appendChild(playerInfo.container);
-		otherPlayers[i].info = playerInfo;
+	if (selfId !== null) {
+		this.playerSelf = this.players[selfId];
+		this.playerSelf.ui = new UI.PlayerInfo(this.playerSelf,
+			parts.selfCoins, parts.selfCards, parts.selfBack);
+		let otherPlayers = this.getPlayersFrom(this.playerSelf).slice(1);
+		let split = Math.ceil(otherPlayers.length / 2);
+		for (let i = split - 1; i >= 0; i--) {
+			let playerInfo = UI.PlayerInfo.create(otherPlayers[i], true);
+			parts.playersLeft.appendChild(playerInfo.container);
+			otherPlayers[i].ui = playerInfo;
+		}
+		for (let i = split; i < otherPlayers.length; i++) {
+			let playerInfo = UI.PlayerInfo.create(otherPlayers[i], false);
+			parts.playersRight.appendChild(playerInfo.container);
+			otherPlayers[i].ui = playerInfo;
+		}
+	} else {
+		this.playerSelf = null;
+		let players = this.players;
+		let split = Math.ceil(players.length / 2);
+		for (let i = split - 1; i >= 0; i--) {
+			let playerInfo = UI.PlayerInfo.create(players[i], true);
+			parts.playersLeft.appendChild(playerInfo.container);
+			players[i].ui = playerInfo;
+		}
+		for (let i = split; i < players.length; i++) {
+			let playerInfo = UI.PlayerInfo.create(players[i], false);
+			parts.playersRight.appendChild(playerInfo.container);
+			players[i].ui = playerInfo;
+		}
+		
+		// TODO: Hide player-self stuff
 	}
 }
 
@@ -109,12 +127,12 @@ Interface.prototype.setActiveLine = function*(line) {
 }
 
 Interface.prototype.setCoins = function*(player, count) {
-	player.info.setCoins(count);
+	player.ui.setCoins(count);
 	return yield Game.prototype.setCoins.call(this, player, count);
 }
 
 Interface.prototype.setHandSize = function*(player, handSize) {
-	player.info.setCards(handSize);
+	player.ui.setCards(handSize);
 	return yield Game.prototype.setHandSize.call(this, player, handSize);
 }
 

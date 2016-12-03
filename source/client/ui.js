@@ -462,6 +462,8 @@ let UI = new function() {
 					player.className = "-player";
 					player.innerText = part.name;
 					element.appendChild(player);
+				} else if (part instanceof window.Card) {
+					element.appendChild(createMiniList([part]));
 				} else if (part instanceof window.Expression) {
 					let list = createMiniList(part.toList());
 					element.appendChild(list);

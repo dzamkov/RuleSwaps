@@ -68,6 +68,7 @@ function Game(setup) {
 		this.players[i].id = i;
 	}
 	this.deck = CardSet.create(setup.deck);
+	this.deckSize = this.deck.totalCount;
 	
 	// More initialization
 	this.turn = 0;
@@ -300,48 +301,72 @@ Game.prototype.setCoins = function(player, count) {
 // Gives coins to a player.
 Game.prototype.giveCoins = function*(player, count) {
 	if (count != 0) yield this.setCoins(player, player.coins + count);
-}
+};
 
 // Takes coins from a player
 Game.prototype.takeCoins = function*(player, count) {
 	if (count != 0) yield this.setCoins(player, player.coins - count);
-}
+};
 
-// Discards the given list of cards in the given order.
+// Draws a card from the deck and returns it wrapped in a commitment, or null if the deck is empty.
+Game.prototype.draw = function*() {
+	if (this.deckSize > 0) {
+		let cardCommitment = this.declareCommitment(null, Format.card.orNull());
+		yield this.setDeckSize(this.getDeckSize() - 1);
+		return cardCommitment;
+	} else {
+		return null;
+	}
+};
+
+// Discards the given set of cards.
 Game.prototype.discard = function(cards) {
 	console.assert(cards instanceof CardSet);
 	// TODO
-}
+};
 
-// Gets the hand size of the given player
+// Gets the size of the deck.
+Game.prototype.getDeckSize = function() {
+	return this.deckSize;
+};
+
+// Sets the size of the deck.
+Game.prototype.setDeckSize = function(size) {
+	this.deckSize = size;
+};
+
+// Gets the hand size of the given player.
 Game.prototype.getHandSize = function(player) {
 	return player.handSize;
-}
+};
 
-// Sets the hand size of the given player
+// Sets the hand size of the given player.
 Game.prototype.setHandSize = function(player, handSize) {
 	player.handSize = handSize;
-}
+};
 
 // Declares a commitment that contains the current hand of the given player as a
 // card set.
 Game.prototype.getHand = function(player) {
 	return this.declareCommitment(null, Format.cardSet);
-}
+};
 
-// Causes a player to draw the given number of cards.
+// Causes a player to try drawing the given number of cards. Returns the actual amount drawn (which
+// may be lower due to deck emptying.
 Game.prototype.drawCards = function*(player, count) {
-	while (count > 0) {
-		let cardCommitment = this.declareCommitment(null, Format.card);
-		this.deck = null;
-		yield this.drawCard(player, cardCommitment);
+	let drawn = 0;
+	let cardCommitment;
+	while (count > 0 && (cardCommitment = yield this.draw())) {
+		yield this.giveCard(player, cardCommitment);
 		count--;
+		drawn++;
 	}
-}
+	return drawn;
+};
 
-// Causes a player to draw a specific card, given by a commitment.
-Game.prototype.drawCard = function*(player, cardCommitment) {
-	let card = yield this.revealTo(player, cardCommitment);
+// Inserts a card into a player's hand. Either the card is given, or a commitment to it is.
+Game.prototype.giveCard = function*(player, card) {
+	if (card instanceof Commitment) card = yield this.revealTo(player, card);
 	if (player.hand) {
 		if (card) {
 			player.hand.insert(card.name);
@@ -349,21 +374,22 @@ Game.prototype.drawCard = function*(player, cardCommitment) {
 			player.hand = null;
 		}
 	}
-	yield this.setHandSize(player, player.handSize + 1);
-}
+	yield this.setHandSize(player, this.getHandSize(player) + 1);
+	return card;
+};
 
-// Inserts a given set of cards into a player's hand.
+// Inserts a publicly-known set of cards into a player's hand.
 Game.prototype.giveCards = function*(player, cardSet) {
 	// TODO
-}
+};
 
-// Removes a given set of cards from a player's hand.
+// Removes a publicly-known set of cards from a player's hand.
 Game.prototype.takeCards = function*(player, cardSet) {
 	if (player.hand) {
 		player.hand.removeSet(cardSet);
 		yield this.setHandSize(player, player.hand.totalCount);
 	} else {
-		yield this.setHandSize(player, player.handSize - cardSet.totalCount);
+		yield this.setHandSize(player, this.getHandSize(player) - cardSet.totalCount);
 	}
 };
 

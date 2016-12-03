@@ -56,8 +56,8 @@ ServerGame.get = function(gameId, callback) {
 		player3.sessionId = "ses3";
 		
 		let setup = new Game.Setup(
-			[player1, player2],[
-				Expression.fromList(["you_gain_5"]),
+			[player1, player2, player3],[
+				Expression.fromList(["conditional_twice", "3_attempts", "you_draw_action", "you_gain_5"]),
 				Expression.fromList(["player_draws_3", "you"]),
 				Expression.fromList(["insert_amendment_conditional", "you", "player_decides", "auction_winner"]),
 				Expression.fromList(["specify_action_optional", "you"]),
@@ -72,25 +72,27 @@ ServerGame.get = function(gameId, callback) {
 
 ServerGame.prototype = Object.create(Game.prototype);
 
-ServerGame.prototype.drawCards = function*(player, count) {
-	while (count > 0) {
-		let cardCommitment = this.declareCommitment(null, Format.card);
-		if (cardCommitment.isResolved) {
-			this.deck.remove(cardCommitment.value);
-		} else {
-			this.resolveCommitment(cardCommitment, this.deck.draw());
-		}
-		yield this.drawCard(player, cardCommitment);
-		count--;
-	}
-};
-
 ServerGame.prototype.random = function*(range) {
 	let commitment = yield Game.prototype.random.call(this, range);
 	if (!commitment.isResolved) {
 		this.resolveCommitment(commitment, Math.floor(Math.random() * range));
 	}
 	return commitment;
+};
+
+ServerGame.prototype.draw = function() {
+	let card = this.deck.draw();
+	if (card) {
+		let commitment = this.declareCommitment(null, Format.card.orNull());
+		this.resolveCommitment(commitment, card);
+		return commitment;
+	} else {
+		return null;
+	}
+};
+
+ServerGame.prototype.getDeckSize = function() {
+	return this.deck.totalCount;
 };
 
 ServerGame.prototype.getHand = function*(player) {

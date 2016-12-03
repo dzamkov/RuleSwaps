@@ -438,6 +438,16 @@ Card.register("not", new Card(Role.Condition,
 		return !res;
 	}));
 
+Card.register("3_attempts", new Card(Role.Condition,
+	"{Condition} passes within 3 attempts",
+	function*(game, slots) {
+		for (let i = 0; i < 3; i++) {
+			if (yield game.resolve(slots[0]))
+				return true;
+		}
+		return false;
+	}));
+
 Card.register("you_are", new Card(Role.Condition,
 	"You are {Player}", function*(game, slots) {
 		let you = game.getActivePlayer();
@@ -449,6 +459,36 @@ Card.register("you_are", new Card(Role.Condition,
 			yield game.log(you, " is not ", other);
 			return false;
 		}
+	}));
+
+let drawRole = function*(game, player, role) {
+	let card = yield game.draw();
+	if (card) {
+		card = yield game.reveal(card);
+		let same = (card.role === role);
+		yield game.log(player, " drew the " + (same ? "right" : "wrong") + " type of card ", card);
+		yield game.giveCard(player, card);
+		return same;
+	}
+	return false;
+};
+	
+Card.register("you_draw_action", new Card(Role.Condition,
+	"You draw a card, and it is an action card (Keep it regardless)",
+	function*(game, slots) {
+		return yield drawRole(game, game.getActivePlayer(), Role.Action);
+	}));
+
+Card.register("you_draw_condition", new Card(Role.Condition,
+	"You draw a card, and it is a condition card (Keep it regardless)",
+	function*(game, slots) {
+		return yield drawRole(game, game.getActivePlayer(), Role.Condition);
+	}));
+	
+Card.register("you_draw_player", new Card(Role.Condition,
+	"You draw a card, and it is a player card (Keep it regardless)",
+	function*(game, slots) {
+		return yield drawRole(game, game.getActivePlayer(), Role.Player);
 	}));
 
 Card.register("majority_vote", new Card(Role.Condition,
@@ -735,7 +775,7 @@ Card.register("auction_winner", new Card(Role.Player,
 				{ accept: { text: "Bid" }});
 		}
 		for (let i = 0; i < bids.length; i++) {
-			bids[i] = yield game.reveal(bids[i]);;
+			bids[i] = yield game.reveal(bids[i]);
 		}
 		let mostBidId = getTop(bids, n => n);
 		let highBid = bids[mostBidId[0]];
@@ -764,6 +804,60 @@ Card.register("auction_winner", new Card(Role.Player,
 		if (highBid > 0) {
 			yield game.log(winner, " pays ", Log.Coins(highBid));
 			yield game.takeCoins(winner, highBid);
+		}
+		return winner;
+	}));
+
+Card.register("auction_winner_to_you", new Card(Role.Player,
+	"Auction winner, with proceeds going to you (You don't participate and can't be selected)",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		let players = game.players;
+		yield game.log("Whoever places the highest bid will be selected and pay that bid to ", player);
+		let bids = new Array(players.length);
+		for (let i = 0; i < bids.length; i++) {
+			if (players[i] !== player) {
+				bids[i] = yield game.interactPayment(players[i],
+					{ accept: { text: "Bid" }});
+			}
+		}
+		for (let i = 0; i < bids.length; i++) {
+			if (players[i] !== player) {
+				bids[i] = yield game.reveal(bids[i]);
+			} else {
+				bids[i] = -Infinity;
+			}
+		}
+		let mostBidId = getTop(bids, n => n);
+		let highBid = bids[mostBidId[0]];
+		let mostBid = mostBidId.map(i => players[i]);
+		let message = [];
+		if (mostBid.length > 1) {
+			concatPlayers(message, mostBid);
+			message.push(" are tied for the largest bid");
+		} else {
+			message.push(mostBid[0], " made the largest bid");
+		}
+		for (let i = 0; i < bids.length; i++) {
+			if (players[i] !== player) {
+				if (bids[i] > 0) {
+					message.push(Log.Break, players[i], " bid ", Log.Coins(bids[i]));
+				} else {
+					message.push(Log.Break, players[i], " didn't place a bid");
+				}
+			}
+		}
+		yield game.log.apply(game, message);
+		let winner;
+		if (mostBid.length > 1) {
+			winner = yield tiebreak(game, mostBid);
+		} else {
+			winner = mostBid[0];
+		}
+		if (highBid > 0) {
+			yield game.log(winner, " pays ", Log.Coins(highBid), " to ", player);
+			yield game.takeCoins(winner, highBid);
+			yield game.giveCoins(player, highBid);
 		}
 		return winner;
 	}));
@@ -841,7 +935,11 @@ let defaultDeck = {
 	"player_decides": 3,
 	"or": 2,
 	"not": 3,
+	"3_attempts": 3,
 	"you_are": 3,
+	"you_draw_action": 2,
+	"you_draw_condition": 2,
+	"you_draw_player": 2,
 	"majority_vote": 4,
 	"payment_vote": 3,
 	"wealth_vote": 2,
@@ -854,6 +952,7 @@ let defaultDeck = {
 	"most_paid": 3,
 	"most_discarded": 4,
 	"auction_winner": 5,
+	"auction_winner_to_you": 3,
 	"picks": 5,
 	"picks_other": 3,
 	"first": 4

@@ -118,14 +118,12 @@ Interface.prototype.setHandSize = function*(player, handSize) {
 	return yield Game.prototype.setHandSize.call(this, player, handSize);
 }
 
-Interface.prototype.drawCard = function*(player, cardCommitment) {
-	yield Game.prototype.drawCard.call(this, player, cardCommitment);
+Interface.prototype.giveCard = function*(player, card) {
+	card = yield Game.prototype.giveCard.call(this, player, card);
 	if (this.playerSelf === player) {
-		console.assert(cardCommitment.isResolved);
-		let cardType = cardCommitment.value;
-		
-		let card = this.ui.deck.draw.pull(cardType);
-		card.sendTo(this.ui.hand);
+		console.assert(card);
+		let uiCard = this.ui.deck.draw.pull(card);
+		uiCard.sendTo(this.ui.hand);
 	}
 }
 

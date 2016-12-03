@@ -266,7 +266,6 @@ Log.Negative.prototype.toString = function() {
 	return this.str;
 }
 
-
 // Writes to the game log.
 Game.prototype.log = function() {
 	// Override me
@@ -496,3 +495,7 @@ Game.prototype.cancelAmend = function*(amend) {
 Game.prototype.confirmAmend = function*(amend) {
 	// Nothing to do here
 }
+
+// References to game objects for disambiguation when needed
+Game.Card = Card;
+Game.Log = Log;

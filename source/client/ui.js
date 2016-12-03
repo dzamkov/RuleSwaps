@@ -462,32 +462,32 @@ let UI = new function() {
 					player.className = "-player";
 					player.innerText = part.name;
 					element.appendChild(player);
-				} else if (part instanceof window.Card) {
+				} else if (part instanceof Game.Card) {
 					element.appendChild(createMiniList([part]));
-				} else if (part instanceof window.Expression) {
+				} else if (part instanceof Expression) {
 					let list = createMiniList(part.toList());
 					element.appendChild(list);
-				} else if (part instanceof window.CardSet) {
+				} else if (part instanceof CardSet) {
 					let list = createMiniList(part.toList());
 					element.appendChild(list);
-				} else if (part instanceof window.Log.Coins) {
+				} else if (part instanceof Game.Log.Coins) {
 					let icon = document.createElement("div");
 					icon.className = "icon -mini -coins";
 					icon.innerText = part.count;
 					element.appendChild(icon);
-				} else if (part instanceof window.Log.Cards) {
+				} else if (part instanceof Game.Log.Cards) {
 					let icon = document.createElement("div");
 					icon.className = "icon -mini -cards";
 					icon.innerText = part.count;
 					element.appendChild(icon);
-				} else if (part === window.Log.Break) {
+				} else if (part === Game.Log.Break) {
 					element.appendChild(document.createElement("hr"));
-				} else if (part instanceof window.Log.Positive) {
+				} else if (part instanceof Game.Log.Positive) {
 					let span = document.createElement("span");
 					span.className = "-positive";
 					span.innerText = part.str;
 					element.appendChild(span);
-				} else if (part instanceof window.Log.Negative) {
+				} else if (part instanceof Game.Log.Negative) {
 					let span = document.createElement("span");
 					span.className = "-negative";
 					span.innerText = part.str;

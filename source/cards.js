@@ -14,7 +14,7 @@ Card.register("you_draw_2", new Card(Role.Action,
 	}));
 	
 Card.register("you_draw_type", new Card(Role.Action,
-	"Name a card type and draw until you get a card of that type. Keep it and discard the others",
+	"Name a card type and draw until you get a card of that type (discard all others drawn)",
 	function*(game, slots) {
 		let player = game.getActivePlayer();
 		let role = yield game.reveal(yield game.interactRole(player));
@@ -159,7 +159,7 @@ Card.register("player_loses_10", new Card(Role.Action,
 	"{Player} loses 10 coins",
 	function*(game, slots) {
 		var player = yield game.resolve(slots[0]);
-		yield playerLoses(player, 10);
+		yield playerLoses(game, player, 10);
 	}));
 
 Card.register("conditional_player_loses_18", new Card(Role.Action,
@@ -167,7 +167,7 @@ Card.register("conditional_player_loses_18", new Card(Role.Action,
 	function*(game, slots) {
 		if (yield game.resolve(slots[0])) {
 			var player = yield game.resolve(slots[1]);
-			yield playerLoses(player, 18);
+			yield playerLoses(game, player, 18);
 		}
 	}));
 

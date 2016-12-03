@@ -438,7 +438,7 @@ Game.prototype.interactRole = function(player) {
 //	returns a commitment of either a set or lists of cards.
 Game.prototype.interactCards = function(player, options) {
 	let format = options.ordered ? Format.list.card : Format.cardSet;
-	if (options.amount) format = format.withSize(optional.amount);
+	if (options.amount) format = format.withSize(options.amount);
 	if (options.optional) format = format.orNull();
 	return this.declareCommitment(player, format);
 };
@@ -489,7 +489,7 @@ Game.prototype.cancelAmend = function*(amend) {
 	if (amend.line <= this.line) { // TODO: Track proposals
 		yield this.setActiveLine(this.line - 1);
 	}
-	yield this.discard(amend.exp.toList());
+	yield this.discard(CardSet.fromList(amend.exp.toList()));
 }
 
 // Confirms an amendment previously specified by a player.

@@ -12,6 +12,38 @@ Card.register("you_draw_2", new Card(Role.Action,
 		let player = game.getActivePlayer();
 		yield playerDraws(game, player, 2);
 	}));
+	
+Card.register("you_draw_type", new Card(Role.Action,
+	"Name a card type and draw until you get a card of that type. Keep it and discard the others",
+	function*(game, slots) {
+		let player = game.getActivePlayer();
+		let role = yield game.reveal(yield game.interactRole(player));
+		let discarded = CardSet.create();
+		let card;
+		while (card = yield game.draw()) {
+			card = yield game.reveal(card);
+			if (card.role === role) {
+				break;
+			} else {
+				discarded.insert(card);
+			}
+		}
+		
+		yield game.discard(discarded);
+		if (card) {
+			yield game.giveCard(player, card);
+			if (discarded.totalCount > 0) {
+				yield game.log(player, " drew and discarded ", discarded, " but kept ", card);
+			} else {
+				yield game.log(player, " drew ", card);
+			}
+		} else {
+			if (discarded.totalCount > 0) {
+				yield game.log(player, " discarded ", discarded);
+			}
+		}
+	}));
+	
 
 Card.register("player_draws_3", new Card(Role.Action,
 	"{Player} draws 3 cards",
@@ -905,6 +937,7 @@ Card.register("first", new Card(Role.Player,
 	
 let defaultDeck = {
 	"you_draw_2": 5,
+	"you_draw_type": 4,
 	"player_draws_3": 3,
 	"conditional_player_draws_5": 2,
 	"player_draws_to_8": 3,

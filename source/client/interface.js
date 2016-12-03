@@ -252,38 +252,31 @@ Interface.defaultBooleanPaymentStyle = {
 	}
 };
 
-Interface.prototype.interactBooleanPayment = function*(player, style) {
-	let game = this;
-	let bool = yield Game.prototype.interactBoolean.call(this, player);
-	let payment = yield Game.prototype.interactPayment.call(this, player);
-	if (!bool.isResolved && !payment.isResolved && player == this.playerSelf) {
-		style = merge(style, Interface.defaultBooleanPaymentStyle);
-		this.ui.input.payment.request({
-			limit: this.playerSelf.coins,
+Interface.prototype.interactRole = function*(player, style) {
+	let commitment = Game.prototype.interactRole.call(this, player);
+	if (!commitment.isResolved && player === this.playerSelf) {
+		this.ui.input.options.request({
 			buttons: [{
-				text: style.yes.text,
-				color: style.yes.color,
-				value: true,
-				pass: false
+				text: "Action",
+				color: Color.White,
+				value: Role.Action
 			}, {
-				text: style.no.text,
-				color: style.no.color,
-				value: false,
-				pass: false
+				text: "Condition",
+				color: Color.White,
+				value: Role.Condition
 			}, {
-				text: style.pass.text,
-				color: style.pass.color,
-				value: false,
-				pass: true
+				text: "Player",
+				color: Color.White,
+				value: Role.Player
 			}]
-		}, function(a, b) {
-			game.resolveCommitment(bool, b);
-			game.resolveCommitment(payment, a);
-		});
-		yield this.awaitCommitment(bool);
-		yield this.awaitCommitment(payment);
+		}, this.resolveCommitment.bind(this, commitment));
+		yield this.awaitCommitment(commitment);
 	}
-	return { bool: bool, payment: payment };
+	return commitment;
+};
+
+Game.prototype.interactRole = function(player) {
+	return this.declareCommitment(player, Format.id(Format.nat, Role));
 };
 
 // The default style for a cards interaction

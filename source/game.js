@@ -423,6 +423,11 @@ Game.prototype.interactBooleanPayment = function*(player) {
 	return { bool: bool, payment: payment };
 };
 
+// Requests the given player to pick a card role. Returns that role wrapped in a commitment.
+Game.prototype.interactRole = function(player) {
+	return this.declareCommitment(player, Format.id(Format.nat, Role));
+};
+
 // Requests the given player to select a list or set of cards subject to restrictions.
 //
 // 	options

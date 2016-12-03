@@ -57,7 +57,7 @@ ServerGame.get = function(gameId, callback) {
 		
 		let setup = new Game.Setup(
 			[player1, player2, player3],[
-				Expression.fromList(["conditional_twice", "3_attempts", "you_draw_action", "you_gain_5"]),
+				Expression.fromList(["conditional_twice", "3_attempts", "you_draw_action", "you_draw_type"]),
 				Expression.fromList(["player_draws_3", "you"]),
 				Expression.fromList(["insert_amendment_conditional", "you", "player_decides", "auction_winner"]),
 				Expression.fromList(["specify_action_optional", "you"]),

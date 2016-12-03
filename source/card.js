@@ -150,7 +150,7 @@ function CardSet(counts, totalCount) {
 
 // Creates a new card set from the given information.
 CardSet.create = function(set) {
-	let counts = set;
+	let counts = set || { };
 	if (set instanceof CardSet) {
 		counts = set.counts;
 	}

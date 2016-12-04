@@ -407,7 +407,7 @@ Interface.prototype.interactSpecify = function*(player, role, style) {
 
 Interface.prototype.interactAmend = function*(player, style) {
 	let game = this;
-	let commitment = this.declareCommitment(player, this.getAmendFormat());
+	let commitment = this.declareCommitment(player, this.getAmendFormat(player));
 	if (!commitment.isResolved && player === this.playerSelf) {
 		style = merge(style, Interface.defaultSpecifyStyle);
 		this.ui.constitution.allowInsertPick();

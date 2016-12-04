@@ -27,7 +27,7 @@ $(output_dir)/dist/static: \
 	$(output_dir)/dist/static/style.css \
 	$(output_dir)/dist/static/script.js
 	
-$(output_dir)/debug: $(output_dir)/debug/static $(output_dir)/debug/server.js
+$(output_dir)/debug: $(output_dir)/debug/static $(output_dir)/debug/server.js $(output_dir)/debug/fuzzer.js
 
 $(output_dir)/debug/static: \
 	$(output_dir)/debug/static/images \
@@ -93,6 +93,11 @@ $(output_dir)/debug/server.js: $(addprefix $(source_dir)/,$(server_files))
 	echo "\"use strict\";" > $@; \
 	cat $^ >> $@
 	
+$(output_dir)/debug/fuzzer.js: $(addprefix $(source_dir)/,$(common_files)) $(source_dir)/fuzzer.js
+	mkdir -p $(dir $@)
+	echo "\"use strict\";" > $@; \
+	cat $^ >> $@
+	
 clean:
 	rm -rf $(output_dir)/*
 	rm -rf $(int_dir)/*
@@ -106,3 +111,6 @@ run: $(output_dir)/dist
 
 debug: $(output_dir)/debug check_syntax
 	cd $(output_dir)/debug && nodejs server.js 1888
+
+fuzz: $(output_dir)/debug
+	cd $(output_dir)/debug && (nodejs fuzzer.js > fuzzlog.txt)

@@ -15,9 +15,20 @@ Format.prototype.decode = function(source) {
 	// Override me
 };
 
-// Constructs a restricted form of this format that expects collection-like objects to have a certain size.
-Format.prototype.withSize = function(size) {
-	return this;
+// Possibly returned from a call to Format.tryRandom
+Format.Retry = { };
+
+// Randomly chooses a decoded representative of this format.
+Format.prototype.random = function() {
+	let res;
+	while ((res = this.tryRandom()) === Format.Retry) { }
+	return res;
+};
+
+// Tries randomly choosing a decoded representative of this format, possibly returning Format.Retry when a
+// representative could not be found in one attempt.
+Format.prototype.tryRandom = function() {
+	return this.random();
 };
 
 // The exception thrown when a decode fails.
@@ -49,6 +60,11 @@ Format.OrNull.prototype.decode = function(value) {
 	return this.inner.decode(value);
 };
 
+Format.OrNull.prototype.tryRandom = function() {
+	if (Math.random() < 0.1) return null;
+	return this.inner.tryRandom();
+};
+
 Format.prototype.orNull = function() {
 	return new Format.OrNull(this);
 };
@@ -67,6 +83,10 @@ Format.String.prototype.decode = function(value) {
 	return value;
 };
 
+Format.String.prototype.random = function() {
+	return (Math.random() + 1).toString(36).substring(2, Math.floor(2 + Math.random() * 10));
+};
+
 Format.str = new Format.String();
 
 // A format for no data.
@@ -80,6 +100,10 @@ Format.Nil.prototype.encode = function(value) {
 
 Format.Nil.prototype.decode = function(source) {
 	if (source !== null) throw Format.Exception;
+	return null;
+};
+
+Format.Nil.prototype.random = function() {
 	return null;
 };
 
@@ -97,6 +121,11 @@ Format.Bool.prototype.encode = function(value) {
 Format.Bool.prototype.decode = function(value) {
 	if (typeof value !== "boolean") throw Format.Exception;
 	return value;
+};
+
+
+Format.Bool.prototype.random = function() {
+	return Math.random() < 0.5 ? false : true;
 };
 
 Format.bool = new Format.Bool();
@@ -129,13 +158,19 @@ Format.Card.prototype.orNull = function() {
 	return new Format.Card(true);
 };
 
+Format.Card.prototype.random = function() {
+	if (this.allowNull && Math.random() < 0.1) return null;
+	return Card.list[Math.floor(Math.random() * Cards.list.length)];
+};
+
 Format.card = new Format.Card(false);
 
 
 // A format for a card set.
-Format.CardSet = function(allowNull, size) {
+Format.CardSet = function(allowNull, size, superset) {
 	this.allowNull = allowNull;
 	this.size = size;
+	this.superset = superset;
 };
 
 Format.CardSet.prototype = Object.create(Format.prototype);
@@ -163,20 +198,38 @@ Format.CardSet.prototype.decode = function(source) {
 	return new CardSet(counts, totalCount);
 };
 
-Format.CardSet.prototype.orNull = function() {
-	return new Format.CardSet(true, this.totalCount);
+Format.CardSet.prototype.tryRandom = function() {
+	let superset = CardSet.create(this.superset || defaultDeck);
+	let size = this.size || Format.nat.lessThan(superset.totalCount).random();
+	let res = CardSet.create();
+	for (let i = 0; i < size; i++) {
+		let card = superset.draw();
+		if (!card) return Format.Retry;
+		res.insert(card);
+	}
+	return res;
+};
+
+Format.CardSet.prototype.withSuperset = function(superset) {
+	return new Format.CardSet(this.allowNull, this.size, superset);
 };
 
 Format.CardSet.prototype.withSize = function(size) {
-	return new Format.CardSet(this.allowNull, size);
+	return new Format.CardSet(this.allowNull, size, this.superset);
 };
 
-Format.cardSet = new Format.CardSet(false, null);
+Format.CardSet.prototype.orNull = function() {
+	return new Format.CardSet(true, this.totalCount, this.superset);
+};
+
+Format.cardSet = new Format.CardSet(false, null, null);
 
 
 // A format for an expression, or null.
-Format.Exp = function(allowNull) {
+Format.Exp = function(role, allowNull, superset) {
+	this.role = role;
 	this.allowNull = allowNull;
+	this.superset = superset;
 };
 
 Format.Exp.prototype = Object.create(Format.prototype);
@@ -193,6 +246,7 @@ Format.Exp.prototype.encode = function(exp) {
 };
 
 Format.Exp.prototype.decode = function(source) {
+	// TODO: Verify superset
 	if (source === null && this.allowNull) return null;
 	if (!(source instanceof Array)) throw Format.Exception;
 	let res = Expression.fromList(source);
@@ -200,12 +254,42 @@ Format.Exp.prototype.decode = function(source) {
 	return res;
 };
 
-Format.Exp.prototype.orNull = function() {
-	return new Format.Exp(true);
+Format.Exp.tryRandomDraw = function(role, sets) {
+	let card = sets[role.id].draw();
+	if (card) {
+		let slots = new Array(card.slots.length);
+		for (let i = 0; i < card.slots.length; i++) {
+			let slot = Format.Exp.tryRandomDraw(card.slots[i], sets);
+			if (!slot) return null;
+			slots[i] = slot;
+		}
+		return new Expression(card, slots);
+	}
+	return null;
 };
 
-Format.exp = new Format.Exp(false);
+Format.Exp.prototype.tryRandom = function() {
+	if (this.allowNull && Math.random() < 0.5) return null;
+	
+	let superset = this.superset ? this.superset : defaultDeck;
+	let sets = superset.partitionByRole();
+	let exp = Format.Exp.tryRandomDraw(this.role, sets);
+	if (!exp) return Format.Retry;
+	return exp;
+};
 
+Format.Exp.prototype.orNull = function() {
+	return new Format.Exp(this.role, true, this.superset);
+};
+
+Format.Exp.prototype.withSuperset = function(superset) {
+	return new Format.Exp(this.role, this.allowNull, superset);
+};
+
+Format.exp = function(role) {
+	console.assert(Role[role.id] === role);
+	return new Format.Exp(role, false, null);
+};
 
 // A format for a non-negative integer less than a given limit.
 Format.Nat = function(limit) {
@@ -229,6 +313,13 @@ Format.Nat.prototype.decode = function(value) {
 
 Format.Nat.prototype.lessThan = function(limit) {
 	return new Format.Nat(Math.min(this.limit, limit));
+};
+
+Format.Nat.prototype.random = function() {
+	if (!isFinite(this.limit))
+		return Math.floor(Math.exp(0.5 / Math.random()) - 1);
+	else
+		return Math.floor(Math.random() * this.limit);
 };
 
 Format.nat = new Format.Nat(Infinity);
@@ -262,11 +353,24 @@ Format.List.prototype.decode = function(source) {
 	return nList;
 };
 
+Format.List.prototype.tryRandom = function() {
+	if (this.allowNull && Math.random() < 0.1) return null;
+	let len = Format.nat.random();
+	let list = [];
+	for (let i = 0; i < len; i++) {
+		let inner = this.inner.tryRandom();
+		if (inner === Format.Retry) return Format.Retry;
+		list.push(inner);
+	}
+	return list;
+};
+
 Format.List.prototype.orNull = function() {
 	return new Format.List(this.inner, true);
-}
+};
 
 Format.list = function(inner) {
+	console.assert(inner instanceof Format);
 	return new Format.List(inner, false);
 };
 
@@ -308,6 +412,17 @@ Format.Record.prototype.decode = function(source) {
 	return record;
 };
 
+Format.Record.prototype.tryRandom = function() {
+	if (this.allowNull && Math.random() < 0.1) return null;
+	let res = { };
+	for (let prop in this.props) {
+		let inner = this.props[prop].tryRandom();
+		if (inner === Format.Retry) return Format.Retry;
+		res[prop] = inner;
+	}
+	return res;
+};
+
 Format.Record.prototype.orNull = function() {
 	return new Format.Record(this.props, true);
 };
@@ -337,13 +452,25 @@ Format.Id.prototype.decode = function(source) {
 	return res;
 };
 
+Format.Id.prototype.random = function() {
+	if (this.formatId instanceof Format.Nat && this.byId instanceof Array) {
+		return this.byId[Math.floor(Math.random() * this.byId.length)];
+	} else {
+		let possible = [];
+		for (let item in this.byId) {
+			possible.push(this.byId[item]);
+		}
+		return possible[Math.floor(Math.random() * possible.length)];
+	}
+};
+
 Format.id = function(formatId, byId) {
 	return new Format.Id(formatId, byId);
 };
 
 // A format for a game setup.
 Format.gameSetup = Format.record({
-	constitution: Format.list(Format.exp),
+	constitution: Format.list(Format.exp(Role.Action)),
 	deck: Format.cardSet
 });
 

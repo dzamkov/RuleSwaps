@@ -6,6 +6,16 @@ function Player(coins, hand, handSize, info) {
 	this.info = info;
 };
 
+Player.prototype.toString = function() {
+	if (this.info.name) {
+		return this.info.name;
+	} else if (this.id) {
+		return "Player " + this.id;
+	} else {
+		return "Player";
+	}
+};
+
 // Identifies a secret game value, but doesn't necessarily provide the value.
 function Commitment(id) {
 	this.id = id;
@@ -152,7 +162,7 @@ Game.prototype.getDepth = function() {
 // Resolves an expression in the game.
 Game.prototype.resolve = function(exp) {
 	return exp.card.resolve(this, exp.slots);
-}
+};
 
 // Gets the commitment with the given Id. This may be called before the commitment is declared
 // in order to possibly let it be pre-resolved.
@@ -163,7 +173,7 @@ Game.prototype.getCommitment = function(id) {
 		this.commitments[id] = commitment;
 	}
 	return commitment;
-}
+};
 
 // Declares a new commitment.
 Game.prototype.declareCommitment = function(player, format) {
@@ -175,27 +185,32 @@ Game.prototype.declareCommitment = function(player, format) {
 		commitment.encodedValue = null;
 	}
 	return commitment;
-}
+};
+
+// Resolves a commitment declared in this game.
+Game.prototype.resolveCommitment = function(commitment, value) {
+	commitment.resolve(value);
+};
 
 // Waits until the given commitment is resolved, then returns its value. This does not
 // necessarily guarantee that the commitment will eventually be fufilled.
 Game.prototype.awaitCommitment = function*(commitment) {
 	while (!commitment.isResolved) yield this.pause();
 	return commitment.value;
-}
+};
 
 // Gets the value of the given commitment. When this is used, the value of the commitment
 // becomes public information.
 Game.prototype.reveal = function*(commitment) {
 	return yield this.awaitCommitment(commitment);
-}
+};
 
 // Gets the value of the given commitment for the given player. This will return null if the
 // current interface is not allowed to look at that player's private information.
 Game.prototype.revealTo = function*(player, commitment) {
 	// Override me
 	return null;
-}
+};
 
 function getOrdinalSuffix(i) {
 	let j = i % 10;
@@ -458,6 +473,7 @@ Game.prototype.interactRole = function(player) {
 //	returns a commitment of either a set or lists of cards.
 Game.prototype.interactCards = function(player, options) {
 	let format = options.ordered ? Format.list.card : Format.cardSet;
+	if (player.hand) format = format.withSuperset(player.hand);
 	if (options.amount) format = format.withSize(options.amount);
 	if (options.optional) format = format.orNull();
 	return this.declareCommitment(player, format);
@@ -466,14 +482,19 @@ Game.prototype.interactCards = function(player, options) {
 // Requests the given player to specify an expression of the given role. Returns that expression wrapped in
 // a commitment.
 Game.prototype.interactSpecify = function(player, role) {
-	return this.declareCommitment(player, Format.exp.orNull());
+	let exp = Format.exp(Role.Action);
+	if (player.hand) exp = exp.withSuperset(player.hand);
+	exp = exp.orNull();
+	return this.declareCommitment(player, exp);
 }
 
 // Gets the format for an amendment to the constitution at this moment.
-Game.prototype.getAmendFormat = function() {
+Game.prototype.getAmendFormat = function(player) {
+	let exp = Format.exp(Role.Action);
+	if (player.hand) exp = exp.withSuperset(player.hand);
 	return Format.record({
 		line: Format.nat.lessThan(this.constitution.length + 1),
-		exp: Format.exp
+		exp: exp
 	}).orNull();
 }
 
@@ -481,7 +502,7 @@ Game.prototype.getAmendFormat = function() {
 Game.prototype.processAmend = function*(commitment) {
 	let amend = yield this.reveal(commitment);
 	if (amend) {
-		yield this.takeCards(commitment.player, CardSet.fromList(amend.exp.toList()))
+		yield this.takeCards(commitment.player, CardSet.fromList(amend.exp.toList()));
 		yield this.proposeAmendment(amend);
 	}
 	return amend;
@@ -489,7 +510,7 @@ Game.prototype.processAmend = function*(commitment) {
 
 // Causes the given player to specify an amendment. Returns it as a proposed amendment.
 Game.prototype.interactAmend = function*(player) {
-	return yield this.processAmend(this.declareCommitment(player, this.getAmendFormat()));
+	return yield this.processAmend(this.declareCommitment(player, this.getAmendFormat(player)));
 }
 
 // Proposes an amendment to the constitution. The proposal is viewable by all players, but

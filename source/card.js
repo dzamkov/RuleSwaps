@@ -75,19 +75,24 @@ function Card(role, text, resolve) {
 }
 
 // The list of all possible cards.
-Card.list = { }
+Card.list = { };
 
 // Registers a card.
 Card.register = function(name, card) {
 	card.name = name;
 	Card.list[name] = card;
-}
+};
 
 // Looks up a card based on the given information.
 Card.get = function(card) {
 	if (typeof card === "string") card = Card.list[card];
 	return card;
-}
+};
+
+Card.prototype.toString = function() {
+	return this.name;
+};
+
 
 // Describes an expression made up of cards.
 function Expression(card, slots) {
@@ -99,7 +104,7 @@ function Expression(card, slots) {
 Expression.get = function(exp) {
 	if (exp instanceof Expression) return exp;
 	return Expression.fromList(exp);
-}
+};
 
 // Constructs an expression from a section of a list of cards.
 Expression.parseFromList = function(cards, indexRef) {
@@ -118,28 +123,32 @@ Expression.parseFromList = function(cards, indexRef) {
 	} else {
 		return null;
 	}
-}
+};
 
 // Constructs an expression from a list of cards, returning null if the list is not well-formed.
 Expression.fromList = function(cards) {
 	let indexRef = { index: 0 };
 	let res = Expression.parseFromList(cards, indexRef);
 	return indexRef.index === cards.length ? res : null;
-}
+};
 
 // Appends the cards in this expression to the given list.
 Expression.prototype.writeToList = function(cards) {
 	cards.push(this.card);
 	for (let i = 0; i < this.slots.length; i++)
 		this.slots[i].writeToList(cards);
-}
+};
 
 // Converts this expression to a list.
 Expression.prototype.toList = function() {
 	let cards = [];
 	this.writeToList(cards);
 	return cards;
-}
+};
+
+Expression.prototype.toString = function() {
+	return "[" + this.toList().join(", ") + "]";
+};
 
 
 // Represents a set of cards.
@@ -162,7 +171,7 @@ CardSet.create = function(set) {
 		totalCount += counts[card];
 	}
 	return new CardSet(nCounts, totalCount);
-}
+};
 
 // Creates a new card set from a card list.
 CardSet.fromList = function(list) {
@@ -174,7 +183,7 @@ CardSet.fromList = function(list) {
 		totalCount++;
 	}
 	return new CardSet(counts, totalCount);
-}
+};
 
 // Creates a list of the cards in a card set in an arbitrary order.
 CardSet.prototype.toList = function() {
@@ -186,7 +195,7 @@ CardSet.prototype.toList = function() {
 		}
 	}
 	return list;
-}
+};
 
 // Gets an array of the counts of the cards in the set, indexed by role id.
 CardSet.prototype.getRoleCounts = function() {
@@ -195,14 +204,27 @@ CardSet.prototype.getRoleCounts = function() {
 		roleCounts[Card.get(card).role.id] += this.counts[card];
 	}
 	return roleCounts;
-}
+};
+
+// Partitions this card set based on role.
+CardSet.prototype.partitionByRole = function() {
+	let res = [new CardSet({ }, 0), new CardSet({ }, 0), new CardSet({ }, 0)];
+	for (let card in this.counts) {
+		let count = this.counts[card];
+		let role = Card.get(card).role;
+		let set = res[role.id];
+		set.counts[card] = count;
+		set.totalCount += count;
+	}
+	return res;
+};
 
 // Adds a card to this card set.
 CardSet.prototype.insert = function(card) {
 	let name = Card.get(card).name;
 	this.counts[name] = (this.counts[name] || 0) + 1;
 	this.totalCount++;
-}
+};
 
 // Tries removing a single copy of the given card from this card set.
 CardSet.prototype.remove = function(card) {
@@ -219,7 +241,7 @@ CardSet.prototype.remove = function(card) {
 	} else {
 		return false;
 	}
-}
+};
 
 // Removes a set of cards from this card set. Fails if the cards are not in this set.
 CardSet.prototype.removeSet = function(set) {
@@ -229,7 +251,7 @@ CardSet.prototype.removeSet = function(set) {
 		this.counts[card] = nCount;
 	}
 	this.totalCount -= set.totalCount;
-}
+};
 
 // Selects and removes a card randomly from this set.
 CardSet.prototype.draw = function() {
@@ -244,4 +266,8 @@ CardSet.prototype.draw = function() {
 		}
 	}
 	return null;
-}
+};
+
+CardSet.prototype.toString = function() {
+	return "[" + this.toList().join(", ") + "]";
+};

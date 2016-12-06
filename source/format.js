@@ -147,7 +147,11 @@ Format.Card.prototype.encode = function(card) {
 };
 
 Format.Card.prototype.decode = function(source) {
-	if (this.allowNull && source === null) return null;
+	if (source === null) {
+		if (this.allowNull) return null;
+		throw Format.Exception;
+	}
+
 	if (typeof source !== "string") throw Format.Exception;
 	let res = Card.get(source);
 	if (!res) throw Format.Exception;
@@ -184,7 +188,11 @@ Format.CardSet.prototype.encode = function(cards) {
 };
 
 Format.CardSet.prototype.decode = function(source) {
-	if (source === null && this.allowNull) return null;
+	if (source === null) {
+		if (this.allowNull) return null;
+		throw Format.Exception;
+	}
+
 	if (!(source instanceof Object)) throw Format.Exception;
 	let counts = { };
 	let totalCount = 0;
@@ -219,7 +227,7 @@ Format.CardSet.prototype.withSize = function(size) {
 };
 
 Format.CardSet.prototype.orNull = function() {
-	return new Format.CardSet(true, this.totalCount, this.superset);
+	return new Format.CardSet(true, this.size, this.superset);
 };
 
 Format.cardSet = new Format.CardSet(false, null, null);
@@ -239,6 +247,7 @@ Format.Exp.prototype.encode = function(exp) {
 		console.assert(this.allowNull);
 		return null;
 	}
+
 	let list = exp.toList();
 	let nList = new Array(list.length);
 	for (let i = 0; i < list.length; i++) nList[i] = Format.card.encode(list[i]);
@@ -247,7 +256,10 @@ Format.Exp.prototype.encode = function(exp) {
 
 Format.Exp.prototype.decode = function(source) {
 	// TODO: Verify superset
-	if (source === null && this.allowNull) return null;
+	if (source === null) {
+		if (this.allowNull) return null;
+		throw Format.Exception;
+	}
 	if (!(source instanceof Array)) throw Format.Exception;
 	let res = Expression.fromList(source);
 	if (!res) throw Format.Exception;
@@ -343,7 +355,10 @@ Format.List.prototype.encode = function(list) {
 };
 
 Format.List.prototype.decode = function(source) {
-	if (source === null && this.allowNull) return null;
+	if (source === null) {
+		if (this.allowNull) return null;
+		throw Format.Exception;
+	}
 	if (!(source instanceof Array)) throw Format.Exception;
 	let nList = new Array(source.length);
 	for (let i = 0; i < source.length; i++) {
@@ -398,7 +413,10 @@ Format.Record.prototype.encode = function(value) {
 };
 
 Format.Record.prototype.decode = function(source) {
-	if (source === null && this.allowNull) return null;
+	if (source === null) {
+		if (this.allowNull) return null;
+		throw Format.Exception;
+	}
 	if (typeof source !== "object") throw Format.Exception;
 	let record = { };
 	for (let prop in source) {
@@ -423,6 +441,12 @@ Format.Record.prototype.tryRandom = function() {
 	return res;
 };
 
+Format.Record.prototype.extend = function(props) {
+	let nProps = {};
+	Object.assign(nProps, this.props, props);
+	return new Format.Record(nProps, this.allowNull);
+};
+
 Format.Record.prototype.orNull = function() {
 	return new Format.Record(this.props, true);
 };
@@ -431,6 +455,35 @@ Format.record = function(props) {
 	return new Format.Record(props, false);
 };
 
+// A format for a dictionary object.
+Format.Dict = function(key, value) {
+	this.key = key;
+	this.value = value;
+};
+
+Format.Dict.prototype = Object.create(Format.prototype);
+
+Format.Dict.prototype.encode = function(source) {
+	let res = { };
+	for (let key in source) {
+		res[this.key.encode(key)] = this.value.encode(source[key]);
+	}
+	return res;
+};
+
+Format.Dict.prototype.decode = function(source) {
+	let res = { };
+	for (let key in source) {
+		res[this.key.decode(key)] = this.value.decode(source[key]);
+	}
+	return res;
+};
+
+Format.dict = function(key, value) {
+	console.assert(key instanceof Format);
+	console.assert(value instanceof Format);
+	return new Format.Dict(key, value);
+};
 
 // A format for an object with an identifier.
 Format.Id = function(formatId, byId) {
@@ -474,11 +527,37 @@ Format.gameSetup = Format.record({
 	deck: Format.cardSet
 });
 
-// Provides the public display information for a player.
-Format.playerInfo = Format.record({
-	
-	// The name of the player.
+// The format for a persistent user identifier.
+Format.userId = Format.str;
+
+// The format for a persistent session token.
+Format.sessionId = Format.str;
+
+// Provides public information describing a user, excluding identifiers.
+Format.userInfo = Format.record({
+
+	// The name of the user.
 	name: Format.str
+
+});
+
+// Provides the public information describing a player, excluding identifiers.
+Format.playerInfo = Format.userInfo.extend({
+	
+	// The identifier for the user corresponding to this player.
+	userId: Format.userId
+
+});
+
+// Provides the public information describing a player within a lobby.
+Format.lobbyPlayerInfo = Format.record({
+
+	// The identifier for the user corresponding to this player.
+	userId: Format.userId,
+
+	// Indicates whether this player has indicated that they are ready.
+	isReady: Format.bool
+
 });
 
 // The format for a text message in a game.
@@ -493,6 +572,17 @@ Format.gameMessage = Format.record({
 	// The content of this message.
 	content: Format.str
 	
+});
+
+// The format for a text message in a lobby.
+Format.lobbyMessage = Format.record({
+
+	// The Id of the user this message originated from, or null if it is a system message.
+	userId: Format.userId.orNull(),
+
+	// The content of this message.
+	content: Format.str
+
 });
 
 // The format for a poll response for a game.
@@ -528,16 +618,17 @@ Format.message = {
 		
 	}),
 	
-	// Network messages related to the game. Session Id is assumed.
+	// Network messages related to the game.
 	game: {
 		
 		// The initial request for game information.
 		introRequest: Format.nil,
 		
-		// A response to the initial request for game information.
+		// A response to the initial request for game information. When null, indicates you may not access
+		// the game, or the game doesn't exist.
 		introResponse: Format.record({
 			
-			// The setup configuration for the game.
+			// The configuration for the game.
 			setup: Format.gameSetup,
 			
 			// The players for this game, in order.
@@ -550,9 +641,10 @@ Format.message = {
 			// Provides the data already generated in the game. If the game has already been completed, this
 			// will be the full set of game data, enough to reconstruct the entire game.
 			data: Format.gamePollResponse
-		}),
+			
+		}).orNull(),
 		
-		// A request for additional game information.
+		// A request for updated game information.
 		pollRequest: Format.record({
 			
 			// The Id of the next commitment that the client is not aware of.
@@ -578,5 +670,38 @@ Format.message = {
 		
 		// A request to send a chat message. This message gets no response.
 		chat: Format.str
+	},
+	
+	// Network messages related to the lobby.
+	lobby: {
+		
+		// The initial request for lobby information.
+		introRequest: Format.nil,
+		
+		// A response to the initial request for lobby information. When null, indicates that you                      
+		// may not access the lobby.
+		introResponse: Format.record({
+			
+			// The set of users (not necessarily players) in the lobby.
+			users: Format.dict(Format.userId, Format.userInfo),
+
+			// The tentative list of players for the game, in order.
+			players: Format.list(Format.lobbyPlayerInfo),
+
+			// The host for the lobby.
+			host: Format.userId,
+
+			// The configuration for the game.
+			setup: Format.gameSetup,
+			
+		}).orNull(),
+		
+		// A request for updated lobby information.
+		pollRequest: Format.nil,
+		
+		// A response to a request for lobby information. When null, this indicates that the lobby has
+		// been abandoned.
+		pollResponse: Format.nil
+	
 	}
 };

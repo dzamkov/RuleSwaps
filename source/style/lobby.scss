@@ -1,0 +1,47 @@
+@import 'common';
+
+#section-lobby {
+	position: absolute;
+	display: flex;
+	flex-direction: row;
+	margin: auto;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 800px;
+	height: 600px;
+}
+
+#section-lobby-content {
+	@extend .fill-parent;
+	display: flex;
+	flex-direction: row;
+	padding: $playarea-margin / 2;
+}
+
+#section-action-bar {
+	min-width: 200px;
+	display: flex;
+	flex-direction: column;
+	margin: $playarea-margin / 2;
+}
+
+#section-chat {
+	flex-grow: 1;
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	margin: $playarea-margin / 2;
+	border-radius: $curve-log;
+	overflow: hidden;
+}
+
+#section-chat-log {
+	flex-grow: 1;
+	padding: 8px;
+	padding-left: 12px;
+	overflow-x: hidden;
+	overflow-y: scroll;
+	background: rgba(#dcdcdc, 0.3);
+}

@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<link rel="stylesheet" type="text/css" href="/static/style.css" />
-		<script type="text/javascript" src="/static/script.js"></script>
+		<link rel="stylesheet" type="text/css" href="/static/game.css" />
+		<script type="text/javascript" src="/static/common.js"></script>
+		<script type="text/javascript" src="/static/game.js"></script>
 	</head>
 	<body>
 		<div id="section-playarea">
@@ -43,12 +44,14 @@
 						<div id="input-expression-buttons">
 						</div>
 					</div>
-					<div id="input-chat">
-						<select id="input-chat-selector">
-							<option>All</option>
-							<option>Some</option>
-						</select>
-						<div id="input-chat-container">
+					<div id="input-chat-container">
+						<div id="input-chat-selector-container">
+							<select id="input-chat-selector">
+								<option>All</option>
+								<option>Some</option>
+							</select>
+						</div>
+						<div id="input-chat-box-container">
 							<input id="input-chat-box">
 						</div>
 						<a id="input-chat-button">Say</a>

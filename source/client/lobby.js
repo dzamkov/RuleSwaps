@@ -1,6 +1,13 @@
 // Starts the lobby given the response to the "intro" request.
 function start(response) {
 	
+	let log = new UI.Log(document.getElementById("section-chat-log"));
+	let chat = new UI.Chat(null,
+		document.getElementById("input-chat-box"),
+		document.getElementById("input-chat-button"));
+	chat.onSay = function(recipient, message) {
+		log.log(0, message, UI.Log.Style.Chat);
+	};
 }
 
 // Handle loading

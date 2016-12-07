@@ -18,6 +18,7 @@ client_common_files := $(common_files) \
 	client/interface.js \
 	client/net.js
 server_files := $(common_files) \
+	server/util.js \
 	server/user.js \
 	server/game.js \
 	server/lobby.js \

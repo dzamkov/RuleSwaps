@@ -33,7 +33,7 @@ Lobby.active = {};
 Lobby.create = function(host, setup) {
 	return new Promise((resolve, reject) => {
 		function tryCreate() {
-			rypto.randomBytes(3, (err, buf) => {
+			crypto.randomBytes(3, (err, buf) => {
 				if (err) return reject(err);
 				let lobbyId = buf.toString("hex");
 				if (!Lobby.active[lobbyId]) {

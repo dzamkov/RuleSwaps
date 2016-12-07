@@ -1,5 +1,3 @@
-let crypto = require("crypto");
-
 // Identifies and describes a user.
 function User(userId, sessionId, info) {
 	this.userId = userId;

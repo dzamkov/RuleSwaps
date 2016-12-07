@@ -24,7 +24,7 @@ function ServerGame(setup, playerInfos) {
 	this.waiting = [];
 }
 
-// The set of all active server games, organized by game ID.
+// The set of all active server games
 ServerGame.active = { };
 
 // Gets a game by its game id.
@@ -218,6 +218,6 @@ ServerGame.prototype.handle = function(message, callback) {
 			});
 		}
 	} else {
-		callback(false);	
+		callback(true);	
 	}
 };

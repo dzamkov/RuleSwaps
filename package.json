@@ -18,6 +18,7 @@
     "uglifyjs": "^2.4.10"
   },
   "dependencies": {
-    "babel-polyfill": "^6.16.0"
+    "babel-polyfill": "^6.16.0",
+    "priorityqueuejs": "^1.0.0"
   }
 }

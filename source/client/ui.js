@@ -695,7 +695,7 @@ let UI = new function() {
 			this.bar = bar;
 			this.coins = 0;
 			this.limit = 0;
-			
+
 			let payment = this;
 			handle.addEventListener("mousedown", function(e) {
 				if (e.button === 0 && !window.dragging) {
@@ -714,13 +714,13 @@ let UI = new function() {
 					};
 				}
 			});
-		}
+		};
 		
 		// Sets the the relative position of the handle.
 		Payment.prototype.setPos = function(r) {
 			let x = r * this.bar.offsetWidth;
 			this.handle.style.left = x + "px";
-		}
+		};
 		
 		// Sets the payment for this input.
 		Payment.prototype.set = function(coins) {
@@ -730,7 +730,7 @@ let UI = new function() {
 			let r = coins / this.limit;
 			if (!r) r = 0;
 			this.setPos(r);
-		}
+		};
 		
 		Payment.prototype.onButtonClick = function(options) {
 			if (options.pass) {
@@ -738,7 +738,7 @@ let UI = new function() {
 			} else {
 				this.respond(this.coins, options.value);
 			}
-		}
+		};
 		
 		Payment.prototype.respond = Input.prototype.respond;
 		Payment.prototype.request = function(options, callback) {
@@ -746,7 +746,7 @@ let UI = new function() {
 			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
 			this.set(Math.min(this.coins, this.limit));
 			Input.prototype.request.call(this, callback);
-		}
+		};
 		
 		// Augments a set of elements to be a cards input.
 		function Cards(container, list, buttons) {
@@ -755,9 +755,9 @@ let UI = new function() {
 			this.buttons = buttons;
 			this.returnTarget = null;
 			this.amount = null;
-			
+
 			let cards = this;
-			
+
 			// Don't accept extra cards
 			let oldDragIn = this.cardList.dragIn;
 			this.cardList.dragIn = function(animated, left, top, fromAcceptor) {
@@ -766,21 +766,21 @@ let UI = new function() {
 					this.getNumCards() < cards.amount)
 					return oldDragIn.call(this, animated, left, top, fromAcceptor);
 			};
-			
+
 			// Disable on leave
 			let oldLeave = this.cardList.leave;
 			this.cardList.leave = function(animated, hole, toAcceptor) {
 				oldLeave.call(this, animated, hole, toAcceptor);
 				cards.updateButtons();
 			};
-			
+
 			// Enable if there are enough cards
 			let oldAccept = this.cardList.accept;
 			this.cardList.accept = function(card, hole, fromAcceptor) {
 				oldAccept.call(this, card, hole, fromAcceptor);
 				cards.updateButtons();
 			};
-		}
+		};
 		
 		// Updates the status of the buttons in this input
 		Cards.prototype.updateButtons = function() {
@@ -794,17 +794,17 @@ let UI = new function() {
 				this.respond(null, options.value);
 			} else {
 				let cards = this.cardList.toList();
-				if (cards.length > 0 && (!this.amount|| cards.length === this.amount)) {
+				if (cards.length > 0 && (!this.amount || cards.length === this.amount)) {
 					this.respond(cards, options.value);
 				}
 			}
-		}
+		};
 		
 		// Sends all cards currently in the card list into the given target. This should not be called
 		// during a request.
 		Cards.prototype.sendAllTo = function(target) {
 			this.cardList.sendAllTo(target);
-		}
+		};
 		
 		Cards.prototype.respond = Input.prototype.respond;
 		Cards.prototype.request = function(options, callback) {
@@ -813,19 +813,19 @@ let UI = new function() {
 			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
 			this.updateButtons();
 			Input.prototype.request.call(this, callback);
-		}
+		};
 		
 		// Augments a set of elements to be an expression input.
 		function Expression(container, list, buttons) {
 			Motion.Acceptor.call(this, list);
 			Input.call(this, container);
-			
+
 			this.list = list;
 			this.buttons = buttons;
 			this.callback = null;
-			
+
 			this.returnTarget = null;
-		}
+		};
 		
 		Expression.prototype = Object.create(Motion.Acceptor.prototype);
 		
@@ -841,10 +841,10 @@ let UI = new function() {
 					hole: hole
 				}
 			}
-		}
+		};
 		
 		Expression.prototype.dragIn = function(card, left, top, fromAcceptor) {
-			
+
 			// Don't allow incoming cards from the same expression
 			if (fromAcceptor !== this && card instanceof Card) {
 				let children = this.element.children;
@@ -860,7 +860,7 @@ let UI = new function() {
 						bestDis = dis;
 					}
 				}
-				
+
 				if (cur) {
 					let role = card.type.role;
 					if (cur.holeFor === card) {
@@ -873,7 +873,7 @@ let UI = new function() {
 				}
 				return null;
 			}
-		}
+		};
 		
 		Expression.prototype.leave = function(animated, hole, toAcceptor) {
 			hole.holeFor = animated.type.role;
@@ -883,7 +883,7 @@ let UI = new function() {
 				this.balanceChildren(false);
 			}
 			this.updateButtons();
-		}
+		};
 		
 		Expression.prototype.accept = function(card, hole, fromAcceptor) {
 			Motion.Acceptor.prototype.accept.call(this, card, hole, fromAcceptor);
@@ -892,7 +892,7 @@ let UI = new function() {
 				this.addSlots(card.element, card.type.slots);
 			}
 			this.updateButtons();
-		}
+		};
 		
 		// Creates a hole element for a slot of the given role.
 		Expression.createSlotHole = function(role, isActive) {
@@ -903,14 +903,14 @@ let UI = new function() {
 			hole.className = className;
 			new Motion.Animated(hole);
 			return hole;
-		}
+		};
 		
 		// Sets the expected role of the expression specified using this input.
 		Expression.prototype.expect = function(role) {
 			while (this.list.lastChild) this.list.removeChild(this.list.lastChild);
 			this.list.appendChild(Expression.createSlotHole(role, false));
 			this.balanceChildren(false);
-		}
+		};
 		
 		// Adds slots to an expression after the given card element.
 		Expression.prototype.addSlots = function(after, slots) {
@@ -921,7 +921,7 @@ let UI = new function() {
 				before = hole.nextSibling;
 			}
 			this.balanceChildren(false);
-		}
+		};
 		
 		// Removes a certain number slots from an expression after the given card element.
 		Expression.prototype.removeSlots = function(after, count) {
@@ -935,7 +935,7 @@ let UI = new function() {
 				}
 			}
 			this.balanceChildren(false);
-		}
+		};
 		
 		// Updates the status of the buttons in this input
 		Expression.prototype.updateButtons = function() {
@@ -953,7 +953,7 @@ let UI = new function() {
 				this.sendAllTo(this.returnTarget);
 				this.respond(null, options.value);
 			} else {
-				
+
 				// Build expression
 				let cards = [];
 				let children = this.element.children;
@@ -971,11 +971,11 @@ let UI = new function() {
 					console.assert(false, "Expression is invalid");
 					return;
 				}
-				
+
 				// Reset and callback
 				this.respond(exp, options.value);
 			}
-		}
+		};
 		
 		// Sends all cards currently in the expression into the given target. This should not be called
 		// during a request.
@@ -988,7 +988,7 @@ let UI = new function() {
 					this.list.removeChild(child);
 				}
 			}
-		}
+		};
 		
 		Expression.prototype.respond = Input.prototype.respond;
 		Expression.prototype.request = function(options, callback) {
@@ -996,7 +996,7 @@ let UI = new function() {
 			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
 			this.updateButtons();
 			Input.prototype.request.call(this, callback);
-		}
+		};
 		
 		this.Options = Options;
 		this.Payment = Payment;
@@ -1010,7 +1010,7 @@ let UI = new function() {
 		this.selector = selector;
 		this.textbox = textbox;
 		this.button = new Button(button);
-		
+
 		this.button.onClick = this.post.bind(this);
 		this.textbox.addEventListener("keypress", (function(e) {
 			if (e.keyCode === 13) {
@@ -1018,7 +1018,7 @@ let UI = new function() {
 				this.post();
 			}
 		}).bind(this));
-	}
+	};
 	
 	// Says the current contents of the chatbox, if non-empty.
 	Chat.prototype.post = function() {
@@ -1026,12 +1026,12 @@ let UI = new function() {
 			this.onSay(null, this.textbox.value); // TODO: Recipient
 			this.textbox.value = "";
 		}
-	}
+	};
 	
 	// An event fired when something is said using the chatbox.
 	Chat.prototype.onSay = function(recipient, message) {
 		// Override me
-	}
+	};
 	
 	// Register window events
 	window.addEventListener("resize", windowResize);

@@ -1,6 +1,7 @@
 @import 'common';
 
 #section-lobby {
+	@extend .section-back;
 	position: absolute;
 	display: flex;
 	flex-direction: row;
@@ -27,13 +28,23 @@
 	margin: $playarea-margin / 2;
 }
 
+#section-player-list {
+	@extend .section-inner;
+	min-height: 160px;
+	background: #767676;
+	margin-bottom: 10px;
+	border-radius: $curve-inset;
+	padding: 6px;
+}
+
 #section-chat {
 	flex-grow: 1;
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	margin: $playarea-margin / 2;
-	border-radius: $curve-log;
+	border-radius: $curve-inset;
+	box-shadow: $section-inner-outset-shadow;
 	overflow: hidden;
 }
 
@@ -43,5 +54,39 @@
 	padding-left: 12px;
 	overflow-x: hidden;
 	overflow-y: scroll;
-	background: rgba(#dcdcdc, 0.3);
+	background: #5f6d5b;
+}
+
+.player-entry {
+	box-sizing: border-box;
+	font-size: $font-size-small;
+
+	border-radius: $curve-entry;
+	border: solid 1px #222222;
+	background: #7fabc8;
+	box-shadow: inset 0 0 3px rgba(#ffffff, 0.8);
+	padding: 4px 8px;
+
+	display: flex;
+	flex-direction: row;
+	color: white;
+	text-shadow: 0 0 2px black, 0 0 2px black;
+
+	& > .name {
+		flex-grow: 1;
+	}
+
+	& > .status {
+		width: 18px;
+		height: 18px;
+		background-image: url("/static/images/status.png");
+		background-repeat: no-repeat;
+		background-size: 36px 18px;
+		&.-ready {
+			background-position: 0 0;
+		}
+		&.-notready {
+			background-position: -18px 0;
+		}
+	}
 }

@@ -134,25 +134,25 @@ var Motion = new function() {
 	// or may not be animated. If the acceptor is willing to let the element leave, it should
 	// remove the element from the DOM and possibly create a placeholder for its return.
 	Acceptor.prototype.dragOut = function(element) {
-		
+
 		// Override me
 		return null;
-		
+
 		// e.g. return { rect, element.getBoundingClientRect(), animated: element.animated, hole: createHole() }
-	}
+	};
 	
 	// Called when the user attempts to drag an element into this acceptor. If this acceptor is willing to
 	// accept the element, it should return the hole that the element can merge into.
 	Acceptor.prototype.dragIn = function(animated, left, top, fromAcceptor) {
-		
+
 		// Override me
 		return null;
-	}
+	};
 	
 	// Called when a draggable element leaves this acceptor, invalidating a hole.
 	Acceptor.prototype.leave = function(animated, hole, toAcceptor) {
 		this.removeChild(hole);
-	}
+	};
 	
 	// Accepts a new element into a hole of this acceptor.
 	Acceptor.prototype.accept = function(animated, hole, fromAcceptor) {
@@ -161,7 +161,7 @@ var Motion = new function() {
 		element.style.left = hole.style.left;
 		element.style.top = hole.style.top;
 		this.element.replaceChild(element, hole);
-	}
+	};
 	
 	// Handles mouse move events for the window
 	function windowMouseMove(e) {
@@ -204,8 +204,11 @@ var Motion = new function() {
 					let left = e.clientX - rect.left + acceptorElement.scrollLeft;
 					let top = e.clientY - rect.top + acceptorElement.scrollTop;
 					let nEnterHole = acceptor.dragIn(animated, left, top, dragging.exitAcceptor);
-					if (nEnterHole && nEnterHole !== dragging.enterHole && nEnterHole !== dragging.exitHole) {
-						if (dragging.enterHole) dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
+					if (nEnterHole === dragging.exitHole) {
+						dragging.exitAcceptor = acceptor;
+					} else if (nEnterHole && nEnterHole !== dragging.enterHole) {
+						if (dragging.enterHole)
+							dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
 						dragging.enterHole = nEnterHole;
 						dragging.enterAcceptor = acceptor;
 					}

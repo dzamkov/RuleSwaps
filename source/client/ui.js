@@ -72,12 +72,12 @@ let UI = new function() {
 		} else {
 			this.element.parentNode.removeChild(this.element);
 		}
-	}
+	};
 	
 	// Creates an element representing a card, and returns its logical interface.
-	function createCard(cardType) {
+	Card.create = function(cardType) {
 		return new Card(cardType.createElement(false), cardType);
-	}
+	};
 	
 	// Balances the children of a hand or list of cards
 	Motion.Acceptor.prototype.balanceChildren = function(shouldCenter) {
@@ -166,7 +166,7 @@ let UI = new function() {
 			hole.className = "card-hole";
 			new Motion.Animated(hole);
 			this.element.insertBefore(hole, next);
-			this.balanceChildren(this, true);
+			this.balanceChildren(true);
 			return hole;
 		}
 	}
@@ -247,7 +247,7 @@ let UI = new function() {
 	// Pulls a card of the given type from this deck.
 	Deck.prototype.pull = function(cardType) {
 		let rect = this.element.getBoundingClientRect();
-		let card = createCard(cardType);
+		let card = Card.create(cardType);
 		card.element.style.position = "fixed";
 		card.moveTo(rect.left, rect.right);
 		return card;
@@ -1037,7 +1037,6 @@ let UI = new function() {
 	window.addEventListener("resize", windowResize);
 	
 	this.Card = Card;
-	this.createCard = createCard;
 	this.Deck = Deck;
 	this.CardList = CardList;
 	this.Constitution = Constitution;

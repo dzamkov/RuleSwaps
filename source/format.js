@@ -521,6 +521,38 @@ Format.id = function(formatId, byId) {
 	return new Format.Id(formatId, byId);
 };
 
+// A format for a tagged union.
+Format.Variant = function(cases) {
+	this.cases = cases;
+};
+
+Format.Variant.prototype = Object.create(Format.prototype);
+
+Format.Variant.prototype.encode = function(value) {
+	let type = value.type;
+	return {
+		type: type,
+		content: this.cases[type].encode(value.content)
+	};
+};
+
+Format.Variant.prototype.decode = function(source) {
+	if (!(source instanceof Object)) throw Format.Exception;
+	if (Object.keys(source).length !== 2) throw Format.Exception;
+	if (!source.hasOwnProperty("content")) throw Format.Exception;
+	let type = source.type;
+	let format = this.cases[type];
+	if (!format) throw Format.Exception;
+	return {
+		type: type,
+		content: format.decode(source.content)
+	}
+};
+
+Format.variant = function(cases) {
+	return new Format.Variant(cases);
+};
+
 // A format for a game setup.
 Format.gameSetup = Format.record({
 	constitution: Format.list(Format.exp(Role.Action)),
@@ -671,37 +703,48 @@ Format.message = {
 		// A request to send a chat message. This message gets no response.
 		chat: Format.str
 	},
-	
-	// Network messages related to the lobby.
+
+	// Contains lobby-related messages.
 	lobby: {
-		
-		// The initial request for lobby information.
-		introRequest: Format.nil,
-		
-		// A response to the initial request for lobby information. When null, indicates that you                      
-		// may not access the lobby.
-		introResponse: Format.record({
+
+		// A request message.
+		request: Format.variant({
+
+			// The initial request for lobby information
+			intro: Format.nil,
+
+			// A request for updated lobby information
+			poll: Format.nil
+
+		}),
+
+		// Various response messages, organized by request type.
+		response: {
+
+			// A response to the initial request for lobby information. When null, indicates that you                      
+			// may not access the lobby.
+			intro: Format.record({
 			
-			// The set of users (not necessarily players) in the lobby.
-			users: Format.dict(Format.userId, Format.userInfo),
+				// The set of users (not necessarily players) in the lobby.
+				users: Format.dict(Format.userId, Format.userInfo),
 
-			// The tentative list of players for the game, in order.
-			players: Format.list(Format.lobbyPlayerInfo),
+				// The tentative list of players for the game, in order.
+				players: Format.list(Format.lobbyPlayerInfo),
 
-			// The host for the lobby.
-			host: Format.userId,
+				// The host for the lobby.
+				host: Format.userId,
 
-			// The configuration for the game.
-			setup: Format.gameSetup,
+				// The configuration for the game.
+				setup: Format.gameSetup,
 			
-		}).orNull(),
-		
-		// A request for updated lobby information.
-		pollRequest: Format.nil,
-		
-		// A response to a request for lobby information. When null, this indicates that the lobby has
-		// been abandoned.
-		pollResponse: Format.nil
-	
+			}).orNull(),
+
+			// A response to a poll request.
+			poll: Format.list(Format.variant({
+
+				// Indicates that there was a lobby message
+				message: Format.lobbyMessage
+			}))
+		}
 	}
 };

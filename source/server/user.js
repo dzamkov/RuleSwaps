@@ -42,10 +42,37 @@ User.getBySessionId = function(sessionId) {
 	return User.create(sessionId, "New Player");
 };
 
-// Brings this user online, if they aren't already.
-User.prototype.bump = function() {
-	if (!this.isOnline) {
-		this.isOnline = true;
-		User.onlineBySessionId[this.sessionId] = this;
+// Sets whether this user is online.
+User.prototype.setOnline = function(isOnline) {
+	if (this.isOnline !== isOnline) {
+		if (isOnline) {
+			User.onlineBySessionId[this.sessionId] = this;
+		} else {
+			delete User.onlineBySessionId[this.sessionId];
+		}
+		this.isOnline = isOnline;
 	}
+};
+
+// Indicates whether this user is active in any lobby or game.
+User.prototype.isActive = function() {
+	for (let lobbyId in this.lobbies) {
+		return true;
+	}
+	for (let gameId in this.games) {
+		return true;
+	}
+	return false;
+};
+
+// Connects this player to the given lobby.
+User.prototype.connectLobby = function(lobby) {
+	this.lobbies[lobby.lobbyId] = lobby;
+	this.setOnline(true);
+};
+
+// Disconnects this player from the given lobby.
+User.prototype.disconnectLobby = function(lobby) {
+	delete this.lobbies[lobby.lobbyId];
+	this.setOnline(this.isActive());
 };

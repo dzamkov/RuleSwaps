@@ -16,11 +16,9 @@ function Lobby(lobbyId, host, setup) {
 				["wealth_win"])
 		], CardSet.create(defaultDeck));
 
-	// The set of all users in this lobby.
-	this.users = { };
-	this.users[host.userId] = host;
-	host.lobbies[lobbyId] = this;
-	host.bump();
+	// The set of all users (described as lobby users) in this lobby.
+	this.users = {};
+	this.connect(host);
 
 	// The tentative list of players for the game.
 	this.players = [{ user: host, isReady: false }];
@@ -59,33 +57,74 @@ Lobby.get = function(user, lobbyId, setup) {
 	return lobby;
 };
 
+// Sets the given user to timeout after the given time.
+Lobby.prototype.setTimeout = function(lobbyUser, time) {
+	let lobby = this;
+	time = time | 2000;
+	lobby.clearTimeout(lobbyUser);
+	lobbyUser.timeoutHandle = setTimeout(function() {
+		lobbyUser.timeoutHandle = null;
+		lobby.disconnect(lobbyUser);
+	}, time);
+};
+
+// Clears the timeout for the given user.
+Lobby.prototype.clearTimeout = function(lobbyUser) {
+	if (lobbyUser.timeoutHandle) {
+		clearTimeout(lobbyUser.timeoutHandle);
+		lobbyUser.timeoutHandle = null;
+	}
+};
+
+// Connects a user to this lobby.
+Lobby.prototype.connect = function(user) {
+	let lobbyUser = {
+		user: user,
+		timeoutHandle: null
+	};
+	this.setTimeout(lobbyUser);
+	this.users[user.userId] = lobbyUser;
+	user.connectLobby(this);
+	return lobbyUser;
+};
+
+// Disconnects a user from this lobby.
+Lobby.prototype.disconnect = function(lobbyUser) {
+	// TODO: Remove from players list
+	this.clearTimeout(lobbyUser);
+	delete this.users[lobbyUser.user.userId];
+	lobbyUser.user.disconnectLobby(this);
+};
+
 // Adds the given user to this lobby, if they aren't already.
 Lobby.prototype.bump = function(user) {
-	if (!this.users[user.userId]) {
-		this.users[user.userId] = user;
-		user.lobbies[this.lobbyId] = this;
-		user.bump();
+	let lobbyUser = this.users[user.userId];
+	if (lobbyUser) {
+
+		// Update timeout
+		if (lobbyUser.timeoutHandle)
+			this.setTimeout(lobbyUser);
+	} else {
+		this.connect(user);
 	}
 };
 
 // Handles a message sent to this lobby.
-Lobby.prototype.handle = function(user, type, content, callback) {
-	if (type === "intro") {
-
-		// Add user to lobby
-		this.bump(user);
+Lobby.prototype.handle = function(user, message, callback) {
+	this.bump(user);
+	if (message.type === "intro") {
 
 		// Return lobby info
 		let users = { };
 		let players = [];
 		for (let userId in this.users) {
-			users[userId] = this.users[userId].info;
+			users[userId] = this.users[userId].user.info;
 		}
 		for (let i = 0; i < this.players.length; i++) {
 			let player = this.players[i];
 			players.push({ userId: player.user.userId, isReady: player.isReady });
 		}
-		callback(Format.message.lobby.introResponse.encode({
+		callback(Format.message.lobby.response.intro.encode({
 			users: users,
 			players: players,
 			host: this.host.userId,

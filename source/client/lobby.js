@@ -120,7 +120,13 @@
 
 	UserList.prototype.leave = function(animated, hole) {
 		this.element.removeChild(hole);
-		this.balanceChildren(true);
+		this.balanceChildren();
+	};
+
+	// Adds a user entry to this list.
+	UserList.prototype.add = function(entry) {
+		this.element.appendChild(entry.element);
+		this.balanceChildren();
 	};
 
 	this.UserEntry = UserEntry;
@@ -136,13 +142,47 @@ function start(response) {
 		document.getElementById("input-chat-button"));
 	let playerList = new UI.UserList(document.getElementById("section-player-list"));
 	let observerList = new UI.UserList(document.getElementById("section-observer-list"));
-	playerList.element.appendChild(UI.UserEntry.create("123", { name: "Steve" }, true).element);
-	playerList.element.appendChild(UI.UserEntry.create("1234", { name: "Bob" }, null).element);
-	playerList.balanceChildren();
 
 	chat.onSay = function(recipient, message) {
 		log.log(0, message, UI.Log.Style.Chat);
 	};
+
+	// User entries
+	let playerIds = [];
+	let observerIds = { };
+	let userEntries = { };
+	for (let userId in response.users) {
+		let userInfo = response.users[userId];
+		let entry = UI.UserEntry.create(userId, userInfo, null);
+		userEntries[userId] = entry;
+		observerIds[userId] = true;
+	}
+
+	// Players
+	for (let i = 0; i < response.players.length; i++) {
+		let playerInfo = response.players[i];
+		let entry = userEntries[playerInfo.userId];
+		entry.setReady(playerInfo.isReady);
+		delete observerIds[playerInfo.userId];
+		playerIds.push(playerInfo.userId);
+	}
+
+	// Set up initial lists
+	for (let i = 0; i < playerIds.length; i++) {
+		playerList.add(userEntries[playerIds[i]]);
+	}
+	for (let id in observerIds) {
+		observerList.add(userEntries[id]);
+	}
+
+	// Polling
+	function poll() {
+		ajax(Format.message.lobby.request.poll.encode({
+
+		}), function(response) {
+
+		});
+	}
 }
 
 // Handle loading
@@ -154,7 +194,10 @@ window.onload = function() {
 	if (loaded && introResponse) start(introResponse);
 }
 
-request("intro", null, function(response) {
-	introResponse = Format.message.lobby.introResponse.decode(response);
+ajax(Format.message.lobby.request.encode({
+	type: "intro",
+	content: null
+}), function(response) {
+	introResponse = Format.message.lobby.response.intro.decode(response);
 	if (loaded && introResponse) start(introResponse);
 });

@@ -11,7 +11,8 @@ common_files := \
 	card.js \
 	game.js \
 	cards.js \
-	format.js
+	format.js \
+	cookie.js
 client_common_files := $(common_files) \
 	client/motion.js \
 	client/ui.js \

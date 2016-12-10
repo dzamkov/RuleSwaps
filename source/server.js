@@ -77,6 +77,11 @@ http.createServer(function(request, response) {
 			}
 		});
 	} else {
+		
+		// Get cookies
+		let cookie = Cookie.parse(request.headers.cookie); // TODO: Handle malformed
+		let sessionId = cookie.sessionId;
+
 		let parts = pathname.split("/");
 		console.assert(parts[0] === "");
 		if (parts.length === 3 && parts[1] === "game") {
@@ -111,10 +116,10 @@ http.createServer(function(request, response) {
 				let lobbyId = parts[2];
 				awaitRequest(request, function(buf) {
 					let message = JSON.parse(buf); // TODO: Handle errors here
-					message = Format.message.general.decode(message);
-					User.getBySessionId(message.sessionId).then(user => {
+					message = Format.message.lobby.request.decode(message);
+					User.getBySessionId(sessionId).then(user => {
 						let lobby = Lobby.get(user, lobbyId);
-						lobby.handle(user, message.type, message.content, respondJSON.bind(null, response));
+						lobby.handle(user, message, respondJSON.bind(null, response));
 					});
 				});
 			} else {

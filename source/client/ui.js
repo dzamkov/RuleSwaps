@@ -534,10 +534,11 @@ let UI = new function() {
 	};
 	
 	// Augments an element to be a button.
-	function Button(element) {
+	function Button(element, isVisible) {
 		this.element = element;
 		element.button = this;
 		this.isEnabled = true;
+		this.isVisible = isVisible === false ? false : true;
 		element.addEventListener("click", (function() { 
 			if (this.isEnabled) this.onClick(this);
 		}).bind(this));
@@ -550,6 +551,18 @@ let UI = new function() {
 		setText(element, textParts);
 		return new Button(element);
 	};
+
+	// Sets whether this button is visible.
+	Button.prototype.setVisible = function(visible) {
+		if (this.isVisible !== visible) {
+			this.isVisible = visible;
+			if (visible) {
+				this.element.style.display = "";
+			} else {
+				this.element.style.display = "none";
+			}
+		}
+	};
 	
 	// Sets whether this button is enabled.
 	Button.prototype.setEnabled = function(enabled) {
@@ -561,7 +574,7 @@ let UI = new function() {
 				this.element.className += " -disabled";
 			}
 		}
-	}
+	};
 	
 	// Handles a button click.
 	Button.prototype.onClick = function() {

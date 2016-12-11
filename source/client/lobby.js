@@ -189,6 +189,9 @@ function start(response) {
 		document.getElementById("input-chat-button"));
 	let playerList = new UI.UserList(document.getElementById("section-player-list"));
 	let observerList = new UI.UserList(document.getElementById("section-observer-list"));
+	let changeNameButton = new UI.Button(document.getElementById("change-name-button"));
+	let readyButton = new UI.Button(document.getElementById("ready-button"), false);
+	let unreadyButton = new UI.Button(document.getElementById("unready-button"), false);
 
 	// User entries
 	let userEntries = {};
@@ -216,11 +219,59 @@ function start(response) {
 	hostEntry.setHost(true);
 	playerList.canDrag = observerList.canDrag = () => meEntry.isHost;
 
+	// Change name button
+	changeNameButton.onClick = function() {
+		let oldName = meEntry.user.name;
+		let newName = prompt("Choose a new name", oldName);
+		if (oldName !== newName) {
+			meEntry.user.name = newName;
+			meEntry.setUser(meEntry.user);
+			ajax(Format.message.lobby.request.encode({
+				type: "changeName",
+				content: newName
+			}));
+		}
+	};
+
+	// Updates the status of the buttons
+	function updateButtons() {
+		if (meEntry.isReady === true) {
+			readyButton.setVisible(false);
+			unreadyButton.setVisible(true);
+		} else if (meEntry.isReady === false) {
+			readyButton.setVisible(true);
+			unreadyButton.setVisible(false);
+		} else {
+			readyButton.setVisible(false);
+			unreadyButton.setVisible(false);
+		}
+	}
+	function changeReady(isReady) {
+		if (meEntry.isReady === !isReady) {
+			meEntry.setReady(isReady);
+			ajax(Format.message.lobby.request.encode({
+				type: "ready",
+				content: isReady
+			}));
+		}
+		updateButtons();
+	}
+	readyButton.onClick = changeReady.bind(null, true);
+	unreadyButton.onClick = changeReady.bind(null, false);
+	updateButtons();
+
 	// Clears the ready status for all players
 	function clearReady() {
 		let playerEntries = playerList.getEntries();
 		for (let i = 0; i < playerEntries.length; i++)
 			playerEntries[i].setReady(false);
+		updateButtons();
+	}
+
+	// Makes a player an observer
+	function makeObserver(entry) {
+		entry.setReady(null);
+		updateButtons();
 	}
 
 	// Handle player rearrangement
@@ -248,7 +299,7 @@ function start(response) {
 				content: playerList.getEntries().map(e => e.user.userId)
 			}));
 
-			entry.setReady(null);
+			makeObserver(entry);
 		}
 	};
 
@@ -259,6 +310,7 @@ function start(response) {
 		if (type === "chat") {
 			log.chat(0, userEntries[content.userId].user, content.text);
 		} else if (type === "userJoin") {
+
 			let user = User.create(content.userId, content.userInfo);
 			let entry = UI.UserEntry.create(user, null);
 			userEntries[user.userId] = entry;
@@ -269,25 +321,31 @@ function start(response) {
 				observerList.appendEntry(entry);
 			}
 			log.log(0, [user, " has joined the lobby"]);
+
 		} else if (type === "userLeave") {
+
 			let entry = userEntries[content.userId];
-			delete userEntries[content.userId];
-			if (playerList.removeEntry(entry)) {
-				clearReady();
-			} else {
-				observerList.removeEntry(entry);
+			if (entry) {
+				delete userEntries[content.userId];
+				if (playerList.removeEntry(entry)) {
+					clearReady();
+				} else {
+					observerList.removeEntry(entry);
+				}
+
+				let message = [entry.user,
+					content.wasKicked ? " was kicked by the host" : " has left the lobby"];
+				if (content.hostId) {
+					hostEntry.setHost(false);
+					hostEntry = userEntries[content.hostId];
+					hostEntry.setHost(true);
+					message.push(Log.Break, hostEntry.user, " is the new host")
+				}
+				log.log(0, message);
 			}
 
-			let message = [entry.user,
-				content.wasKicked ? " was kicked by the host" : " has left the lobby"];
-			if (content.hostId) {
-				hostEntry.setHost(false);
-				hostEntry = userEntries[content.hostId];
-				hostEntry.setHost(true);
-				message.push(Log.Break, hostEntry.user, " is the new host")
-			}
-			log.log(0, message);
 		} else if (type === "shuffle") {
+
 			let observerEntries = observerList.getEntries();
 			let accountedForEntries = { };
 			for (let i = 0; i < observerEntries.length; i++) {
@@ -304,12 +362,26 @@ function start(response) {
 			for (let userId in userEntries) {
 				if (!accountedForEntries[userId]) {
 					let entry = userEntries[userId];
-					entry.setReady(null);
+					makeObserver(entry);
 					observerList.appendEntry(entry);
 				}
 			}
 			clearReady();
-			log.log(0, ["The host has shuffled around players"]);
+
+		} else if (type === "ready") {
+
+			let entry = userEntries[content.userId];
+			entry.setReady(content.isReady);
+			updateButtons();
+
+		} else if (type === "changeName") {
+
+			let entry = userEntries[content.userId];
+			let name = content.name;
+			log.log(0, [entry.user, " changed their name to " + name])
+			entry.user.name = name;
+			entry.setUser(entry.user);
+			
 		}
 	}
 

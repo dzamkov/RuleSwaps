@@ -72,15 +72,16 @@ Lobby.prototype.getTab = function(tab) {
 		tab.tabNum = this.nextTabNum++;
 
 		// Handle tab closing
+		tab.lobby = this;
 		this.tabs[tab.uniqueId] = tab;
-		let lobby = this;
 		let curClose = tab.close;
 		tab.close = function() {
-			curClose.call(tab);
-			delete lobby.tabs[tab.uniqueId];
+			let lobby = this.lobby;
+			curClose.call(this);
+			delete lobby.tabs[this.uniqueId];
 
 			// Check if the lobby has been abandoned or the user disconnected.
-			let user = tab.user;
+			let user = this.user;
 			let needDisconnect = true;
 			let needAbandon = true;
 			for (let uniqueId in lobby.tabs) {
@@ -149,6 +150,16 @@ Lobby.prototype.broadcast = function(message, excludeUniqueId) {
 	}
 };
 
+// Indicates that a user within this lobby has changed their name.
+Lobby.prototype.userChangedName = function(user, name, excludeUniqueId) {
+	this.broadcast({
+		type: "changeName",
+		content: {
+			userId: user.userId,
+			name: name
+		}
+	}, excludeUniqueId);
+};
 
 // Handles a message sent to this lobby.
 Lobby.prototype.handle = function(tab, message, callback) {
@@ -191,7 +202,11 @@ Lobby.prototype.handle = function(tab, message, callback) {
 		return;
 
 	} else if (message.type === "shuffle") {
+
+		// Make sure user is host
 		if (tab.user === this.host) {
+
+			// Reorganize players
 			this.players = [];
 			let isPlayer = { };
 			for (let i = 0; i < message.content.length; i++) {
@@ -202,6 +217,8 @@ Lobby.prototype.handle = function(tab, message, callback) {
 					isPlayer[userId] = true;
 				}
 			}
+
+			// Broadcast shuffle message
 			this.broadcast({
 				type: "shuffle",
 				content: this.players.map(p => p.user.userId)
@@ -209,6 +226,38 @@ Lobby.prototype.handle = function(tab, message, callback) {
 			callback(true);
 			return;
 		}
+
+	} else if (message.type === "ready") {
+
+		// Find player
+		let isReady = message.content;
+		for (let i = 0; i < this.players.length; i++) {
+			let player = this.players[i];
+			if (player.user === tab.user) {
+
+				// Change ready status if needed
+				if (player.isReady !== isReady) {
+					player.isReady = isReady;
+					this.broadcast({
+						type: "ready",
+						content: {
+							userId: tab.user.userId,
+							isReady: isReady
+						}
+					}, tab.uniqueId);
+				}
+
+				callback(true);
+				return;
+			}
+		}
+
+	} else if (message.type === "changeName") {
+
+		tab.user.changeName(message.content, tab.uniqueId);
+		callback(true);
+		return;
+
 	}
 
 	callback(false);

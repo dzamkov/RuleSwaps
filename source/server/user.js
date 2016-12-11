@@ -61,6 +61,24 @@ User.prototype.getTab = function(tabId) {
 	return tab;
 };
 
+// Changes the name for this user.
+User.prototype.changeName = function(name, excludeUniqueId) {
+	this.info.name = name;
+
+	// Find the lobbies this player is in.
+	let lobbies = { };
+	for (let tabId in this.tabs) {
+		let tab = this.tabs[tabId];
+		if (tab.lobby) {
+			lobbies[tab.lobby.lobbyId] = tab.lobby;
+		}
+	}
+
+	// Inform lobbies of name change
+	for (let lobbyId in lobbies) {
+		lobbies[lobbyId].userChangedName(this, name, excludeUniqueId);
+	}
+};
 
 // Identifies a tab that a user may have open. Each tab is associated with exactly one area of the site.
 User.Tab = function(user, tabId) {

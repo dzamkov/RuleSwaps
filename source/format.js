@@ -635,7 +635,19 @@ Format.lobbyMessage = Format.variant({
 	}),
 
 	// Indicates that the player list has changed.
-	shuffle: Format.list(Format.userId)
+	shuffle: Format.list(Format.userId),
+
+	// Indicates that a player has changed their ready status.
+	ready: Format.record({
+		userId: Format.userId,
+		isReady: Format.bool
+	}),
+
+	// Indicates that a user has changed their name.
+	changeName: Format.record({
+		userId: Format.userId,
+		name: Format.str
+	})
 
 });
 
@@ -742,7 +754,13 @@ Format.message = {
 			chat: Format.str,
 
 			// A request to shuffle players.
-			shuffle: Format.list(Format.userId)
+			shuffle: Format.list(Format.userId),
+
+			// A request to change the current player's ready status.
+			ready: Format.bool,
+
+			// A request to change the current player's name.
+			changeName: Format.str
 
 		}),
 
@@ -774,10 +792,16 @@ Format.message = {
 			poll: Format.list(Format.lobbyMessage),
 
 			// A response to a chat message.
-			chat: Format.nil,
+			chat: Format.bool,
 
 			// A response to a shuffle message.
-			shuffle: Format.nil
+			shuffle: Format.bool,
+
+			// A response to a ready message.
+			ready: Format.bool,
+
+			// A response to a change name message.
+			changeName: Format.bool
 		}
 	}
 };

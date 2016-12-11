@@ -606,14 +606,36 @@ Format.gameMessage = Format.record({
 	
 });
 
-// The format for a text message in a lobby.
-Format.lobbyMessage = Format.record({
+// The format for a message in a lobby.
+Format.lobbyMessage = Format.variant({
 
-	// The Id of the user this message originated from, or null if it is a system message.
-	userId: Format.userId.orNull(),
+	// Indicates that there was a chat.
+	chat: Format.record({
 
-	// The content of this message.
-	content: Format.str
+		// The Id of the user this message originated from, or null if it is a system message.
+		userId: Format.userId.orNull(),
+
+		// The text content of this message.
+		text: Format.str
+
+	}),
+
+	// Indicates that a user has joined
+	userJoin: Format.record({
+		userId: Format.userId,
+		userInfo: Format.userInfo,
+		isPlayer: Format.bool
+	}),
+
+	// Indicates that a user has left
+	userLeave: Format.record({
+		userId: Format.userId,
+		wasKicked: Format.bool,
+		hostId: Format.userId
+	}),
+
+	// Indicates that the player list has changed.
+	shuffle: Format.list(Format.userId)
 
 });
 
@@ -692,7 +714,7 @@ Format.message = {
 		// A request to commit to a choice within a game.
 		commit: Format.record({
 			
-			// The Id of the commitment to resolve.
+			// The ID of the commitment to resolve.
 			id: Format.nat,
 			
 			// The value that was provided for the commitment.
@@ -714,7 +736,13 @@ Format.message = {
 			intro: Format.nil,
 
 			// A request for updated lobby information
-			poll: Format.nil
+			poll: Format.nil,
+
+			// A request to send a chat message
+			chat: Format.str,
+
+			// A request to shuffle players.
+			shuffle: Format.list(Format.userId)
 
 		}),
 
@@ -732,7 +760,10 @@ Format.message = {
 				players: Format.list(Format.lobbyPlayerInfo),
 
 				// The host for the lobby.
-				host: Format.userId,
+				hostId: Format.userId,
+
+				// Your user ID in the lobby.
+				youId: Format.userId,
 
 				// The configuration for the game.
 				setup: Format.gameSetup,
@@ -740,11 +771,13 @@ Format.message = {
 			}).orNull(),
 
 			// A response to a poll request.
-			poll: Format.list(Format.variant({
+			poll: Format.list(Format.lobbyMessage),
 
-				// Indicates that there was a lobby message
-				message: Format.lobbyMessage
-			}))
+			// A response to a chat message.
+			chat: Format.nil,
+
+			// A response to a shuffle message.
+			shuffle: Format.nil
 		}
 	}
 };

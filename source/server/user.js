@@ -5,11 +5,8 @@ function User(userId, sessionId, info) {
 	this.info = info;
 	this.isOnline = false;
 
-	// The set of active lobbies this user is in.
-	this.lobbies = { };
-
-	// The set of active games this user is in.
-	this.games = { };
+	// The set of tabs this user has open.
+	this.tabs = { };
 }
 
 // The set of all users that are connected to the server, organized by session ID.
@@ -54,25 +51,66 @@ User.prototype.setOnline = function(isOnline) {
 	}
 };
 
-// Indicates whether this user is active in any lobby or game.
-User.prototype.isActive = function() {
-	for (let lobbyId in this.lobbies) {
-		return true;
-	}
-	for (let gameId in this.games) {
-		return true;
-	}
-	return false;
-};
-
-// Connects this player to the given lobby.
-User.prototype.connectLobby = function(lobby) {
-	this.lobbies[lobby.lobbyId] = lobby;
+// Gets a tab for this user.
+User.prototype.getTab = function(tabId) {
+	let tab = this.tabs[tabId];
+	if (tab) return tab;
+	tab = new User.Tab(this, tabId);
+	this.tabs[tabId] = tab;
 	this.setOnline(true);
+	return tab;
 };
 
-// Disconnects this player from the given lobby.
-User.prototype.disconnectLobby = function(lobby) {
-	delete this.lobbies[lobby.lobbyId];
-	this.setOnline(this.isActive());
+
+// Identifies a tab that a user may have open. Each tab is associated with exactly one area of the site.
+User.Tab = function(user, tabId) {
+	this.user = user;
+	this.tabId = tabId;
+	this.uniqueId = User.Tab.getUniqueId(user, tabId);
+	this.callback = null;
+	this.timeoutHandle = null;
+	this.bump();
+};
+
+// Constructs a globally-unique ID for a tab based on the user and the tab ID.
+User.Tab.getUniqueId = function(user, tabId) {
+	return user.userId + tabId;
+};
+
+// Resets the timeout for this tab.
+User.Tab.prototype.bump = function() {
+	if (!this.callback) {
+		if (this.timeoutHandle) clearTimeout(this.timeoutHandle);
+		let tab = this;
+		this.timeoutHandle = setTimeout(function() {
+			tab.close();
+		}, 5000);
+	}
+};
+
+// Indicates that this tab is currently polling. Sets the callback used to respond to the polling message.
+User.Tab.prototype.poll = function(callback) {
+	this.callback = callback;
+	if (this.timeoutHandle) clearTimeout(this.timeoutHandle);
+};
+
+// Provides a response to a polling request for this tab.
+User.Tab.prototype.respond = function(response) {
+	if (this.callback) {
+		this.callback(response);
+		this.callback = null;
+		this.bump();
+		return true;
+	} else {
+		return false;
+	}
+};
+
+// Indicates that this tab has been closed.
+User.Tab.prototype.close = function() {
+	delete this.user.tabs[this.tabId];
+
+	// Set the user to be offline if all tabs have been closed.
+	for (let tabId in this.user.tabs) return;
+	this.user.setOnline(false);
 };

@@ -86,12 +86,19 @@ $user-entry-margin: 6px;
 		background: #7fabc8;
 	}
 
+	&.-host {
+		background: #d2c799;
+	}
+
 	&.-animated {
 		cursor: pointer;
 		&.-hover {
 			background: #b0b0b0;
 			&.-player {
 				background: #7bb5dc;
+			}
+			&.-host {
+				background: #ddca7c;
 			}
 		}
 	}

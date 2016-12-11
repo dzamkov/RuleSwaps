@@ -14,10 +14,10 @@ common_files := \
 	format.js \
 	cookie.js
 client_common_files := $(common_files) \
+	client/net.js \
 	client/motion.js \
 	client/ui.js \
-	client/interface.js \
-	client/net.js
+	client/interface.js
 server_files := $(common_files) \
 	server/util.js \
 	server/user.js \

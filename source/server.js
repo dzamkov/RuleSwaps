@@ -78,9 +78,13 @@ http.createServer(function(request, response) {
 		});
 	} else {
 		
-		// Get cookies
-		let cookie = Cookie.parse(request.headers.cookie); // TODO: Handle malformed
-		let sessionId = cookie.sessionId;
+		// Get headers
+		let tabId = request.headers["tab-id"]; // TODO: Handle malformed
+		let cookie = Cookie.parse(request.headers.cookie || ""); // TODO: Handle malformed
+		let sessionId = cookie.sessionId || tabId;
+		tabId = tabId || sessionId;
+
+		// Close tab?
 
 		let parts = pathname.split("/");
 		console.assert(parts[0] === "");
@@ -115,13 +119,20 @@ http.createServer(function(request, response) {
 				// Respond to lobby message
 				let lobbyId = parts[2];
 				awaitRequest(request, function(buf) {
-					let message = JSON.parse(buf); // TODO: Handle errors here
-					message = Format.message.lobby.request.decode(message);
-					User.getBySessionId(sessionId).then(user => {
-						let lobby = Lobby.get(user, lobbyId);
-						lobby.handle(user, message, respondJSON.bind(null, response));
-					});
+					if (buf === "CLOSE") {
+						User.getBySessionId(sessionId).then(user => user.getTab(tabId).close());
+					} else {
+						let message = JSON.parse(buf); // TODO: Handle errors here
+						message = Format.message.lobby.request.decode(message);
+						User.getBySessionId(sessionId).then(user => {
+							let lobby = Lobby.get(lobbyId);
+							let tab = user.getTab(tabId);
+							tab.bump();
+							lobby.handle(tab, message, respondJSON.bind(null, response));
+						});
+					}
 				});
+
 			} else {
 				respondNotFound(response);
 			}

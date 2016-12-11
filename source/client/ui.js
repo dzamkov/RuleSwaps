@@ -457,11 +457,12 @@ let UI = new function() {
 		} else {
 			for (let i = 0; i < parts.length; i++) {
 				let part = parts[i];
-				if (part instanceof Player) {
-					let player = document.createElement("span");
-					player.className = "-player";
-					player.innerText = part.info.name;
-					element.appendChild(player);
+				if (part instanceof Player || part instanceof User) {
+					if (part instanceof Player) part = part.user;
+					let user = document.createElement("span");
+					user.className = "-user";
+					user.innerText = part.name;
+					element.appendChild(user);
 				} else if (part instanceof Game.Card) {
 					element.appendChild(createMiniList([part]));
 				} else if (part instanceof Expression) {
@@ -516,12 +517,21 @@ let UI = new function() {
 		buildText(entry, parts);
 		this.element.appendChild(entry);
 		this.scrollToBottom();
-	}
+	};
+
+	// Appends a chat message to the log.
+	Log.prototype.chat = function(depth, user, message) {
+		if (user) {
+			this.log(0, [user, ": ", message], Log.Style.Chat);
+		} else {
+			this.log(0, [message], Log.Style.Chat);
+		}
+	};
 	
 	// Scrolls to the bottom of the log.
 	Log.prototype.scrollToBottom = function() {
 		this.element.scrollTop = this.element.scrollHeight;
-	}
+	};
 	
 	// Augments an element to be a button.
 	function Button(element) {

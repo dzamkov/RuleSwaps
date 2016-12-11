@@ -1,14 +1,14 @@
 // Identifies and describes a player in a game.
-function Player(coins, hand, handSize, info) {
+function Player(coins, hand, handSize, user) {
 	this.coins = coins;
 	this.hand = hand;
 	this.handSize = handSize;
-	this.info = info;
+	this.user = user;
 };
 
 Player.prototype.toString = function() {
-	if (this.info.name) {
-		return this.info.name;
+	if (this.user.name) {
+		return this.user.name;
 	} else if (this.id) {
 		return "Player " + this.id;
 	} else {
@@ -53,7 +53,7 @@ let Color = {
 };
 
 // An interface for running a game.
-function Game(setup, playerInfos) {
+function Game(setup, users) {
 	
 	// Create copy of initial setup
 	this.constitution = new Array(setup.constitution.length);
@@ -64,9 +64,9 @@ function Game(setup, playerInfos) {
 	this.deckSize = this.deck.totalCount;
 	
 	// Create player data
-	this.players = new Array(playerInfos.length);
+	this.players = new Array(users.length);
 	for (let i = 0; i < this.players.length; i++) {
-		this.players[i] = new Player(0, CardSet.create({ }), 0, playerInfos[i]);
+		this.players[i] = new Player(0, CardSet.create({ }), 0, users[i]);
 		this.players[i].id = i;
 	}
 	

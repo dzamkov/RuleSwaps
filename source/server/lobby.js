@@ -1,7 +1,7 @@
 // Describes a game lobby.
-function Lobby(lobbyId, host, setup) {
+function Lobby(lobbyId, setup) {
 	this.lobbyId = lobbyId;
-	this.host = host;
+	this.host = null;
 	this.setup = setup || new Game.Setup([
 			Expression.fromList(
 				["you_gain_5"]),
@@ -16,122 +16,185 @@ function Lobby(lobbyId, host, setup) {
 				["wealth_win"])
 		], CardSet.create(defaultDeck));
 
-	// The set of all users (described as lobby users) in this lobby.
-	this.users = {};
-	this.connect(host);
+	// The set of all tabs displaying this lobby.
+	this.tabs = { };
+
+	// The set of all users in this lobby.
+	this.users = { };
 
 	// The tentative list of players for the game.
-	this.players = [{ user: host, isReady: false }];
+	this.players = [];
 }
 
 // The set of all active lobbies, organized by lobby ID.
-Lobby.active = {};
-
-// Creates a new lobby with the given user as its host, returned as a promise.
-Lobby.create = function(host, setup) {
-	return new Promise((resolve, reject) => {
-		function tryCreate() {
-			crypto.randomBytes(3, (err, buf) => {
-				if (err) return reject(err);
-				let lobbyId = buf.toString("hex");
-				if (!Lobby.active[lobbyId]) {
-					let lobby = new Lobby(lobbyId, host, setup);
-					Lobby.active[lobbyId] = lobby;
-					resolve(lobby);
-				} else {
-					
-					// ID collision, try again.
-					tryCreate();
-				}
-			});
-		}
-	});
-};
+Lobby.active = { };
 
 // Gets or creates a lobby.
-Lobby.get = function(user, lobbyId, setup) {
+Lobby.get = function(lobbyId, setup) {
 	let lobby = Lobby.active[lobbyId];
 	if (lobby) return lobby;
-	lobby = new Lobby(lobbyId, user, setup);
+	lobby = new Lobby(lobbyId, setup);
 	Lobby.active[lobbyId] = lobby;
 	return lobby;
 };
 
-// Sets the given user to timeout after the given time.
-Lobby.prototype.setTimeout = function(lobbyUser, time) {
-	let lobby = this;
-	time = time | 2000;
-	lobby.clearTimeout(lobbyUser);
-	lobbyUser.timeoutHandle = setTimeout(function() {
-		lobbyUser.timeoutHandle = null;
-		lobby.disconnect(lobbyUser);
-	}, time);
+// Called to indicate this lobby was abandoned.
+Lobby.prototype.abandon = function() {
+	delete Lobby.active[this.lobbyId];
 };
 
-// Clears the timeout for the given user.
-Lobby.prototype.clearTimeout = function(lobbyUser) {
-	if (lobbyUser.timeoutHandle) {
-		clearTimeout(lobbyUser.timeoutHandle);
-		lobbyUser.timeoutHandle = null;
+// Gets the lobby tab corresponding to the given tab. This may connect the corresponding user to the lobby.
+Lobby.prototype.getTab = function(tab) {
+	if (!this.tabs[tab.uniqueId]) {
+
+		// Connect user
+		if (!this.users[tab.user.userId]) {
+			this.users[tab.user.userId] = tab.user;
+
+			// Add as host if no other exists
+			if (!this.host) {
+				this.host = tab.user;
+				this.players.push({ user: tab.user, isReady: false });
+			} else {
+				this.broadcast({
+					type: "userJoin",
+					content: {
+						userId: tab.user.userId,
+						userInfo: tab.user.info,
+						isPlayer: false
+					}
+				});
+			}
+		}
+
+		// Handle tab closing
+		this.tabs[tab.uniqueId] = tab;
+		let lobby = this;
+		let curClose = tab.close;
+		tab.close = function() {
+			curClose.call(tab);
+			delete lobby.tabs[tab.uniqueId];
+
+			// Check if the lobby has been abandoned or the user disconnected.
+			let user = tab.user;
+			let needDisconnect = true;
+			let needAbandon = true;
+			for (let uniqueId in lobby.tabs) {
+				needAbandon = false;
+				if (lobby.tabs[uniqueId].user === user) {
+					needDisconnect = false;
+					break;
+				}
+			}
+
+			if (needAbandon) {
+				lobby.abandon();
+			} else {
+
+				// Disconnect
+				if (needDisconnect) {
+					for (let i = 0; i < lobby.players.length; i++) {
+						if (lobby.players[i].user === user) {
+							lobby.players.splice(i, 1);
+							break;
+						}
+					}
+					delete lobby.users[user.userId];
+
+					// TODO: Change host if needed
+
+					// Send disconnect message
+					lobby.broadcast({
+						type: "userLeave",
+						content: {
+							userId: user.userId,
+							wasKicked: false,
+							hostId: lobby.host.userId
+						}
+					});
+				}
+			}
+		};
+
+		// Establish message queue
+		tab.messageQueue = [];
+	}
+	return tab;
+};
+
+// Sends a (formatted) message to all users in this lobby, except maybe to a certain tab.
+Lobby.prototype.broadcast = function(message, excludeUniqueId) {
+	for (let uniqueId in this.tabs) {
+		let tab = this.tabs[uniqueId];
+		if (uniqueId !== excludeUniqueId)
+			tab.messageQueue.push(message);
+		if (tab.messageQueue.length > 0 && tab.respond(tab.messageQueue))
+			tab.messageQueue = [];
 	}
 };
 
-// Connects a user to this lobby.
-Lobby.prototype.connect = function(user) {
-	let lobbyUser = {
-		user: user,
-		timeoutHandle: null
-	};
-	this.setTimeout(lobbyUser);
-	this.users[user.userId] = lobbyUser;
-	user.connectLobby(this);
-	return lobbyUser;
-};
-
-// Disconnects a user from this lobby.
-Lobby.prototype.disconnect = function(lobbyUser) {
-	// TODO: Remove from players list
-	this.clearTimeout(lobbyUser);
-	delete this.users[lobbyUser.user.userId];
-	lobbyUser.user.disconnectLobby(this);
-};
-
-// Adds the given user to this lobby, if they aren't already.
-Lobby.prototype.bump = function(user) {
-	let lobbyUser = this.users[user.userId];
-	if (lobbyUser) {
-
-		// Update timeout
-		if (lobbyUser.timeoutHandle)
-			this.setTimeout(lobbyUser);
-	} else {
-		this.connect(user);
-	}
-};
 
 // Handles a message sent to this lobby.
-Lobby.prototype.handle = function(user, message, callback) {
-	this.bump(user);
+Lobby.prototype.handle = function(tab, message, callback) {
+	tab = this.getTab(tab);
 	if (message.type === "intro") {
 
 		// Return lobby info
 		let users = { };
-		let players = [];
+		let players = this.players.map(p => ({ userId: p.user.userId, isReady: p.isReady }));
 		for (let userId in this.users) {
-			users[userId] = this.users[userId].user.info;
-		}
-		for (let i = 0; i < this.players.length; i++) {
-			let player = this.players[i];
-			players.push({ userId: player.user.userId, isReady: player.isReady });
+			users[userId] = this.users[userId].info;
 		}
 		callback(Format.message.lobby.response.intro.encode({
 			users: users,
 			players: players,
-			host: this.host.userId,
+			hostId: this.host.userId,
+			youId: tab.user.userId,
 			setup: this.setup
 		}));
+		return;
 
-	} else {
-		callback("false");
+	} else if (message.type === "poll") {
+
+		tab.poll(callback);
+		if (tab.messageQueue.length > 0) {
+			tab.respond(tab.messageQueue);
+			tab.messageQueue = [];
+		}
+		return;
+
+	} else if (message.type === "chat") {
+		this.broadcast({
+			type: "chat",
+			content: {
+				userId: tab.user.userId,
+				text: message.content
+			}
+		}, tab.uniqueId);
+		callback(true);
+		return;
+
+	} else if (message.type === "shuffle") {
+		if (tab.user === this.host) {
+			this.players = [];
+			let isPlayer = { };
+			for (let i = 0; i < message.content.length; i++) {
+				let userId = message.content[i];
+				let user = this.users[userId];
+				if (user && !isPlayer[userId]) {
+					this.players.push({ user: user, isReady: false });
+					isPlayer[userId] = true;
+				}
+			}
+			this.broadcast({
+				type: "shuffle",
+				content: this.players.map(p => p.user.userId)
+			}, tab.uniqueId);
+			callback(true);
+			return;
+		}
 	}
+
+	callback(false);
+	return;
 };

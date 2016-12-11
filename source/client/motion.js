@@ -33,6 +33,7 @@ var Motion = new function() {
 				}
 			} else if (animated) {
 				rect = animated.getClientRect();
+				acceptor = null;
 			}
 			
 			// Start dragging
@@ -79,7 +80,7 @@ var Motion = new function() {
 		element.addEventListener("mousedown", draggableMouseDown);
 		element.addEventListener("mouseenter", mouseEnter);
 		element.addEventListener("mouseleave", mouseLeave);
-	}
+	};
 	
 	// Replaces this animated element with the given animated element.
 	Animated.prototype.replace = function(other) {
@@ -87,12 +88,12 @@ var Motion = new function() {
 		other.element.style.position = this.element.style.position;
 		other.element.style.left = this.element.style.left;
 		other.element.style.top = this.element.style.top;
-	}
+	};
 	
 	// Causes this animated element to merge into the given hole of the given acceptor.
 	Animated.prototype.mergeInto = function(acceptor, hole, fromAcceptor) {
 		acceptor.accept(this, hole, fromAcceptor);
-	}
+	};
 	
 	// Causes this animated element to move smoothly to the given coordinates relative to its parent.
 	Animated.prototype.moveTo = function(left, top) {
@@ -101,7 +102,7 @@ var Motion = new function() {
 			element.style.position = "absolute";
 		element.style.left = left + "px";
 		element.style.top = top + "px";
-	}
+	};
 	
 	// Gets the rectangle that this animated element is moving to.
 	Animated.prototype.getTargetRect = function() {
@@ -176,7 +177,7 @@ var Motion = new function() {
 					e.clientY - dragging.offsetY);
 					
 				// Remove current enter hole if we're too far away
-				if (dragging.enterHole) {
+				if (dragging.exitHole && dragging.enterHole) {
 					let eRect = element.getBoundingClientRect();
 					let hRect = dragging.enterHole.getBoundingClientRect();
 					if (eRect.right < hRect.left || 
@@ -204,12 +205,18 @@ var Motion = new function() {
 					let left = e.clientX - rect.left + acceptorElement.scrollLeft;
 					let top = e.clientY - rect.top + acceptorElement.scrollTop;
 					let nEnterHole = acceptor.dragIn(animated, left, top, dragging.exitAcceptor);
-					if (nEnterHole === dragging.exitHole) {
-						dragging.exitAcceptor = acceptor;
-					} else if (nEnterHole && nEnterHole !== dragging.enterHole) {
-						if (dragging.enterHole)
-							dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
-						dragging.enterHole = nEnterHole;
+					if (nEnterHole) {
+						if (nEnterHole === dragging.enterHole) {
+							// Nothing to do here
+						} else if (nEnterHole === dragging.exitHole) {
+							dragging.exitHole = null;
+							dragging.enterHole = nEnterHole;
+						} else {
+							if (dragging.enterHole) {
+								dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
+							}
+							dragging.enterHole = nEnterHole;
+						}
 						dragging.enterAcceptor = acceptor;
 					}
 				}

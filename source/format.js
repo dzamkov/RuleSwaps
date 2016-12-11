@@ -631,7 +631,7 @@ Format.lobbyMessage = Format.variant({
 	userLeave: Format.record({
 		userId: Format.userId,
 		wasKicked: Format.bool,
-		hostId: Format.userId
+		hostId: Format.userId.orNull()
 	}),
 
 	// Indicates that the player list has changed.

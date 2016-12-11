@@ -198,7 +198,6 @@ function start(response) {
 		for (let userId in response.users) {
 			let user = User.create(userId, response.users[userId]);
 			let entry = UI.UserEntry.create(user, null);
-			entry.setHost(response.hostId === user.userId);
 			userEntries[userId] = entry;
 			observerEntries[userId] = entry;
 		}
@@ -213,6 +212,8 @@ function start(response) {
 		observerList.setEntries(Object.values(observerEntries));
 	})();
 	let meEntry = userEntries[response.youId];
+	let hostEntry = userEntries[response.hostId];
+	hostEntry.setHost(true);
 	playerList.canDrag = observerList.canDrag = () => meEntry.isHost;
 
 	// Clears the ready status for all players
@@ -276,7 +277,16 @@ function start(response) {
 			} else {
 				observerList.removeEntry(entry);
 			}
-			log.log(0, [entry.user, content.wasKicked ? " was kicked by the host" : " has left the lobby"]);
+
+			let message = [entry.user,
+				content.wasKicked ? " was kicked by the host" : " has left the lobby"];
+			if (content.hostId) {
+				hostEntry.setHost(false);
+				hostEntry = userEntries[content.hostId];
+				hostEntry.setHost(true);
+				message.push(Log.Break, hostEntry.user, " is the new host")
+			}
+			log.log(0, message);
 		} else if (type === "shuffle") {
 			let observerEntries = observerList.getEntries();
 			let accountedForEntries = { };

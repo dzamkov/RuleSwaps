@@ -15,6 +15,7 @@ function Lobby(lobbyId, setup) {
 			Expression.fromList(
 				["wealth_win"])
 		], CardSet.create(defaultDeck));
+	this.nextTabNum = 0;
 
 	// The set of all tabs displaying this lobby.
 	this.tabs = { };
@@ -67,6 +68,9 @@ Lobby.prototype.getTab = function(tab) {
 			}
 		}
 
+		// Tab number (used for picking new hosts)
+		tab.tabNum = this.nextTabNum++;
+
 		// Handle tab closing
 		this.tabs[tab.uniqueId] = tab;
 		let lobby = this;
@@ -101,7 +105,19 @@ Lobby.prototype.getTab = function(tab) {
 					}
 					delete lobby.users[user.userId];
 
-					// TODO: Change host if needed
+					// Change host if needed
+					let newHost = null;
+					if (lobby.host === user) {
+						let lowestTabNum = Infinity;
+						for (let uniqueId in lobby.tabs) {
+							let tab = lobby.tabs[uniqueId];
+							if (tab.tabNum < lowestTabNum) {
+								newHost = tab.user;
+								lowestTabNum = tab.tabNum;
+							}
+						}
+						lobby.host = newHost;
+					}
 
 					// Send disconnect message
 					lobby.broadcast({
@@ -109,7 +125,7 @@ Lobby.prototype.getTab = function(tab) {
 						content: {
 							userId: user.userId,
 							wasKicked: false,
-							hostId: lobby.host.userId
+							hostId: newHost ? newHost.userId : null
 						}
 					});
 				}

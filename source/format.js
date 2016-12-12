@@ -494,7 +494,7 @@ Format.Id = function(formatId, byId) {
 Format.Id.prototype = Object.create(Format.prototype);
 
 Format.Id.prototype.encode = function(value) {
-	console.assert(byId[value.id] === value);
+	console.assert(this.byId[value.id] === value);
 	return this.formatId.encode(value.id);
 };
 
@@ -565,6 +565,9 @@ Format.userId = Format.str;
 // The format for a persistent session token.
 Format.sessionId = Format.str;
 
+// The format for a persistent game identifier.
+Format.gameId = Format.str;
+
 // Provides public information describing a user, excluding identifiers.
 Format.userInfo = Format.record({
 
@@ -592,8 +595,8 @@ Format.lobbyPlayerInfo = Format.record({
 
 });
 
-// The format for a text message in a game.
-Format.gameMessage = Format.record({
+// The format for a chat message in a game.
+Format.gameChat = Format.record({
 	
 	// The Id of the base commitment at the time this message was made.
 	baseCommitmentId: Format.nat,
@@ -640,14 +643,18 @@ Format.lobbyMessage = Format.variant({
 	// Indicates that a player has changed their ready status.
 	ready: Format.record({
 		userId: Format.userId,
-		isReady: Format.bool
+		isReady: Format.bool,
+		isStarting: Format.bool
 	}),
 
 	// Indicates that a user has changed their name.
 	changeName: Format.record({
 		userId: Format.userId,
 		name: Format.str
-	})
+	}),
+
+	// Indicates that the game associated with the lobby has started.
+	started: Format.gameId
 
 });
 
@@ -657,14 +664,14 @@ Format.gamePollResponse = Format.record({
 	// The values of selected commitments for the game
 	commitments: Format.any,
 	
-	// The values of messages in the game
-	messages: Format.list(Format.gameMessage),
+	// The values of chat messages in the game
+	chats: Format.list(Format.gameChat),
 	
-	// The Id of the first commitment that was not accounted for in this response.
+	// The ID of the first commitment that was not accounted for in this response.
 	baseCommitmentId: Format.nat,
 	
-	// The Id of the first message that was not accounted for in this response.
-	messageId: Format.nat
+	// The ID of the first chat message that was not accounted for in this response.
+	chatId: Format.nat
 });
 
 // Provides formats for various network messages.
@@ -687,55 +694,71 @@ Format.message = {
 	// Network messages related to the game.
 	game: {
 		
-		// The initial request for game information.
-		introRequest: Format.nil,
-		
-		// A response to the initial request for game information. When null, indicates you may not access
-		// the game, or the game doesn't exist.
-		introResponse: Format.record({
+		// A request message.
+		request: Format.variant({
+
+			// The initial request for game information.
+			intro: Format.nil,
+
+			// A request for updated game information.
+			poll: Format.record({
+
+				// The ID of the next commitment that the client is not aware of.
+				baseCommitmentId: Format.nat,
 			
-			// The configuration for the game.
-			setup: Format.gameSetup,
+				// The ID of the next chat message that the client is not aware of.
+				chatId: Format.nat
+
+			}),
+
+			// A request to commit to a choice within a game.
+			commit: Format.record({
 			
-			// The players for this game, in order.
-			players: Format.list(Format.playerInfo),
+				// The ID of the commitment to resolve.
+				id: Format.nat,
 			
-			// Your index in the players list for the game, or null if you
-			// are an observer.
-			youId: Format.nat.orNull(),
+				// The value that was provided for the commitment.
+				value: Format.any
 			
-			// Provides the data already generated in the game. If the game has already been completed, this
-			// will be the full set of game data, enough to reconstruct the entire game.
-			data: Format.gamePollResponse
-			
-		}).orNull(),
-		
-		// A request for updated game information.
-		pollRequest: Format.record({
-			
-			// The Id of the next commitment that the client is not aware of.
-			baseCommitmentId: Format.nat,
-			
-			// The Id of the next message that the client is not aware of.
-			messageId: Format.nat
+			}),
+
+			// A request to send a chat message.
+			chat: Format.str
+
 		}),
-		
-		// A response to a request for game information.
-		pollResponse: Format.gamePollResponse,
-		
-		// A request to commit to a choice within a game.
-		commit: Format.record({
+
+		// Various response messages, organized by request type.
+		response: {
+
+			// A response to the initial request for game information. When null, indicates you may not
+			// access the game, or the game doesn't exist.
+			intro: Format.record({
 			
-			// The ID of the commitment to resolve.
-			id: Format.nat,
+				// The configuration for the game.
+				setup: Format.gameSetup,
 			
-			// The value that was provided for the commitment.
-			value: Format.any
+				// The players for this game, in order.
+				players: Format.list(Format.playerInfo),
 			
-		}),
-		
-		// A request to send a chat message. This message gets no response.
-		chat: Format.str
+				// Your index in the players list for the game, or null if you
+				// are an observer.
+				youId: Format.nat.orNull(),
+			
+				// Provides the data already generated in the game. If the game has already been completed, this
+				// will be the full set of game data, enough to reconstruct the entire game.
+				data: Format.gamePollResponse
+			
+			}).orNull(),
+
+			// A response to a request for updated game information.
+			poll: Format.gamePollResponse,
+
+			// A response to a request to commit.
+			commit: Format.bool,
+
+			// A response to a request to chat.
+			chat: Format.bool
+		}
 	},
 
 	// Contains lobby-related messages.

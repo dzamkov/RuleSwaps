@@ -583,10 +583,9 @@ let UI = new function() {
 	
 	
 	// Augments a set of elements to display player information.
-	function PlayerInfo(player, coins, cards, back) {
+	function PlayerInfo(player, coins, cards) {
 		this.coins = coins;
 		this.cards = cards;
-		this.back = back;
 		
 		coins.innerText = player.coins;
 		cards.innerText = player.handSize;
@@ -595,20 +594,16 @@ let UI = new function() {
 	// Creates a player info section for a non-self player.
 	PlayerInfo.create = function(player, isLeft) {
 		let container = document.createElement("div");
-		let back = document.createElement("div");
-		container.appendChild(back);
 		
 		if (isLeft) {
 			container.className = "section-player-left";
-			back.className = "section-back-left";
 		} else {
 			container.className = "section-player-right";
-			back.className = "section-back-right";
 		}
 		
 		let name = document.createElement("div");
 		name.className = "player-name";
-		name.innerText = player.info.name;
+		name.innerText = player.user.name;
 		container.appendChild(name);
 		
 		let info = document.createElement("div");
@@ -623,7 +618,7 @@ let UI = new function() {
 		cards.className = "icon -small -cards";
 		info.appendChild(cards);
 		
-		let playerInfo = new PlayerInfo(player, coins, cards, back);
+		let playerInfo = new PlayerInfo(player, coins, cards);
 		playerInfo.container = container;
 		return playerInfo;
 	}

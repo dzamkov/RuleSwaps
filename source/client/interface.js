@@ -1,40 +1,46 @@
 // A client-specific interface to a game.
-function Interface(setup, playerInfos, selfId, parts) {
+function Interface(setup, playerInfos, selfId) {
 	this.delayTimeout = null;
 	
 	// Set up UI
 	this.ui = {
-		parts: parts,
 		deck: {
-			draw: new UI.Deck(parts.deckDraw),
-			discard: new UI.Deck(parts.deckDiscard),
+			draw: new UI.Deck(document.getElementById("deck-draw")),
+			discard: new UI.Deck(document.getElementById("deck-discard")),
 		},
-		hand: new UI.CardList(parts.selfHand),
+		hand: new UI.CardList(document.getElementById("section-player-self-hand")),
 		constitution: new UI.Constitution(
-			parts.constitutionNumbers,
-			parts.constitutionList),
-		log: new UI.Log(parts.log),
+			document.getElementById("section-constitution-numbers"),
+			document.getElementById("section-constitution-list")),
+		log: new UI.Log(document.getElementById("section-log")),
 		input: {
 			options: new UI.Input.Options(
-				parts.inputOptions),
+				document.getElementById("input-options")),
 			payment: new UI.Input.Payment(
-				parts.inputPayment,
-				parts.inputPaymentHandle,
-				parts.inputPaymentBar,
-				parts.inputPaymentButtons),
+				document.getElementById("input-payment"),
+				document.getElementById("input-payment-slider-handle"),
+				document.getElementById("input-payment-slider-bar"),
+				document.getElementById("input-payment-buttons")),
 			cards: new UI.Input.Cards(
-				parts.inputCards,
-				parts.inputCardsList,
-				parts.inputCardsButtons),
+				document.getElementById("input-cards"),
+				document.getElementById("input-cards-list"),
+				document.getElementById("input-cards-buttons")),
 			expression: new UI.Input.Expression(
-				parts.inputExpression,
-				parts.inputExpressionList,
-				parts.inputExpressionButtons),
+				document.getElementById("input-expression"),
+				document.getElementById("input-expression-list"),
+				document.getElementById("input-expression-buttons")),
 		},
 		chat: new UI.Chat(
-			parts.inputChatSelector,
-			parts.inputChatTextbox,
-			parts.inputChatButton)
+			document.getElementById("input-chat-selector"),
+			document.getElementById("input-chat-box"),
+			document.getElementById("input-chat-button")),
+
+		playersLeft: document.getElementById("players-left"),
+		playersRight: document.getElementById("players-right"),
+
+		selfBack: document.getElementById("player-self-back"),
+		selfCoins: document.getElementById("player-self-coins"),
+		selfCards: document.getElementById("player-self-cards"),
 	};
 	
 	this.ui.input.cards.returnTarget = this.ui.hand;
@@ -52,17 +58,17 @@ function Interface(setup, playerInfos, selfId, parts) {
 	if (selfId !== null) {
 		this.playerSelf = this.players[selfId];
 		this.playerSelf.ui = new UI.PlayerInfo(this.playerSelf,
-			parts.selfCoins, parts.selfCards, parts.selfBack);
+			this.ui.selfCoins, this.ui.selfCards, this.ui.selfBack);
 		let otherPlayers = this.getPlayersFrom(this.playerSelf).slice(1);
 		let split = Math.ceil(otherPlayers.length / 2);
 		for (let i = split - 1; i >= 0; i--) {
 			let playerInfo = UI.PlayerInfo.create(otherPlayers[i], true);
-			parts.playersLeft.appendChild(playerInfo.container);
+			this.ui.playersLeft.appendChild(playerInfo.container);
 			otherPlayers[i].ui = playerInfo;
 		}
 		for (let i = split; i < otherPlayers.length; i++) {
 			let playerInfo = UI.PlayerInfo.create(otherPlayers[i], false);
-			parts.playersRight.appendChild(playerInfo.container);
+			this.ui.playersRight.appendChild(playerInfo.container);
 			otherPlayers[i].ui = playerInfo;
 		}
 	} else {
@@ -71,12 +77,12 @@ function Interface(setup, playerInfos, selfId, parts) {
 		let split = Math.ceil(players.length / 2);
 		for (let i = split - 1; i >= 0; i--) {
 			let playerInfo = UI.PlayerInfo.create(players[i], true);
-			parts.playersLeft.appendChild(playerInfo.container);
+			this.ui.playersLeft.appendChild(playerInfo.container);
 			players[i].ui = playerInfo;
 		}
 		for (let i = split; i < players.length; i++) {
 			let playerInfo = UI.PlayerInfo.create(players[i], false);
-			parts.playersRight.appendChild(playerInfo.container);
+			this.ui.playersRight.appendChild(playerInfo.container);
 			players[i].ui = playerInfo;
 		}
 		

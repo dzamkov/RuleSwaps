@@ -374,6 +374,10 @@ function start(response) {
 			entry.setReady(content.isReady);
 			updateButtons();
 
+			if (content.isStarting) {
+				log.log(0, ["All players are ready. the game will start in a moment"], UI.Log.Style.Victory);
+			}
+
 		} else if (type === "changeName") {
 
 			let entry = userEntries[content.userId];
@@ -382,6 +386,8 @@ function start(response) {
 			entry.user.name = name;
 			entry.setUser(entry.user);
 			
+		} else if (type === "started") {
+			window.location = "/game/" + content;
 		}
 	}
 

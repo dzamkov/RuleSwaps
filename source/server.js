@@ -48,18 +48,20 @@ function respondFile(response, file) {
 	});
 }
 
-// Waits until all content for the given request has been loaded, then calls
-// the given callback with the content as a string.
-function awaitRequest(request, callback) {
-	let buf = "";
-	request.on("data", function(chunk) {
-		buf += chunk;
-		// TODO: Limit request size, look in to better way of streaming
-	});
-	request.on("end", function() {
-		callback(buf);
+// Returns the entire contents of the given request as a promise.
+function getRequestContents(request) {
+	return new Promise((resolve, reject) => {
+		let buf = "";
+		request.on("data", function(chunk) {
+			buf += chunk;
+			// TODO: Limit request size, look in to better way of streaming
+		});
+		request.on("end", function() {
+			resolve(buf);
+		});
 	});
 }
+
 
 http.createServer(function(request, response) {
 	let pathname = path.normalize(url.parse(request.url).pathname);
@@ -84,61 +86,99 @@ http.createServer(function(request, response) {
 		let sessionId = cookie.sessionId || tabId;
 		tabId = tabId || sessionId;
 
-		// Close tab?
-
 		let parts = pathname.split("/");
 		console.assert(parts[0] === "");
 		if (parts.length === 3 && parts[1] === "game") {
 			if (parts.length === 3 && request.method === "GET") {
+
 				respondFile(response, "static/game.html");
+				return;
+
 			} else if (request.method === "POST") {
 				
 				// Response to game message
 				let gameId = parts[2];
-				let game = null;
-				let message = null;
-				
-				ServerGame.get(gameId, function(nGame) {
-					game = nGame;
-					if (game && message) game.handle(message, respondJSON.bind(null, response));
+				Promise.all([
+					getRequestContents(request),
+					User.getBySessionId(sessionId),
+					ServerGame.get(gameId)
+				]).then(values => {
+					let buf = values[0];
+					let user = values[1];
+					let game = values[2];
+					if (game) {
+						if (buf === "CLOSE") {
+							user.getTab(tabId).close();
+						} else {
+							let message = JSON.parse(buf); // TODO: Handle errors here
+							message = Format.message.game.request.decode(message);
+							let tab = user.getTab(tabId);
+							tab.bump();
+							game.handle(tab, message, respondJSON.bind(null, response));
+						}
+					} else {
+						respondNotFound(response);
+					}
 				});
-				
-				awaitRequest(request, function(buf) {
-					message = JSON.parse(buf); // TODO: Handle errors here
-					message = Format.message.general.decode(message);
-					if (game && message) game.handle(message, respondJSON.bind(null, response));
-				});
-			} else {
-				respondNotFound(response);
+				return;
 			}
 		} else if (parts.length === 3 && parts[1] === "lobby") {
 			if (parts.length === 3 && request.method === "GET") {
+
 				respondFile(response, "static/lobby.html");
+				return;
+
 			} else if (request.method === "POST") {
 
 				// Respond to lobby message
 				let lobbyId = parts[2];
-				awaitRequest(request, function(buf) {
+				Promise.all([
+					getRequestContents(request),
+					User.getBySessionId(sessionId)
+				]).then(values => {
+					let buf = values[0];
+					let user = values[1];
 					if (buf === "CLOSE") {
-						User.getBySessionId(sessionId).then(user => user.getTab(tabId).close());
+						user.getTab(tabId).close();
 					} else {
 						let message = JSON.parse(buf); // TODO: Handle errors here
 						message = Format.message.lobby.request.decode(message);
-						User.getBySessionId(sessionId).then(user => {
-							let lobby = Lobby.get(lobbyId);
-							let tab = user.getTab(tabId);
-							tab.bump();
-							lobby.handle(tab, message, respondJSON.bind(null, response));
-						});
+						let lobby = Lobby.get(lobbyId);
+						let tab = user.getTab(tabId);
+						tab.bump();
+						lobby.handle(tab, message, respondJSON.bind(null, response));
 					}
 				});
-
-			} else {
-				respondNotFound(response);
+				return;
 			}
-		} else {
-			respondNotFound(response);
+		} else if (parts.length === 2 && parts[1] === "test") {
+
+			// Create a test game
+			User.getBySessionId(sessionId).then(user => {
+				return ServerGame.create(new Game.Setup([
+					Expression.fromList(
+						["you_gain_5"]),
+					Expression.fromList(
+						["player_draws_3", "you"]),
+					Expression.fromList(
+						["insert_amendment_conditional", "you",
+						"player_decides", "auction_winner"]),
+					Expression.fromList(
+						["specify_action_optional", "you"]),
+					Expression.fromList(
+						["wealth_win"])
+				], CardSet.create(defaultDeck)), [user]);
+			}).then(game => {
+
+				// Redirect to game
+				response.writeHead(302, { "Location": "/game/" + game.gameId });
+				response.end();
+			});
+			return;
 		}
+
+		respondNotFound(response);
+		return;
 	}
 	
 }).listen(port);

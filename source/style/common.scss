@@ -1,4 +1,4 @@
-$font-family: "Verdana", sans-serif;
+$font-family: "Trebuchet MS", Helvetica, sans-serif;
 $curve-section: 10px;
 $curve-inset: 6px;
 $curve-entry: 4px;
@@ -250,13 +250,11 @@ $section-inner-inset-shadow: inset 0 0 5px #000000;
 }
 
 .section-back-left {
-	@extend .fill-parent;
 	@extend .section-back;
 	border-radius: 0 $curve-section $curve-section 0;
 }
 
 .section-back-right {
-	@extend .fill-parent;
 	@extend .section-back;
 	border-radius: $curve-section 0 0 $curve-section;
 }

@@ -16,6 +16,8 @@ function Lobby(lobbyId, setup) {
 				["wealth_win"])
 		], CardSet.create(defaultDeck));
 	this.nextTabNum = 0;
+	this.startTimeoutHandle = null;
+	this.game = null;
 
 	// The set of all tabs displaying this lobby.
 	this.tabs = { };
@@ -47,6 +49,9 @@ Lobby.prototype.abandon = function() {
 // Gets the lobby tab corresponding to the given tab. This may connect the corresponding user to the lobby.
 Lobby.prototype.getTab = function(tab) {
 	if (!this.tabs[tab.uniqueId]) {
+		tab.lobby = this;
+		tab.messageQueue = [];
+		this.tabs[tab.uniqueId] = tab;
 
 		// Connect user
 		if (!this.users[tab.user.userId]) {
@@ -64,7 +69,7 @@ Lobby.prototype.getTab = function(tab) {
 						userInfo: tab.user.info,
 						isPlayer: false
 					}
-				});
+				}, tab.uniqueId);
 			}
 		}
 
@@ -72,8 +77,6 @@ Lobby.prototype.getTab = function(tab) {
 		tab.tabNum = this.nextTabNum++;
 
 		// Handle tab closing
-		tab.lobby = this;
-		this.tabs[tab.uniqueId] = tab;
 		let curClose = tab.close;
 		tab.close = function() {
 			let lobby = this.lobby;
@@ -98,8 +101,10 @@ Lobby.prototype.getTab = function(tab) {
 
 				// Disconnect
 				if (needDisconnect) {
+					let isPlayer = false;
 					for (let i = 0; i < lobby.players.length; i++) {
 						if (lobby.players[i].user === user) {
+							isPlayer = true;
 							lobby.players.splice(i, 1);
 							break;
 						}
@@ -120,6 +125,9 @@ Lobby.prototype.getTab = function(tab) {
 						lobby.host = newHost;
 					}
 
+					// Abort start
+					if (isPlayer) lobby.setStarting(false);
+
 					// Send disconnect message
 					lobby.broadcast({
 						type: "userLeave",
@@ -132,9 +140,6 @@ Lobby.prototype.getTab = function(tab) {
 				}
 			}
 		};
-
-		// Establish message queue
-		tab.messageQueue = [];
 	}
 	return tab;
 };
@@ -145,7 +150,8 @@ Lobby.prototype.broadcast = function(message, excludeUniqueId) {
 		let tab = this.tabs[uniqueId];
 		if (uniqueId !== excludeUniqueId)
 			tab.messageQueue.push(message);
-		if (tab.messageQueue.length > 0 && tab.respond(tab.messageQueue))
+		if (tab.messageQueue.length > 0 &&
+			tab.respond(Format.message.lobby.response.poll.encode(tab.messageQueue)))
 			tab.messageQueue = [];
 	}
 };
@@ -161,31 +167,58 @@ Lobby.prototype.userChangedName = function(user, name, excludeUniqueId) {
 	}, excludeUniqueId);
 };
 
+// Indicates whether this lobby is about to start a game.
+Lobby.prototype.setStarting = function(isStarting) {
+	if (!this.startTimeoutHandle && isStarting) {
+		this.startTimeoutHandle = setTimeout((function() {
+			this.startTimeoutHandle = false;
+			ServerGame.create(this.setup, this.players.map(p => p.user)).then((game => {
+				this.game = game;
+				this.broadcast({
+					type: "started",
+					content: game.gameId
+				});
+			}).bind(this));
+		}).bind(this), 2000);
+	} else if (this.startTimeoutHandle && !isStarting) {
+		clearTimeout(this.startTimeoutHandle);
+		this.startTimeoutHandle = null;
+	}
+};
+
 // Handles a message sent to this lobby.
 Lobby.prototype.handle = function(tab, message, callback) {
 	tab = this.getTab(tab);
 	if (message.type === "intro") {
+		if (this.game === null) {
 
-		// Return lobby info
-		let users = { };
-		let players = this.players.map(p => ({ userId: p.user.userId, isReady: p.isReady }));
-		for (let userId in this.users) {
-			users[userId] = this.users[userId].info;
+			// Return lobby info
+			let users = {};
+			let players = this.players.map(p => ({ userId: p.user.userId, isReady: p.isReady }));
+			for (let userId in this.users) {
+				users[userId] = this.users[userId].info;
+			}
+			callback(Format.message.lobby.response.intro.encode({
+				users: users,
+				players: players,
+				hostId: this.host.userId,
+				youId: tab.user.userId,
+				setup: this.setup
+			}));
+			return;
+
+		} else {
+
+			// Game already started
+			callback(null);
+			return;
 		}
-		callback(Format.message.lobby.response.intro.encode({
-			users: users,
-			players: players,
-			hostId: this.host.userId,
-			youId: tab.user.userId,
-			setup: this.setup
-		}));
-		return;
 
 	} else if (message.type === "poll") {
 
 		tab.poll(callback);
 		if (tab.messageQueue.length > 0) {
-			tab.respond(tab.messageQueue);
+			tab.respond(Format.message.lobby.response.poll.encode(tab.messageQueue));
 			tab.messageQueue = [];
 		}
 		return;
@@ -218,6 +251,9 @@ Lobby.prototype.handle = function(tab, message, callback) {
 				}
 			}
 
+			// Abort start
+			this.setStarting(false);
+
 			// Broadcast shuffle message
 			this.broadcast({
 				type: "shuffle",
@@ -231,26 +267,34 @@ Lobby.prototype.handle = function(tab, message, callback) {
 
 		// Find player
 		let isReady = message.content;
+		let playerFound = false;
+		let allReady = true;
 		for (let i = 0; i < this.players.length; i++) {
 			let player = this.players[i];
 			if (player.user === tab.user) {
+				playerFound = true;
 
 				// Change ready status if needed
 				if (player.isReady !== isReady) {
 					player.isReady = isReady;
-					this.broadcast({
-						type: "ready",
-						content: {
-							userId: tab.user.userId,
-							isReady: isReady
-						}
-					}, tab.uniqueId);
 				}
-
-				callback(true);
-				return;
 			}
+			allReady = allReady && player.isReady;
 		}
+		this.setStarting(allReady);
+
+		// Broadcast ready message
+		this.broadcast({
+			type: "ready",
+			content: {
+				userId: tab.user.userId,
+				isReady: isReady,
+				isStarting: allReady
+			}
+		}, allReady ? null : tab.uniqueId);
+
+		callback(playerFound);
+		return;
 
 	} else if (message.type === "changeName") {
 

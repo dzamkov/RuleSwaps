@@ -3,14 +3,16 @@ function User(userId, sessionId, info) {
 	this.userId = userId;
 	this.sessionId = sessionId;
 	this.info = info;
-	this.isOnline = false;
 
 	// The set of tabs this user has open.
 	this.tabs = { };
+
+	// The set of active games this user is a participant in.
+	this.games = { };
 }
 
-// The set of all users that are connected to the server, organized by session ID.
-User.onlineBySessionId = { };
+// The set of all active users, organized by session ID.
+User.activeBySessionId = { };
 
 // Creates a new temporary user with the given name and session ID, returned as a promise.
 User.create = function(sessionId, name) {
@@ -19,7 +21,9 @@ User.create = function(sessionId, name) {
 			if (err) return reject(err);
 			let userId = buf.toString("hex");
 			let info = { name: name };
-			resolve(new User(userId, sessionId, info));
+			let user = new User(userId, sessionId, info);
+			User.activeBySessionId[sessionId] = user;
+			resolve(user);
 		});
 	});
 };
@@ -28,8 +32,8 @@ User.create = function(sessionId, name) {
 // temporary and should be brought online if they have a persistent connection.
 User.getBySessionId = function(sessionId) {
 
-	// Check if user is online
-	let res = User.onlineBySessionId[sessionId];
+	// Check if user is active
+	let res = User.activeBySessionId[sessionId];
 	if (res) return Promise.resolve(res);
 
 	// Check if user is in database
@@ -39,16 +43,11 @@ User.getBySessionId = function(sessionId) {
 	return User.create(sessionId, "New Player");
 };
 
-// Sets whether this user is online.
-User.prototype.setOnline = function(isOnline) {
-	if (this.isOnline !== isOnline) {
-		if (isOnline) {
-			User.onlineBySessionId[this.sessionId] = this;
-		} else {
-			delete User.onlineBySessionId[this.sessionId];
-		}
-		this.isOnline = isOnline;
-	}
+// Checks if this user is involved anywhere on the server, and if not, deactives the user.
+User.prototype.clean = function() {
+	for (let tabId in this.tabs) return;
+	for (let gameId in this.games) return;
+	delete User.activeBySessionId[this.userId];
 };
 
 // Gets a tab for this user.
@@ -57,7 +56,6 @@ User.prototype.getTab = function(tabId) {
 	if (tab) return tab;
 	tab = new User.Tab(this, tabId);
 	this.tabs[tabId] = tab;
-	this.setOnline(true);
 	return tab;
 };
 
@@ -127,8 +125,5 @@ User.Tab.prototype.respond = function(response) {
 // Indicates that this tab has been closed.
 User.Tab.prototype.close = function() {
 	delete this.user.tabs[this.tabId];
-
-	// Set the user to be offline if all tabs have been closed.
-	for (let tabId in this.user.tabs) return;
-	this.user.setOnline(false);
+	this.user.clean();
 };

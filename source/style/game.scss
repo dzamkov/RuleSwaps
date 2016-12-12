@@ -5,37 +5,39 @@ $deck-padding: 12px;
 $playarea-sidebar-width: $card-width + 2 * $deck-padding;
 
 #section-playarea {
+	@extend .section-back;
 	position: absolute;
 	left: 120px;
 	right: 120px;
 	top: 10px;
 	bottom: 230px;
+
+	display: flex;
+	flex-direction: row;
+	padding: $playarea-margin / 2;
 }
 
 #section-playarea-sidebar {
-	position: absolute;
 	display: flex;
 	flex-direction: column;
-	left: $playarea-margin;
-	top: $playarea-margin;
-	bottom: $playarea-margin;
-	width: $playarea-sidebar-width;
+	flex-shrink: 0;
+	margin: $playarea-margin / 2;
 }
 
 #section-playarea-main {
-	position: absolute;
+	flex-grow: 1;
+	margin: $playarea-margin / 2;
 	display: flex;
 	flex-direction: column;
-	left: $playarea-sidebar-width + 2 * $playarea-margin;
-	top: $playarea-margin;
-	right: $playarea-margin;
-	bottom: $playarea-margin;
+	position: relative;
+	border-radius: $curve-inset;
+	box-shadow: $section-inner-outset-shadow;
+	overflow: hidden;
 }
 
 #section-playarea-content {
 	position: relative;
 	flex-grow: 1;
-	border-radius: $curve-inset $curve-inset 0 0;
 }
 
 #section-constitution {
@@ -46,7 +48,6 @@ $playarea-sidebar-width: $card-width + 2 * $deck-padding;
 	bottom: 0;
 	overflow-x: auto;
 	overflow-y: auto;
-	border-radius: $curve-inset 0 0 0;
 	background: rgba(#eeeeee, 0.5);
 	
 	padding-top: 10px;
@@ -98,6 +99,7 @@ $playarea-sidebar-width: $card-width + 2 * $deck-padding;
 $player-info-width: 100px;
 
 #section-player-self {
+	@extend .section-back;
 	position: absolute;
 	left: 20%;
 	right: 20%;
@@ -308,12 +310,14 @@ $input-chat-button-width: 60px;
 }
 
 .section-player-left {
+	@extend .section-back-left;
 	position: relative;
 	width: 100%;
 	height: 140px;
 }
 
 .section-player-right {
+	@extend .section-back-right;
 	position: relative;
 	width: 100%;
 	height: 140px;
@@ -323,7 +327,7 @@ $input-chat-button-width: 60px;
 	box-sizing: border-box;
 	border-radius: 6px;
 	background: rgba(#111111, 0.3);
-	font-style: none;
+	font-style: normal;
 	
 	&.-active {
 		background: #f7ce5e;
@@ -384,5 +388,5 @@ $input-chat-button-width: 60px;
 	border-radius: 10px;
 	border: solid 1px #111111;
 	background: rgba(#777777,0.4);
-	box-shadow: inset 0 0 5px black;
+	box-shadow: inset 0 0 5px black, $section-inner-outset-shadow;
 }

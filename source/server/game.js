@@ -1,10 +1,19 @@
 // A game handled by a server
-function ServerGame(setup, playerInfos) {
-	Game.call(this, setup, playerInfos);
+function ServerGame(gameId, setup, users) {
+	Game.call(this, setup, users);
 	this.canResolveRandomness = true;
 	
+	this.gameId = gameId;
 	this.setup = setup;
-	this.playerInfos = playerInfos;
+	this.users = users;
+
+	// Mapping from user ID to player
+	this.playerForUserId = { };
+	for (let i = 0; i < this.players.length; i++) {
+		let player = this.players[i];
+		this.playerForUserId[player.user.userId] = player;
+		player.user.games[gameId] = this;
+	}
 	
 	// The first commitment in the frame we are waiting on.
 	this.baseCommitmentId = 0;
@@ -15,38 +24,37 @@ function ServerGame(setup, playerInfos) {
 	// The set of all reveals made, in order.
 	this.revealed = [];
 	
-	// The list of all messages (i.e. chat) in the game.
-	this.messages = [];
+	// The list of all chat messages in the game.
+	this.chats = [];
 	
-	
-	// The callbacks currently waiting on more data, along with the base commitment Id they are
-	// waiting form.
-	this.waiting = [];
+	// The set of all tabs displaying this game.
+	this.tabs = { };
+
+	this.update();
 }
 
 // The set of all active server games
 ServerGame.active = { };
 
-// Gets a game by its game id.
+// Creates and registers a new server game with the given setup and player set. Returns the game wrapped
+// in a promise.
+ServerGame.create = function(setup, players) {
+	return new Promise((resolve, reject) => {
+		crypto.randomBytes(12, (err, buf) => {
+			if (err) return reject(err);
+			let gameId = buf.toString("hex"); // TODO: base 36?
+			let game = new ServerGame(gameId, setup, players);
+			ServerGame.active[gameId] = game;
+			resolve(game);
+		});
+	});
+};
+
+// Gets a game by its game ID, returned as a promise.
 ServerGame.get = function(gameId, callback) {
 	let game = ServerGame.active[gameId];
-	if (!game) {
-		let player1 = { name: "Steve" };
-		let player2 = { name: "Dorp" };
-		let player3 = { name: "Scrumples" };
-		
-		let setup = new Game.Setup([
-				Expression.fromList(["you_gain_5"]),
-				Expression.fromList(["player_draws_3", "you"]),
-				Expression.fromList(["insert_amendment_conditional", "you", "player_decides", "auction_winner"]),
-				Expression.fromList(["specify_action_optional", "you"]),
-				Expression.fromList(["wealth_win"])
-			], CardSet.create(defaultDeck));
-		
-		game = ServerGame.active[gameId] = new ServerGame(setup, [player1, player2]);
-		game.update();
-	}
-	callback(game);
+	if (game) return Promise.resolve(game);
+	return Promise.resolve(null);
 };
 
 ServerGame.prototype = Object.create(Game.prototype);
@@ -97,8 +105,30 @@ ServerGame.prototype.revealTo = function*(player, commitment) {
 	return yield this.waitReveal(commitment);
 };
 
-// Builds a response to a poll message.
-ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId, messageId) {
+// Gets the game tab corresponding to the given tab.
+ServerGame.prototype.getTab = function(tab) {
+	if (!this.tabs[tab.uniqueId]) {
+		tab.game = this;
+		this.tabs[tab.uniqueId] = tab;
+
+		// Handle tab closing
+		let curClose = tab.close;
+		tab.close = function() {
+			let game = this.game;
+			curClose.call(this);
+			delete game.tabs[this.uniqueId];
+
+			// TODO: Handle player disconnect, game abandon
+		};
+
+		// Establish poll request
+		tab.pollRequest = null;
+	}
+	return tab;
+}
+
+// Builds a response to a poll message for a particular player, or null for an observer.
+ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId, chatId) {
 	
 	// Build commitments
 	let commitments = { };
@@ -118,20 +148,20 @@ ServerGame.prototype.buildPollResponse = function(player, baseCommitmentId, mess
 	}
 	
 	// Build messages
-	let messages = this.messages.slice(messageId);
+	let chats = this.chats.slice(chatId);
 	
 	// Create response message
 	return {
 		commitments: commitments,
-		messages: messages,
+		chats: chats,
 		baseCommitmentId: this.baseCommitmentId,
-		messageId: this.messages.length
+		chatId: this.chats.length
 	};
 };
 
 // Adds a chat message to the server.
 ServerGame.prototype.chat = function(player, content) {
-	this.messages.push({
+	this.chats.push({
 		baseCommitmentId: this.baseCommitmentId,
 		playerId: player.id,
 		content: content
@@ -139,18 +169,18 @@ ServerGame.prototype.chat = function(player, content) {
 	this.respond();
 };
 
-// Responds to polling requests to the server.
+// Responds to polling requests that can be fulfilled.
 ServerGame.prototype.respond = function() {
-	for (let i = 0; i < this.waiting.length; i++) {
-		let waiting = this.waiting[i];
-		if (waiting.baseCommitmentId < this.baseCommitmentId || waiting.messageId < this.messages.length) {
-			waiting.callback(Format.message.game.pollResponse.encode(this.buildPollResponse(
-				waiting.player, 
-				waiting.baseCommitmentId,
-				waiting.messageId)));
-			this.waiting[i] = this.waiting[this.waiting.length - 1];
-			this.waiting.pop();
-			i--;
+	for (let uniqueId in this.tabs) {
+		let tab = this.tabs[uniqueId];
+		if (tab.callback) {
+			let request = tab.pollRequest;
+			if (request.baseCommitmentId < this.baseCommitmentId || request.chatId < this.chats.length) {
+				tab.respond(Format.message.game.response.poll.encode(this.buildPollResponse(
+					this.playerForUserId[tab.user.userId], 
+					request.baseCommitmentId,
+					request.chatId)));
+			}
 		}
 	}
 };
@@ -161,36 +191,27 @@ ServerGame.prototype.update = function() {
 	this.respond();
 };
 
-// Gets a player in this game based on the given session ID.
-ServerGame.prototype.getPlayerBySessionId = function(sessionId) {
-	for (let i = 0; i < this.players.length; i++) {
-		let playerInfo = this.players[i].info;
-		if (playerInfo.sessionId === sessionId) {
-			return this.players[i];
-		} else if (!playerInfo.sessionId) {
-			
-			// Become the player
-			playerInfo.sessionId = sessionId;
-			return this.players[i];
-		}	
-	}
-	return null;
-};
-
 // Handles a message sent to this game.
-ServerGame.prototype.handle = function(message, callback) {
+ServerGame.prototype.handle = function(tab, message, callback) {
+	tab = this.getTab(tab);
+	let player = this.playerForUserId[tab.user.userId];
 	if (message.type === "intro") {
-		let player = this.getPlayerBySessionId(message.sessionId);
-		callback(Format.message.game.introResponse.encode({
+
+		callback(Format.message.game.response.intro.encode({
 			setup: this.setup,
-			players: this.playerInfos,
+			players: this.players.map(p => ({
+				userId: p.user.userId,
+				name: p.user.info.name
+			})),
 			youId: player ? player.id : null,
 			data: this.buildPollResponse(player, 0, 0)
 		}));
+		return;
+
 	} else if (message.type === "commit") {
+
 		// TODO: Sanitize, check player
-		let player = this.getPlayerBySessionId(message.sessionId);
-		let content = Format.message.game.commit.decode(message.content);
+		let content = message.content;
 		if (content.id < this.nextCommitmentId) {
 			let commitment = this.getCommitment(content.id);
 			if (!commitment.isResolved) {
@@ -200,24 +221,30 @@ ServerGame.prototype.handle = function(message, callback) {
 			}
 		}
 		callback(true);
+		return;
+
 	} else if (message.type === "chat") {
-		let player = this.getPlayerBySessionId(message.sessionId);
-		this.chat(player, Format.message.game.chat.decode(message.content));
+
+		this.chat(player, message.content);
 		callback(true);
+		return;
+
 	} else if (message.type === "poll") {
-		let player = this.getPlayerBySessionId(message.sessionId);
-		let content = Format.message.game.pollRequest.encode(message.content);
-		if (content.baseCommitmentId < this.baseCommitmentId || content.messageId < this.messages.length) {
-			callback(this.buildPollResponse(player, content.baseCommitmentId, content.messageId));
+		let content = message.content;
+		if (content.baseCommitmentId < this.baseCommitmentId || content.chatId < this.chats.length) {
+
+			callback(Format.message.game.response.poll.encode(
+				this.buildPollResponse(player, content.baseCommitmentId, content.chatId)));
+			return;
+
 		} else {
-			this.waiting.push({
-				player: player,
-				baseCommitmentId: content.baseCommitmentId,
-				messageId: content.messageId,
-				callback: callback
-			});
+
+			tab.poll(callback);
+			tab.pollRequest = content;
+			return;
 		}
-	} else {
-		callback(true);	
 	}
+
+	callback(true);	
+	return;
 };

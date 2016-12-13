@@ -56,6 +56,19 @@ $mini-card-list-height: 88px;
 	}
 }
 
+.card-container {
+	box-sizing: border-box;
+	min-width: 0;
+	width: $card-width + 10px;
+	height: $card-height;
+	padding-left: 5px;
+
+	flex-shrink: 1;
+	&:last-child {
+		flex-shrink: 0;
+	}
+}
+
 .card-shape {
 	border-radius: 10px;
 	box-sizing: border-box;

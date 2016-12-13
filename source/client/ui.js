@@ -78,51 +78,12 @@ let UI = new function() {
 	Card.create = function(cardType) {
 		return new Card(cardType.createElement(false), cardType);
 	};
-	
-	// Balances the children of a hand or list of cards
-	Motion.Acceptor.prototype.balanceChildren = function(shouldCenter) {
-		let element = this.element;
-		let children = element.children;
-		let computedStyle = window.getComputedStyle(element);
-		let paddingLeft = parseFloat(computedStyle.paddingLeft || 0);
-		let paddingRight = parseFloat(computedStyle.paddingRight || 0);
-		let paddingTop = parseFloat(computedStyle.paddingTop || 0);
-		let containerWidth = element.clientWidth - paddingLeft - paddingRight;
-		let spacing = parseFloat(computedStyle.borderSpacing || 0);
-		let takenWidth = spacing * (children.length - 1);
-		let lastWidth = 0;
-		for (let i = 0; i < children.length; i++) {
-			takenWidth += (lastWidth = children[i].offsetWidth);
-		}
-		
-		let left, compression;
-		if (takenWidth < containerWidth) {
-			left = (shouldCenter ? (containerWidth - takenWidth) / 2.0 : 0) + paddingLeft;
-			compression = 1.0;
-		} else {
-			left = paddingLeft;
-			compression = (containerWidth - lastWidth) / (takenWidth - lastWidth);
-		}
-		
-		for (let i = 0; i < children.length; i++) {
-			children[i].animated.moveTo(left, paddingTop);
-			left += (children[i].offsetWidth + spacing) * compression;
-		}
-	}
-	
-	// Handles window resizing
-	let toResize = [];
-	function windowResize(e) {
-		for (let i = 0; i < toResize.length; i++)
-			toResize[i]();
-	}
-	
+
 	// Augments an element to contain a list of cards, where cards are draggable and
 	// possibly ordered. Provides an interface to the element at a logical level.
 	function CardList(element) {
 		Motion.Acceptor.call(this, element);
 		this.element = element;
-		toResize.push(this.balanceChildren.bind(this, true));
 	}
 	
 	CardList.prototype = Object.create(Motion.Acceptor.prototype);
@@ -132,8 +93,8 @@ let UI = new function() {
 			let hole = document.createElement("div");
 			hole.className = "card-hole";
 			hole.holeFor = element.animated;
-			let rect = element.animated.getClientRect();
-			element.animated.replace(new Motion.Animated(hole));
+			let rect = element.getBoundingClientRect();
+			element.parentNode.replaceChild(hole, element);
 			return {
 				rect: rect,
 				animated: element.animated,
@@ -145,35 +106,38 @@ let UI = new function() {
 	CardList.prototype.dragIn = function(animated, left, top) {
 		let card = animated;
 		if (card instanceof Card) {
-			let children = this.element.children;
 			let prev = null;
-			for (let i = 0; i < children.length; i++) {
-				let child = children[i];
-				let rect = child.animated.getTargetRect();
-				let midX = (rect.left + rect.right) / 2.0;
+			let next = this.element.firstChild;
+			while (next !== null) {
+				let item = next.firstChild;
+				let midX = next.offsetLeft + item.offsetWidth / 2.0;
 				if (midX < left) {
-					prev = child;
+					prev = next;
+					next = next.nextSibling;
 				} else {
 					break;
 				}
 			}
-			let next = prev ? prev.nextSibling : this.element.firstChild;
-			if (prev && prev.holeFor === card) return prev;
-			if (next && next.holeFor === card) return next;
-			
+			if (prev && prev.firstChild.holeFor === card) return prev.firstChild;
+			if (next && next.firstChild.holeFor === card) return next.firstChild;
+
 			let hole = document.createElement("div");
 			hole.holeFor = card;
 			hole.className = "card-hole";
-			new Motion.Animated(hole);
-			this.element.insertBefore(hole, next);
-			this.balanceChildren(true);
+			let container = document.createElement("div");
+			container.className = "card-container";
+			container.appendChild(hole);
+			this.element.insertBefore(container, next);
 			return hole;
 		}
 	}
 	
 	CardList.prototype.leave = function(animated, hole) {
-		this.element.removeChild(hole);
-		this.balanceChildren(true);
+		this.element.removeChild(hole.parentNode);
+	};
+
+	CardList.prototype.accept = function(animated, hole, fromAcceptor) {
+		hole.parentNode.replaceChild(animated.element, hole);
 	};
 	
 	// Gets the number of cards in this card list.
@@ -181,8 +145,8 @@ let UI = new function() {
 		let numCards = 0;
 		let children = this.element.children;
 		for (let i = 0; i < children.length; i++) {
-			let child = children[i];
-			if (child.animated instanceof Card)
+			let container = children[i];
+			if (container.firstChild.animated instanceof Card)
 				numCards++;
 		}
 		return numCards;
@@ -193,9 +157,10 @@ let UI = new function() {
 		let cards = [];
 		let children = this.element.children;
 		for (let i = 0; i < children.length; i++) {
-			let child = children[i];
-			if (child.animated instanceof Card)
-				cards.push(child.animated.type);
+			let container = children[i];
+			let item = container.firstChild;
+			if (item.animated instanceof Card)
+				cards.push(item.animated.type);
 		}
 		return cards;
 	};
@@ -203,12 +168,12 @@ let UI = new function() {
 	// Sends all cards in this list to the given target.
 	CardList.prototype.sendAllTo = function(target) {
 		while (this.element.lastChild) {
-			let child = this.element.lastChild;
-			if (child.animated instanceof Card) {
-				child.animated.sendTo(target);
-			} else {
-				this.element.removeChild(child);
+			let container = this.element.lastChild;
+			let item = container.firstChild;
+			if (item.animated instanceof Card) {
+				item.animated.sendTo(target);
 			}
+			this.element.removeChild(container);
 		}
 	};
 	
@@ -216,11 +181,12 @@ let UI = new function() {
 	CardList.prototype.createInvisibleHole = function() {
 		let hole = document.createElement("div");
 		hole.className = "card-hole";
-		new Motion.Animated(hole);
-		this.element.appendChild(hole);
-		this.balanceChildren(true);
+		let container = document.createElement("div");
+		container.className = "card-container";
+		container.appendChild(hole);
+		this.element.appendChild(container);
 		return hole;
-	}
+	};
 	
 	// Creates a list of miniaturized cards that expands on mouse over. 
 	function createMiniList(cards) {
@@ -255,9 +221,8 @@ let UI = new function() {
 	
 	
 	// Augments an element to be the game constitution.
-	function Constitution(numbers, list) {
+	function Constitution(list) {
 		Motion.Acceptor.call(this, list);
-		this.numbers = numbers;
 		this.insertPoint = null;
 	}
 	
@@ -269,105 +234,85 @@ let UI = new function() {
 		let entry = document.createElement("div");
 		entry.className = "constitution-entry";
 		entry.appendChild(list);
-		new Motion.Animated(entry);
 		return entry;
-	}
+	};
+
+	// Creates an entry container for a constitution
+	Constitution.createContainer = function(content) {
+		let number = document.createElement("div");
+		number.className = "number";
+		let container = document.createElement("div");
+		container.className = "constitution-entry-container";
+		container.appendChild(number);
+		container.appendChild(content);
+		return container;
+	};
 	
 	Constitution.prototype.dragOut = function(element) {
 		if (this.insertPoint === element.animated) {
 			let hole = document.createElement("div");
 			hole.className = "constitution-entry -hole";
-			new Motion.Animated(hole);
 			this.insertPoint.hole = hole;
-			let rect = element.animated.getClientRect();
-			element.animated.replace(hole.animated);
+			let rect = element.getBoundingClientRect();
+			element.parentNode.replaceChild(hole, element);
 			return {
 				rect: rect,
 				animated: element.animated,
 				hole: hole
 			}
 		}
-	}
+	};
 	
 	Constitution.prototype.dragIn = function(animated, left, top, fromAcceptor) {
-		
+
 		// Only allow incoming from the same acceptor
 		if (fromAcceptor === this) {
-			let children = this.element.children;
 			let prev = null;
-			for (let i = 0; i < children.length; i++) {
-				let child = children[i];
-				let rect = child.animated.getTargetRect();
-				let midY = (rect.top + rect.bottom) / 2.0;
+			let next = this.element.firstChild;
+			while (next !== null) {
+				let midY = next.offsetTop + next.offsetHeight / 2.0;
 				if (midY < top) {
-					prev = child;
+					prev = next;
+					next = next.nextSibling;
 				} else {
 					break;
 				}
 			}
-			
-			let next = prev ? prev.nextSibling : this.element.firstChild;
-			if (animated.hole === prev) return prev;
-			if (animated.hole === next) return next;
-			
-			this.element.insertBefore(animated.hole, next);
-			this.balanceChildren();
+			if (prev && animated.hole === prev.lastChild) return prev.lastChild;
+			if (next && animated.hole === next.lastChild) return next.lastChild;
+
+			this.element.insertBefore(animated.hole.parentNode, next);
 			return animated.hole;
+		}
+	};
+
+	// Updates the numbering of the entries in this constitution.
+	Constitution.prototype.renumber = function() {
+		let children = this.element.children;
+		for (let i = 0; i < children.length; i++) {
+			children[i].firstChild.innerText = (i + 1).toString();
 		}
 	}
 	
 	// Populats a constitution from the given list
 	Constitution.prototype.populate = function(constitution) {
 		for (let i = 0; i < constitution.length; i++) {
-			this.element.appendChild(Constitution.createEntry(constitution[i]));
+			this.element.appendChild(
+				Constitution.createContainer(
+					Constitution.createEntry(constitution[i])));
 		}
-		this.balanceChildren();
-	}
-	
-	// Sets the positions for the items inside a constitution.
-	Constitution.prototype.balanceChildren = function() {
-		let element = this.element;
-		let children = element.children;
-		let computedStyle = window.getComputedStyle(element);
-		let paddingLeft = parseFloat(computedStyle.paddingLeft || 0);
-		let paddingTop = parseFloat(computedStyle.paddingTop || 0);
-		let spacing = parseFloat(computedStyle.borderSpacing || 0);
-		let top = paddingTop;
-		for (let i = 0; i < children.length; i++) {
-			children[i].animated.moveTo(paddingLeft, top);
-			top += children[i].offsetHeight + spacing;
-		}
-		
-		// Balance numbers to match
-		let numbers = this.numbers;
-		while (numbers.children.length < children.length) {
-			let numbersEntry = document.createElement("div");
-			numbersEntry.className = "constitution-number-entry";
-			numbersEntry.innerText = numbers.children.length + 1;
-			numbers.appendChild(numbersEntry);
-		}
-		while (numbers.children.length > children.length) {
-			numbers.removeChild(numbers.lastChild);
-		}
-		let bottom = 0;
-		for (let i = 0; i < numbers.children.length; i++) {
-			let rect = children[i].animated.getTargetRect();
-			numbers.children[i].style.top = rect.top + "px";
-			numbers.children[i].style.height = (rect.bottom - rect.top) + "px";
-			bottom = rect.bottom;
-		}
-		numbers.style.height = bottom + "px";
-	}
+		this.renumber();
+	};
 	
 	// Sets the line that is marked as being executed.
 	Constitution.prototype.setActiveLine = function(line) {
 		let children = this.element.children;
 		for (let i = 0; i < children.length; i++) {
-			let child = children[i];
-			let className = child.className;
+			let container = children[i];
+			let className = container.className;
 			className = className.replace(" -active", "");
 			if (i === line) className += " -active";
-			child.className = className;
+			container.className = className;
 		}
 	}
 	
@@ -380,16 +325,14 @@ let UI = new function() {
 			entry.innerText = "Insert amendment here";
 			this.insertPoint = new Motion.Animated(entry);
 			this.insertPoint.hoverStyle = "-hover";
-			this.element.appendChild(entry);
-			this.balanceChildren();
+			this.element.appendChild(Constitution.createContainer(entry));
 		}
 	}
 	
 	// Removes the ability for the user to select an insertion point.
 	Constitution.prototype.cancelInsertPick = function() {
 		if (this.insertPoint) {
-			this.element.removeChild(this.insertPoint.element);
-			this.balanceChildren();
+			this.element.removeChild(this.insertPoint.element.parentNode);
 			this.insertPoint = null;
 		}
 	}
@@ -398,42 +341,42 @@ let UI = new function() {
 	Constitution.prototype.proposeInsertPick = function(exp) {
 		console.assert(this.insertPoint);
 		let entry = Constitution.createEntry(exp);
-		let proposal = entry.animated;
-		entry.className += " -proposal";
-		this.insertPoint.replace(proposal);
-		this.balanceChildren();
+		let container = this.insertPoint.element.parentNode;
+		container.replaceChild(entry, this.insertPoint.element);
+		container.className += " -proposal";
 		this.insertPoint = null;
-		
+
 		// Determine line number
 		let line = 0;
 		let cur = this.element.firstChild;
-		while (cur != entry) {
+		while (cur !== entry.parentNode) {
 			cur = cur.nextSibling;
 			line++;
 		}
-		proposal.line = line;
-		return proposal;
+		entry.line = line;
+		return entry;
 	}
 	
 	// Creates and insert a proposal into this constitution.
 	Constitution.prototype.propose = function(line, exp) {
 		let entry = Constitution.createEntry(exp);
-		let proposal = entry.animated;
-		entry.className += " -proposal";
-		this.element.insertBefore(entry, this.element.children[line]);
-		this.balanceChildren();
-		return proposal;
+		let container = Constitution.createContainer(entry);
+		container.className += " -proposal";
+		this.element.insertBefore(container, this.element.children[line]);
+		return entry;
 	}
 	
 	// Cancels a proposal.
 	Constitution.prototype.cancelProposal = function(proposal) {
-		this.element.removeChild(proposal.element);
-		this.balanceChildren();
+		this.element.removeChild(proposal.parentNode);
+		this.renumber();
 	}
 	
 	// Confirms a proposal.
 	Constitution.prototype.confirmProposal = function(proposal) {
-		proposal.element.className = proposal.element.className.replace(" -proposal", "");
+		let container = proposal.parentNode;
+		container.className = container.className.replace(" -proposal", "");
+		this.renumber();
 	}
 	
 	// Augments an element to be a game log.
@@ -851,8 +794,8 @@ let UI = new function() {
 			if (element.animated instanceof Card) {
 				let hole = Expression.createSlotHole(element.animated.type.role, true);
 				hole.holeFor = element.animated;
-				let rect = element.animated.getClientRect();
-				element.animated.replace(hole.animated);
+				let rect = element.getBoundingClientRect();
+				element.parentNode.replaceChild(hole, element);
 				return {
 					rect: rect,
 					animated: element.animated,
@@ -869,12 +812,12 @@ let UI = new function() {
 				let cur = null;
 				let bestDis = Infinity;
 				for (let i = 0; i < children.length; i++) {
-					let child = children[i];
-					let rect = child.animated.getTargetRect();
-					let midX = (rect.left + rect.right) / 2.0;
+					let container = children[i];
+					let item = container.firstChild;
+					let midX = container.offsetLeft + item.offsetWidth / 2.0;
 					let dis = Math.abs(midX - left);
 					if (dis < bestDis) {
-						cur = child;
+						cur = item;
 						bestDis = dis;
 					}
 				}
@@ -898,13 +841,12 @@ let UI = new function() {
 			hole.className = "card-hole-" + hole.holeFor.str.toLowerCase();
 			if (toAcceptor) {
 				this.removeSlots(hole, animated.type.slots.length);
-				this.balanceChildren(false);
 			}
 			this.updateButtons();
 		};
 		
 		Expression.prototype.accept = function(card, hole, fromAcceptor) {
-			Motion.Acceptor.prototype.accept.call(this, card, hole, fromAcceptor);
+			hole.parentNode.replaceChild(card.element, hole);
 			if (fromAcceptor) {
 				console.assert(fromAcceptor !== this);
 				this.addSlots(card.element, card.type.slots);
@@ -919,40 +861,38 @@ let UI = new function() {
 			if (isActive) className += "-active";
 			hole.holeFor = role;
 			hole.className = className;
-			new Motion.Animated(hole);
 			return hole;
 		};
 		
 		// Sets the expected role of the expression specified using this input.
 		Expression.prototype.expect = function(role) {
 			while (this.list.lastChild) this.list.removeChild(this.list.lastChild);
-			this.list.appendChild(Expression.createSlotHole(role, false));
-			this.balanceChildren(false);
+			this.addSlots(null, [role]);
 		};
 		
 		// Adds slots to an expression after the given card element.
 		Expression.prototype.addSlots = function(after, slots) {
-			let before = after.nextSibling;
+			let before = after ? after.parentNode.nextSibling : null;
 			for (let i = 0; i < slots.length; i++) {
 				let hole = Expression.createSlotHole(slots[i], false);
-				this.list.insertBefore(hole, before);
-				before = hole.nextSibling;
+				let container = document.createElement("div");
+				container.className = "card-container";
+				container.appendChild(hole);
+				this.list.insertBefore(container, before);
 			}
-			this.balanceChildren(false);
 		};
 		
 		// Removes a certain number slots from an expression after the given card element.
 		Expression.prototype.removeSlots = function(after, count) {
 			for (let i = 0; i < count; i++) {
-				let child = after.nextSibling;
-				if (child.animated instanceof Card) {
-					child.animated.sendTo(this.returnTarget);
-					this.removeSlots(after, child.animated.type.slots.length);
-				} else {
-					this.list.removeChild(child);
+				let container = after.parentNode.nextSibling;
+				let item = container.firstChild;
+				if (item.animated) {
+					item.animated.sendTo(this.returnTarget);
+					count += item.animated.type.slots.length;
 				}
+				this.list.removeChild(container);
 			}
-			this.balanceChildren(false);
 		};
 		
 		// Updates the status of the buttons in this input
@@ -961,7 +901,7 @@ let UI = new function() {
 			let children = this.list.children;
 			let allFilled = true;
 			for (let i = 0; i < children.length; i++) {
-				allFilled &= children[i].animated instanceof Card;
+				allFilled = allFilled && !!children[i].firstChild.animated;
 			}
 			setButtonsEnabled(this.buttons, allFilled);
 		};
@@ -976,9 +916,10 @@ let UI = new function() {
 				let cards = [];
 				let children = this.element.children;
 				for (let i = 0; i < children.length; i++) {
-					let child = children[i];
-					if (child.animated instanceof Card) {
-						cards.push(child.animated.type);
+					let container = children[i];
+					let item = container.firstChild;
+					if (item.animated) {
+						cards.push(item.animated.type);
 					} else {
 						console.assert(false, "Expression still contains holes");
 						return;
@@ -999,12 +940,12 @@ let UI = new function() {
 		// during a request.
 		Expression.prototype.sendAllTo = function(target) {
 			while (this.list.lastChild) {
-				let child = this.list.lastChild;
-				if (child.animated instanceof Card) {
-					child.animated.sendTo(target);
-				} else {
-					this.list.removeChild(child);
+				let container = this.list.lastChild;
+				let item = container.firstChild;
+				if (item.animated instanceof Card) {
+					item.animated.sendTo(target);
 				}
+				this.list.removeChild(container);
 			}
 		};
 		
@@ -1050,9 +991,6 @@ let UI = new function() {
 	Chat.prototype.onSay = function(recipient, message) {
 		// Override me
 	};
-	
-	// Register window events
-	window.addEventListener("resize", windowResize);
 	
 	this.Card = Card;
 	this.Deck = Deck;

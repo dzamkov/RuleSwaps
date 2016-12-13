@@ -32,7 +32,7 @@ var Motion = new function() {
 					return;
 				}
 			} else if (animated) {
-				rect = animated.getClientRect();
+				rect = animated.element.getBoundingClientRect();
 				acceptor = null;
 			}
 			
@@ -42,6 +42,8 @@ var Motion = new function() {
 				target.style.position = "fixed";
 				target.style.left = rect.left + "px";
 				target.style.top = rect.top + "px";
+				target.style.width = rect.width + "px";
+				target.style.height = rect.height + "px";
 				document.body.appendChild(target);
 				
 				window.dragging = {
@@ -82,46 +84,28 @@ var Motion = new function() {
 		element.addEventListener("mouseleave", mouseLeave);
 	};
 	
-	// Replaces this animated element with the given animated element.
-	Animated.prototype.replace = function(other) {
-		this.element.parentNode.replaceChild(other.element, this.element);
-		other.element.style.position = this.element.style.position;
-		other.element.style.left = this.element.style.left;
-		other.element.style.top = this.element.style.top;
-	};
-	
 	// Causes this animated element to merge into the given hole of the given acceptor.
 	Animated.prototype.mergeInto = function(acceptor, hole, fromAcceptor) {
+		this.makeStatic();
 		acceptor.accept(this, hole, fromAcceptor);
 	};
 	
-	// Causes this animated element to move smoothly to the given coordinates relative to its parent.
+	// Causes this animated element to move smoothly to the given coordinates. This should only be used for
+	// animated elements in a fixed space.
 	Animated.prototype.moveTo = function(left, top) {
 		let element = this.element;
-		if (!element.style.position)
-			element.style.position = "absolute";
 		element.style.left = left + "px";
 		element.style.top = top + "px";
 	};
-	
-	// Gets the rectangle that this animated element is moving to.
-	Animated.prototype.getTargetRect = function() {
-		let offsetLeft = this.element.offsetLeft;
-		let offsetTop = this.element.offsetTop;
-		return {
-			left: offsetLeft,
-			top: offsetTop,
-			right: offsetLeft + this.element.offsetWidth,
-			bottom: offsetTop + this.element.offsetHeight
-		};
-	}
-	
-	// Gets the current client rectangle of this animated element.
-	Animated.prototype.getClientRect = function() {
-		let element = this.element;
-		var rect = element.getBoundingClientRect();
-		return rect;
-	}
+
+	// Causes this animated element to stop moving and act as a normal element.
+	Animated.prototype.makeStatic = function() {
+		this.element.style.position = "relative";
+		this.element.style.left = "";
+		this.element.style.top = "";
+		this.element.style.width = "";
+		this.element.style.height = "";
+	};
 	
 	// Augments an element with the ability to accept animated elements dragged into it and have
 	// its own animated children dragged out.
@@ -139,7 +123,11 @@ var Motion = new function() {
 		// Override me
 		return null;
 
-		// e.g. return { rect, element.getBoundingClientRect(), animated: element.animated, hole: createHole() }
+		/* e.g. return { 
+			rect, element.getBoundingClientRect(),
+			animated: element.animated,
+			hole: createHole()
+		} */
 	};
 	
 	// Called when the user attempts to drag an element into this acceptor. If this acceptor is willing to
@@ -152,16 +140,12 @@ var Motion = new function() {
 	
 	// Called when a draggable element leaves this acceptor, invalidating a hole.
 	Acceptor.prototype.leave = function(animated, hole, toAcceptor) {
-		this.removeChild(hole);
+		hole.parentNode.removeChild(hole);
 	};
 	
 	// Accepts a new element into a hole of this acceptor.
 	Acceptor.prototype.accept = function(animated, hole, fromAcceptor) {
-		let element = animated.element;
-		element.style.position = hole.style.position;
-		element.style.left = hole.style.left;
-		element.style.top = hole.style.top;
-		this.element.replaceChild(element, hole);
+		hole.parentNode.replaceChild(animated.element, hole);
 	};
 	
 	// Handles mouse move events for the window
@@ -236,10 +220,18 @@ var Motion = new function() {
 			if (dragging.animated) {
 				// Begin merging
 				if (dragging.enterHole) {
-					dragging.animated.mergeInto(dragging.enterAcceptor, dragging.enterHole, dragging.exitAcceptor);
+					dragging.animated.makeStatic();
+					dragging.animated.mergeInto(
+						dragging.enterAcceptor,
+						dragging.enterHole,
+						dragging.exitAcceptor);
 					if (dragging.exitHole)
-						dragging.exitAcceptor.leave(dragging.animated, dragging.exitHole, dragging.enterAcceptor);
+						dragging.exitAcceptor.leave(
+							dragging.animated,
+							dragging.exitHole,
+							dragging.enterAcceptor);
 				} else if (dragging.exitHole) {
+					dragging.animated.makeStatic();
 					dragging.animated.mergeInto(dragging.exitAcceptor, dragging.exitHole, null);
 				}
 			}

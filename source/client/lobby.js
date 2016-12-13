@@ -72,29 +72,13 @@
 
 	UserList.prototype = Object.create(Motion.Acceptor.prototype);
 
-	UserList.prototype.balanceChildren = function() {
-		let element = this.element;
-		let children = element.children;
-		let computedStyle = window.getComputedStyle(element);
-		let paddingLeft = parseFloat(computedStyle.paddingLeft || 0);
-		let paddingTop = parseFloat(computedStyle.paddingTop || 0);
-		let spacing = parseFloat(computedStyle.borderSpacing || 0);
-		let top = paddingTop;
-		for (let i = 0; i < children.length; i++) {
-			children[i].animated.moveTo(paddingLeft, top);
-			top += children[i].offsetHeight + spacing;
-		}
-	};
-
 	UserList.prototype.dragOut = function(element) {
 		if (this.canDrag() && element.animated instanceof UserEntry) {
 			let hole = document.createElement("div");
 			hole.className = "user-entry -hole";
 			element.animated.hole = hole;
-			let rect = element.animated.getClientRect();
-			element.style.width = rect.width + "px";
-			hole.style.height = rect.height + "px";
-			element.animated.replace(new Motion.Animated(hole));
+			let rect = element.getBoundingClientRect();
+			this.element.replaceChild(hole, element);
 			return {
 				rect: rect,
 				animated: element.animated,
@@ -109,8 +93,7 @@
 			let prev = null;
 			for (let i = 0; i < children.length; i++) {
 				let child = children[i];
-				let rect = child.animated.getTargetRect();
-				let midY = (rect.top + rect.bottom) / 2.0;
+				let midY = child.offsetTop + child.offsetHeight / 2.0;
 				if (midY < top) {
 					prev = child;
 				} else {
@@ -123,16 +106,9 @@
 			if (animated.hole === next) return next;
 
 			this.element.insertBefore(animated.hole, next);
-			if (fromAcceptor !== this) fromAcceptor.balanceChildren();
-			this.balanceChildren();
 			return animated.hole;
 		}
 	}
-
-	UserList.prototype.leave = function(animated, hole) {
-		this.element.removeChild(hole);
-		this.balanceChildren();
-	};
 
 	// Gets whether dragging items out of this list is allowed.
 	UserList.prototype.canDrag = function() {
@@ -142,7 +118,6 @@
 	// Appends an entry at the end of this let.
 	UserList.prototype.appendEntry = function(entry) {
 		this.element.appendChild(entry.element);
-		this.balanceChildren();
 	};
 
 	// Sets the list of entries in this list.
@@ -151,7 +126,6 @@
 		for (let i = 0; i < entries.length; i++) {
 			this.element.appendChild(entries[i].element);
 		}
-		this.balanceChildren();
 	};
 
 	// Gets the list of entries in this list.
@@ -169,7 +143,6 @@
 	UserList.prototype.removeEntry = function(entry) {
 		if (entry.element.parentNode === this.element) {
 			this.element.removeChild(entry.element);
-			this.balanceChildren();
 			return true;
 		} else {
 			return false;

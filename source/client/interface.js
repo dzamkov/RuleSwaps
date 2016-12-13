@@ -10,7 +10,6 @@ function Interface(setup, playerInfos, selfId) {
 		},
 		hand: new UI.CardList(document.getElementById("section-player-self-hand")),
 		constitution: new UI.Constitution(
-			document.getElementById("section-constitution-numbers"),
 			document.getElementById("section-constitution-list")),
 		log: new UI.Log(document.getElementById("section-log")),
 		input: {
@@ -153,7 +152,6 @@ Interface.prototype.giveCard = function*(player, card) {
 
 // Resolves a commitment for this interface.
 Interface.prototype.resolveCommitment = function(commitment, value) {
-	console.assert(this.playerSelf === commitment.player);
 	commitment.resolve(value);
 	this.run();
 }

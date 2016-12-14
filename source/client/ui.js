@@ -13,6 +13,7 @@ Card.prototype.createElement = function(isMini) {
 		mainDiv.appendChild(contentDiv);
 	}
 	
+	// Header
 	if (!isMini) {
 		let header = document.createElement("div");
 		header.className = "card-header";
@@ -24,6 +25,7 @@ Card.prototype.createElement = function(isMini) {
 		header.appendChild(type);
 	}
 	
+	// Text content
 	let text = document.createElement("div");
 	text.className = "card-text";
 	if (isMini) text.className += " -mini";
@@ -40,11 +42,49 @@ Card.prototype.createElement = function(isMini) {
 	}
 	contentDiv.appendChild(text);
 	
+	// Parenthetical
 	if (!isMini && this.parenthetical) {
 		let parenthetical = document.createElement("div");
 		parenthetical.className = "card-parenthetical";
 		parenthetical.innerText = "(" + this.parenthetical + ")";
 		contentDiv.appendChild(parenthetical);
+	}
+
+	// Hover-over zoom for mini cards
+	if (isMini) {
+		let card = this;
+		mainDiv.zoom = null;
+		function createZoom() {
+			if (!mainDiv.zoom) {
+				let rect = mainDiv.getBoundingClientRect();
+				let zoom = card.createElement(false);
+				zoom.className += " -zoom";
+				zoom.style.position = "fixed";
+				zoom.style.left = (rect.left + rect.right) / 2.0 + "px";
+				zoom.style.top = (rect.top + rect.bottom) / 2.0 + "px";
+				document.body.appendChild(zoom);
+				mainDiv.zoom = zoom;
+			}
+		}
+		function destroyZoom() {
+			if (mainDiv.zoom) {
+				document.body.removeChild(mainDiv.zoom);
+				mainDiv.zoom = null;
+			}
+		}
+
+		mainDiv.addEventListener("mouseenter", function(e) {
+			if ((e.buttons & 1) === 1) createZoom();
+		});
+		mainDiv.addEventListener("mousedown", function(e) {
+			if ((e.buttons & 1) === 1) createZoom();
+		});
+		mainDiv.addEventListener("mouseleave", function() {
+			destroyZoom();
+		});
+		mainDiv.addEventListener("mouseup", function(e) {
+			if ((e.buttons & 1) !== 1) destroyZoom();
+		});
 	}
 	return mainDiv;
 };

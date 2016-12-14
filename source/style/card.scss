@@ -21,6 +21,7 @@ $mini-card-list-height: 88px;
 
 .mini-card {
 	display: inline-block;
+	cursor: zoom-in;
 	box-sizing: border-box;
 	width: 60px;
 	height: 80px;
@@ -95,6 +96,25 @@ $mini-card-list-height: 88px;
 	}
 	&.-player .card-header {
 		background: linear-gradient($player-color-light, $player-color-mid);
+	}
+	&.-zoom {
+		pointer-events: none;
+		transform: translate(-50%, 45px);
+		animation: zoom 0.2s;
+		& .card-content {
+			box-shadow: none;
+		}
+	}
+}
+
+@keyframes zoom {
+	0% {
+		opacity: 0.0;
+		transform: translate(-50%, -50%) scale(0.5);
+	}
+	100% { 
+		opacity: 1.0;
+		transform: translate(-50%, 45px) scale(1.0);
 	}
 }
 

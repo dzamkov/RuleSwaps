@@ -297,8 +297,8 @@
 	Card.register("left_player_wins", new Card(Role.Action,
 	"The player to your left wins",
 	function*(game, slots) {
-		let player = game.getActivePlayer();
-		yield game.win(game.getPlayersFrom(player)[1]);
+		let players = game.getPlayersFrom(game.getActivePlayer());
+		yield game.win(players[1 % players.length]);
 	}));
 
 	Card.register("wealth_win", new Card(Role.Action,

@@ -50,10 +50,8 @@ var Motion = new function() {
 					animated: animated,
 					offsetX: e.clientX - rect.left,
 					offsetY: e.clientY - rect.top,
-					exitHole: hole,
-					exitAcceptor: acceptor,
-					enterHole: null,
-					enterAcceptor: null
+					hole: hole,
+					acceptor: acceptor
 				};
 			}
 		}
@@ -85,9 +83,9 @@ var Motion = new function() {
 	};
 	
 	// Causes this animated element to merge into the given hole of the given acceptor.
-	Animated.prototype.mergeInto = function(acceptor, hole, fromAcceptor) {
+	Animated.prototype.mergeInto = function(acceptor, hole) {
 		this.makeStatic();
-		acceptor.accept(this, hole, fromAcceptor);
+		acceptor.accept(this, hole);
 	};
 	
 	// Causes this animated element to move smoothly to the given coordinates. This should only be used for
@@ -139,7 +137,7 @@ var Motion = new function() {
 	};
 	
 	// Called when a draggable element leaves this acceptor, invalidating a hole.
-	Acceptor.prototype.leave = function(animated, hole, toAcceptor) {
+	Acceptor.prototype.leave = function(animated, hole) {
 		hole.parentNode.removeChild(hole);
 	};
 	
@@ -159,21 +157,6 @@ var Motion = new function() {
 				animated.moveTo(
 					e.clientX - dragging.offsetX,
 					e.clientY - dragging.offsetY);
-					
-				// Remove current enter hole if we're too far away
-				if (dragging.exitHole && dragging.enterHole) {
-					let eRect = element.getBoundingClientRect();
-					let hRect = dragging.enterHole.getBoundingClientRect();
-					if (eRect.right < hRect.left || 
-						eRect.left > hRect.right || 
-						eRect.bottom < hRect.top || 
-						eRect.top > hRect.bottom)
-					{
-						dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
-						dragging.enterAcceptor = null;
-						dragging.enterHole = null;
-					}
-				}
 				
 				// Check behind dragged element for possible acceptor
 				element.style.visibility = "hidden";
@@ -188,20 +171,11 @@ var Motion = new function() {
 					let rect = acceptorElement.getBoundingClientRect();
 					let left = e.clientX - rect.left + acceptorElement.scrollLeft;
 					let top = e.clientY - rect.top + acceptorElement.scrollTop;
-					let nEnterHole = acceptor.dragIn(animated, left, top, dragging.exitAcceptor);
-					if (nEnterHole) {
-						if (nEnterHole === dragging.enterHole) {
-							// Nothing to do here
-						} else if (nEnterHole === dragging.exitHole) {
-							dragging.exitHole = null;
-							dragging.enterHole = nEnterHole;
-						} else {
-							if (dragging.enterHole) {
-								dragging.enterAcceptor.leave(animated, dragging.enterHole, null);
-							}
-							dragging.enterHole = nEnterHole;
-						}
-						dragging.enterAcceptor = acceptor;
+					let nHole = acceptor.dragIn(animated, left, top, dragging.acceptor);
+					if (nHole) {
+						if (nHole !== dragging.hole) dragging.acceptor.leave(animated, dragging.hole);
+						dragging.hole = nHole;
+						dragging.acceptor = acceptor;
 					}
 				}
 			} else if (dragging.move) {
@@ -219,20 +193,9 @@ var Motion = new function() {
 			
 			if (dragging.animated) {
 				// Begin merging
-				if (dragging.enterHole) {
+				if (dragging.hole) {
 					dragging.animated.makeStatic();
-					dragging.animated.mergeInto(
-						dragging.enterAcceptor,
-						dragging.enterHole,
-						dragging.exitAcceptor);
-					if (dragging.exitHole)
-						dragging.exitAcceptor.leave(
-							dragging.animated,
-							dragging.exitHole,
-							dragging.enterAcceptor);
-				} else if (dragging.exitHole) {
-					dragging.animated.makeStatic();
-					dragging.animated.mergeInto(dragging.exitAcceptor, dragging.exitHole, null);
+					dragging.animated.mergeInto(dragging.acceptor, dragging.hole);
 				}
 			}
 		}

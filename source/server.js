@@ -159,7 +159,9 @@ http.createServer(function(request, response) {
 					Expression.fromList(
 						["you_gain_5"]),
 					Expression.fromList(
-						["player_draws_3", "you"]),
+						["conditional_player_draws_to_12", "player_decides", "you", "you"]),
+					Expression.fromList(
+						["player_discards_2", "you"]),
 					Expression.fromList(
 						["insert_amendment_conditional", "you",
 						"player_decides", "auction_winner"]),

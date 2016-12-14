@@ -248,9 +248,9 @@ function start(response) {
 	}
 
 	// Handle player rearrangement
-	playerList.accept = function(entry, hole, fromAcceptor) {
+	playerList.accept = function(entry, hole) {
 		// TODO: What if player disconnects while dragging?
-		UI.UserList.prototype.accept.call(this, entry, hole, fromAcceptor);
+		UI.UserList.prototype.accept.call(this, entry, hole);
 
 		// Send player shuffle message
 		ajax(Format.message.lobby.request.encode({
@@ -261,10 +261,10 @@ function start(response) {
 		// Clear player ready status
 		clearReady();
 	};
-	observerList.accept = function(entry, hole, fromAcceptor) {
+	observerList.accept = function(entry, hole) {
 		// TODO: What if player disconnects while dragging?
-		UI.UserList.prototype.accept.call(this, entry, hole, fromAcceptor);
-		if (fromAcceptor === playerList) {
+		UI.UserList.prototype.accept.call(this, entry, hole);
+		if (typeof entry.isReady === "boolean") {
 
 			// Send player shuffle message
 			ajax(Format.message.lobby.request.encode({

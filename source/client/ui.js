@@ -132,9 +132,9 @@ let UI = new function() {
 		if (element.animated instanceof Card) {
 			let hole = document.createElement("div");
 			hole.className = "card-hole";
-			hole.holeFor = element.animated;
 			let rect = element.getBoundingClientRect();
 			element.parentNode.replaceChild(hole, element);
+			element.animated.hole = hole;
 			return {
 				rect: rect,
 				animated: element.animated,
@@ -158,17 +158,19 @@ let UI = new function() {
 					break;
 				}
 			}
-			if (prev && prev.firstChild.holeFor === card) return prev.firstChild;
-			if (next && next.firstChild.holeFor === card) return next.firstChild;
-
-			let hole = document.createElement("div");
-			hole.holeFor = card;
-			hole.className = "card-hole";
-			let container = document.createElement("div");
-			container.className = "card-container";
-			container.appendChild(hole);
-			this.element.insertBefore(container, next);
-			return hole;
+			if (animated.hole && animated.hole.parentNode.parentNode === this.element) {
+				this.element.insertBefore(animated.hole.parentNode, next);
+				return animated.hole;
+			} else {
+				let hole = document.createElement("div");
+				hole.className = "card-hole";
+				let container = document.createElement("div");
+				container.className = "card-container";
+				container.appendChild(hole);
+				animated.hole = hole;
+				this.element.insertBefore(container, next);
+				return hole;
+			}
 		}
 	}
 	
@@ -176,7 +178,7 @@ let UI = new function() {
 		this.element.removeChild(hole.parentNode);
 	};
 
-	CardList.prototype.accept = function(animated, hole, fromAcceptor) {
+	CardList.prototype.accept = function(animated, hole) {
 		hole.parentNode.replaceChild(animated.element, hole);
 	};
 	
@@ -770,15 +772,15 @@ let UI = new function() {
 
 			// Disable on leave
 			let oldLeave = this.cardList.leave;
-			this.cardList.leave = function(animated, hole, toAcceptor) {
-				oldLeave.call(this, animated, hole, toAcceptor);
+			this.cardList.leave = function(animated, hole) {
+				oldLeave.call(this, animated, hole);
 				cards.updateButtons();
 			};
 
 			// Enable if there are enough cards
 			let oldAccept = this.cardList.accept;
-			this.cardList.accept = function(card, hole, fromAcceptor) {
-				oldAccept.call(this, card, hole, fromAcceptor);
+			this.cardList.accept = function(card, hole) {
+				oldAccept.call(this, card, hole);
 				cards.updateButtons();
 			};
 		};
@@ -869,6 +871,7 @@ let UI = new function() {
 					} else if (cur.holeFor === role) {
 						cur.holeFor = card;
 						cur.className = "card-hole-" + role.str.toLowerCase() + "-active";
+						this.addSlots(cur, card.type.slots);
 						return cur;
 					}
 				}
@@ -876,21 +879,15 @@ let UI = new function() {
 			}
 		};
 		
-		Expression.prototype.leave = function(animated, hole, toAcceptor) {
+		Expression.prototype.leave = function(animated, hole) {
 			hole.holeFor = animated.type.role;
 			hole.className = "card-hole-" + hole.holeFor.str.toLowerCase();
-			if (toAcceptor) {
-				this.removeSlots(hole, animated.type.slots.length);
-			}
+			this.removeSlots(hole, animated.type.slots.length);
 			this.updateButtons();
 		};
 		
-		Expression.prototype.accept = function(card, hole, fromAcceptor) {
+		Expression.prototype.accept = function(card, hole) {
 			hole.parentNode.replaceChild(card.element, hole);
-			if (fromAcceptor) {
-				console.assert(fromAcceptor !== this);
-				this.addSlots(card.element, card.type.slots);
-			}
 			this.updateButtons();
 		};
 		

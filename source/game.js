@@ -138,6 +138,7 @@ function Game(setup, users) {
 	
 	this.canResolveRandomness = false;
 	this.isRunning = false;
+	this.executionParam = null;
 	this.executionStack = [(function*() {
 
 		// Initial setup
@@ -187,16 +188,15 @@ Game.Setup = function(constitution, deck, initialDraws, initialCoins) {
 
 // Runs this game until it is forced to stop (user interaction, waiting for message, etc).
 Game.prototype.run = function() {
-	let response = null;
 	this.isRunning = true;
 	while (this.isRunning) {
 		let cur = this.executionStack.pop();
-		let res = cur.next(response);
+		let res = cur.next(this.executionParam);
 		if (!res.done) this.executionStack.push(cur);
-		response = res.value;
-		if (response && response.next) { // Check for generator
-			this.executionStack.push(response);
-			response = null;
+		this.executionParam = res.value;
+		if (this.executionParam && this.executionParam.next) { // Check for generator
+			this.executionStack.push(this.executionParam);
+			this.executionParam = null;
 		}
 	}
 };
@@ -270,6 +270,7 @@ Game.prototype.resolveCommitment = function(commitment, value) {
 // Waits until the given commitment is resolved, then returns its value. This does not
 // necessarily guarantee that the commitment will eventually be fufilled.
 Game.prototype.awaitCommitment = function*(commitment) {
+	console.assert(commitment instanceof Commitment);
 	while (!commitment.isResolved) yield this.pause();
 	return commitment.value;
 };

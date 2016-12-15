@@ -6,7 +6,7 @@ function Lobby(lobbyId, setup) {
 			Expression.fromList(
 				["you_gain_5"]),
 			Expression.fromList(
-				["player_draws_3", "you"]),
+				["you_draw_2"]),
 			Expression.fromList(
 				["insert_amendment_conditional", "you",
 				"player_decides", "auction_winner"]),
@@ -14,7 +14,8 @@ function Lobby(lobbyId, setup) {
 				["specify_action_optional", "you"]),
 			Expression.fromList(
 				["wealth_win"])
-		], CardSet.create(defaultDeck));
+		], CardSet.create(defaultDeck),
+		[4, 5, 6], [20]);
 	this.nextTabNum = 0;
 	this.startTimeoutHandle = null;
 	this.game = null;

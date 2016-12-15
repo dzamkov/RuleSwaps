@@ -156,20 +156,20 @@ http.createServer(function(request, response) {
 			// Create a test game
 			User.getBySessionId(sessionId).then(user => {
 				return ServerGame.create(new Game.Setup([
-					Expression.fromList(
-						["you_gain_5"]),
-					Expression.fromList(
-						["conditional_player_draws_to_12", "player_decides", "you", "you"]),
-					Expression.fromList(
-						["player_discards_2", "you"]),
-					Expression.fromList(
-						["insert_amendment_conditional", "you",
-						"player_decides", "auction_winner"]),
-					Expression.fromList(
-						["specify_action_optional", "you"]),
-					Expression.fromList(
-						["wealth_win"])
-				], CardSet.create(defaultDeck)), [user]);
+						Expression.fromList(
+							["you_gain_5"]),
+						Expression.fromList(
+							["conditional_player_draws_to_12", "player_decides", "you", "you"]),
+						Expression.fromList(
+							["player_discards_2", "you"]),
+						Expression.fromList(
+							["insert_amendment_conditional", "you",
+							"player_decides", "auction_winner"]),
+						Expression.fromList(
+							["specify_action_optional", "you"]),
+						Expression.fromList(
+							["wealth_win"])
+					], CardSet.create(defaultDeck), [4, 5, 6], [20]), [user]);
 			}).then(game => {
 
 				// Redirect to game

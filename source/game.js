@@ -52,6 +52,66 @@ let Color = {
 	White: "white"
 };
 
+
+function getOrdinalSuffix(i) {
+	let j = i % 10;
+	let k = i % 100;
+	if (j == 1 && k != 11)
+		return "st";
+	if (j == 2 && k != 12)
+		return "nd";
+	if (j == 3 && k != 13)
+		return "rd";
+	return "th";
+}
+
+function getOrdinal(i) {
+	return i + getOrdinalSuffix(i);
+}
+
+// Contains functions for constructing log objects.
+let Log = {
+	Coins: function(n) {
+		let inst = Object.create(Log.Coins.prototype);
+		inst.count = n;
+		return inst;
+	},
+	Cards: function(n) {
+		let inst = Object.create(Log.Cards.prototype);
+		inst.count = n;
+		return inst;
+	},
+	Break: {
+		toString: function() { return "\n"; }
+	},
+	Positive: function(str) {
+		let inst = Object.create(Log.Positive.prototype);
+		inst.str = str;
+		return inst;
+	},
+	Negative: function(str) {
+		let inst = Object.create(Log.Negative.prototype);
+		inst.str = str;
+		return inst;
+	}
+};
+
+Log.Coins.prototype.toString = function() {
+	return this.count + " coins";
+}
+
+Log.Cards.prototype.toString = function() {
+	return this.count + " cards";
+}
+
+Log.Positive.prototype.toString = function() {
+	return this.str;
+}
+
+Log.Negative.prototype.toString = function() {
+	return this.str;
+}
+
 // An interface for running a game.
 function Game(setup, users) {
 	
@@ -79,6 +139,19 @@ function Game(setup, users) {
 	this.canResolveRandomness = false;
 	this.isRunning = false;
 	this.executionStack = [(function*() {
+
+		// Initial setup
+		for (let i = 0; i < this.players.length; i++) {
+			let player = this.players[i];
+			let initialDraw = setup.initialDraws[Math.min(i, setup.initialDraws.length - 1)];
+			let initialCoins = setup.initialCoins[Math.min(i, setup.initialCoins.length - 1)];
+			yield this.drawCards(player, initialDraw);
+			yield this.giveCoins(player, initialCoins);
+			yield this.log(player,
+				" draws ", Log.Cards(initialDraw),
+				" and gains ", Log.Coins(initialCoins),
+				" to start the game");
+		}
 		
 		// The high-level playthrough procedure for a game.
 		while (true) {
@@ -105,9 +178,11 @@ function Game(setup, users) {
 }
 
 // Describes an initial configuration of a game.
-Game.Setup = function(constitution, deck) {
+Game.Setup = function(constitution, deck, initialDraws, initialCoins) {
 	this.constitution = constitution;
 	this.deck = deck;
+	this.initialDraws = initialDraws;
+	this.initialCoins = initialCoins;
 };
 
 // Runs this game until it is forced to stop (user interaction, waiting for message, etc).
@@ -211,65 +286,6 @@ Game.prototype.revealTo = function*(player, commitment) {
 	// Override me
 	return null;
 };
-
-function getOrdinalSuffix(i) {
-	let j = i % 10;
-	let k = i % 100;
-	if (j == 1 && k != 11)
-		return "st";
-	if (j == 2 && k != 12)
-		return "nd";
-	if (j == 3 && k != 13)
-		return "rd";
-	return "th";
-}
-
-function getOrdinal(i) {
-	return i + getOrdinalSuffix(i);
-}
-
-// Contains functions for constructing log objects.
-let Log = {
-	Coins: function(n) {
-		let inst = Object.create(Log.Coins.prototype);
-		inst.count = n;
-		return inst;
-	},
-	Cards: function(n) {
-		let inst = Object.create(Log.Cards.prototype);
-		inst.count = n;
-		return inst;
-	},
-	Break: {
-		toString: function() { return "\n"; }
-	},
-	Positive: function(str) {
-		let inst = Object.create(Log.Positive.prototype);
-		inst.str = str;
-		return inst;
-	},
-	Negative: function(str) {
-		let inst = Object.create(Log.Negative.prototype);
-		inst.str = str;
-		return inst;
-	}
-};
-
-Log.Coins.prototype.toString = function() {
-	return this.count + " coins";
-}
-
-Log.Cards.prototype.toString = function() {
-	return this.count + " cards";
-}
-
-Log.Positive.prototype.toString = function() {
-	return this.str;
-}
-
-Log.Negative.prototype.toString = function() {
-	return this.str;
-}
 
 // Writes to the game log.
 Game.prototype.log = function() {

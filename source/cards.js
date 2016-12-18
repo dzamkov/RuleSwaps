@@ -94,14 +94,15 @@
 		let discard = Math.min(amount, player.handSize);
 		if (discard > 0) {
 			yield game.log(player, " must discard ", Log.Cards(discard));
-			let res = yield game.reveal(yield game.interactCards(player, {
+			let commitment = yield game.interactCards(player, {
 				ordered: false,
 				optional: false,
 				amount: discard
 			}, {
 				accept: { text: "Discard" }
-			}));
-			yield game.takeCards(player, res);
+			});
+			let res = yield game.reveal(commitment);
+			yield game.takeCards(player, res, commitment);
 			yield game.log(player, " discards ", res)
 			yield game.discard(res);
 		} else {
@@ -190,10 +191,11 @@
 	function*(game, slots) {
 		let player = yield game.resolve(slots[0]);
 		yield game.log(player, " may specify and perform an action");
-		let exp = yield game.reveal(yield game.interactSpecify(player, Role.Action));
+		let commitment = yield game.interactSpecify(player, Role.Action);
+		let exp = yield game.reveal(commitment);
 		if (exp) {
 			let cardList = exp.toList();
-			yield game.takeCards(player, CardSet.fromList(cardList));
+			yield game.takeCards(player, CardSet.fromList(cardList), commitment);
 			yield game.log(player, " performs an action ", exp);
 			yield game.pushPlayerStack(player);
 			yield game.resolve(exp);
@@ -210,16 +212,17 @@
 		let downTo = 5;
 		let player = yield game.resolve(slots[0]);
 		yield game.log(player, " must specify and perform an action, or discard down to ", Log.Cards(downTo));
-		let exp = yield game.reveal(yield game.interactSpecify(player, Role.Action, 
+		let commitment = yield game.interactSpecify(player, Role.Action, 
 		(player.handSize > downTo) ? {
 			pass: { 
 				text: "Discard",
 				color: Color.Red
 			}
-		} : undefined));
+		} : undefined);
+		let exp = yield game.reveal(commitment);
 		if (exp) {
 			let cardList = exp.toList();
-			yield game.takeCards(player, CardSet.fromList(cardList));
+			yield game.takeCards(player, CardSet.fromList(cardList), commitment);
 			yield game.log(player, " performs an action ", exp);
 			yield game.pushPlayerStack(player);
 			yield game.resolve(exp);
@@ -233,14 +236,15 @@
 			} else {
 				yield game.log(player, " chose to discard down to ", Log.Cards(downTo));
 				let amount = player.handSize - downTo;
-				let res = yield game.reveal(yield game.interactCards(player, {
+				commitment = yield game.interactCards(player, {
 					ordered: false,
 					optional: false,
 					amount: amount
 				}, {
 					accept: { text: "Discard" }
-				}));
-				yield game.takeCards(player, res);
+				});
+				let res = yield game.reveal(commitment);
+				yield game.takeCards(player, res, commitment);
 				yield game.log(player, " discards ", res)
 				yield game.discard(res);
 			}
@@ -419,15 +423,16 @@
 	let mayDiscard = function*(game, player, amount) {
 		if (player.handSize >= amount) {
 			yield game.log(player, " may discard ", Log.Cards(amount));
-			let res = yield game.reveal(yield game.interactCards(player, {
+			let commitment = yield game.interactCards(player, {
 				ordered: false,
 				optional: true,
 				amount: 3
 			}, {
 				accept: { text: "Discard" }
-			}));
+			});
+			let res = yield game.reveal(commitment);
 			if (res) {
-				yield game.takeCards(player, res);
+				yield game.takeCards(player, res, commitment);
 				yield game.log(player, " discards ", res)
 				yield game.discard(res);
 				return true;
@@ -773,7 +778,7 @@
 			let res = yield game.reveal(discards[i]);
 			discards[i] = res;
 			if (res) {
-				yield game.takeCards(players[i], res);
+				yield game.takeCards(players[i], res, discards[i]);
 				yield game.discard(res);
 			}
 		}

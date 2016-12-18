@@ -102,15 +102,15 @@ let UI = new function() {
 	
 	Card.prototype = Object.create(Motion.Animated.prototype);
 	
-	// Merges this card into the given target acceptor.
+	// Sends this free-floating card to the given target acceptor.
 	Card.prototype.sendTo = function(target) {
 		if (target instanceof CardList) {
-			let hole = target.createInvisibleHole();
+			let hole = target.createEnterHole();
 			this.mergeInto(target, hole);
 		} else if (target) {
 			this.mergeInto(target, target.element);
 		} else {
-			this.element.parentNode.removeChild(this.element);
+			document.body.removeChild(this.element);
 		}
 	};
 	
@@ -195,24 +195,43 @@ let UI = new function() {
 	}
 	
 	// Gets a list of the card types in this card list.
-	CardList.prototype.toList = function() {
+	CardList.prototype.toTypeList = function() {
 		let cards = [];
 		let children = this.element.children;
-		for (let i = 0; i < children.length; i++) {
-			let container = children[i];
+		for (let container of children) {
 			let item = container.firstChild;
 			if (item.animated instanceof Card)
 				cards.push(item.animated.type);
 		}
 		return cards;
 	};
+
+	// Gets a list of the cards in this card list.
+	CardList.prototype.toList = function() {
+
+	};
+
+	// Converts a card of the given type in this list into a free-floating element.
+	CardList.prototype.dislodge = function(cardType) {
+		for (let container of children) {
+			let item = container.firstChild;
+			let card = item.animated;
+			if (card instanceof Card && card.type === cardType) {
+				card.makeFree(item.getBoundingClientRect());
+				this.element.removeChild(container);
+				return card;
+			}
+		}
+		return null;
+	};
 	
-	// Sends all cards in this list to the given target.
+	// Dislodges and sends all cards in this list to the given target.
 	CardList.prototype.sendAllTo = function(target) {
 		while (this.element.lastChild) {
 			let container = this.element.lastChild;
 			let item = container.firstChild;
 			if (item.animated instanceof Card) {
+				item.animated.makeFree(item.getBoundingClientRect());
 				item.animated.sendTo(target);
 			}
 			this.element.removeChild(container);
@@ -220,7 +239,7 @@ let UI = new function() {
 	};
 	
 	// Creates a new invisible hold for this card list
-	CardList.prototype.createInvisibleHole = function() {
+	CardList.prototype.createEnterHole = function() {
 		let hole = document.createElement("div");
 		hole.className = "card-hole";
 		let container = document.createElement("div");
@@ -796,7 +815,7 @@ let UI = new function() {
 				this.sendAllTo(this.returnTarget);
 				this.respond(null, options.value);
 			} else {
-				let cards = this.cardList.toList();
+				let cards = this.cardList.toTypeList();
 				if (cards.length > 0 && (!this.amount || cards.length === this.amount)) {
 					this.respond(cards, options.value);
 				}
@@ -980,6 +999,7 @@ let UI = new function() {
 				let container = this.list.lastChild;
 				let item = container.firstChild;
 				if (item.animated instanceof Card) {
+					item.animated.makeFree(item.getBoundingClientRect());
 					item.animated.sendTo(target);
 				}
 				this.list.removeChild(container);

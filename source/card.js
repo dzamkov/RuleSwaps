@@ -185,16 +185,32 @@ CardSet.fromList = function(list) {
 	return new CardSet(counts, totalCount);
 };
 
-// Creates a list of the cards in a card set in an arbitrary order.
-CardSet.prototype.toList = function() {
-	let list = []
+// Determines whether the given card sets contain the same cards.
+CardSet.prototype.areEqual = function(a, b) {
+	console.assert(a instanceof CardSet);
+	console.assert(b instanceof CardSet);
+	if (a.totalCount !== b.totalCount)
+		return false;
+	for (let card in a.counts) {
+		if (a.counts[card] !== b.counts[card])
+			return false;
+	}
+	return true;
+};
+
+// Iterates over the cards in a set in an arbitrary order.
+CardSet.prototype[Symbol.iterator] = function*() {
 	for (let card in this.counts) {
 		let count = this.counts[card];
 		for (let i = 0; i < count; i++) {
-			list.push(Card.get(card));
+			yield Card.get(card);
 		}
 	}
-	return list;
+}
+
+// Creates a list of the cards in a card set in an arbitrary order.
+CardSet.prototype.toList = function() {
+	return Array.from(this);
 };
 
 // Gets an array of the counts of the cards in the set, indexed by role id.

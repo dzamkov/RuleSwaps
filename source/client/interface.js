@@ -87,6 +87,10 @@ function Interface(setup, playerInfos, selfId) {
 		
 		// TODO: Hide player-self stuff
 	}
+
+	// A list of actions to be performed the next time the interface pauses. These actions may potentially
+	// be modified beforehand.
+	this.deferred = [];
 }
 
 // Derive interface from game.
@@ -95,6 +99,12 @@ Interface.prototype = Object.create(Game.prototype);
 Interface.prototype.run = function() {
 	if (!this.delayTimeout) {
 		Game.prototype.run.call(this);
+
+		// Run deferred actions
+		let deferred;
+		while (deferred = this.deferred.pop()) {
+			deferred.run();
+		}
 	}
 }
 
@@ -123,23 +133,23 @@ Interface.prototype.chat = function(player, message) {
 // An event fired in response to an outgoing chat.
 Interface.prototype.onSay = function(recipient, message) {
 	// Override me
-}
+};
 
 Interface.prototype.setActiveLine = function*(line) {
 	// TODO: problem with multiple proposals
 	this.ui.constitution.setActiveLine(line);
 	return yield Game.prototype.setActiveLine.call(this, line);
-}
+};
 
 Interface.prototype.setCoins = function*(player, count) {
 	player.ui.setCoins(count);
 	return yield Game.prototype.setCoins.call(this, player, count);
-}
+};
 
 Interface.prototype.setHandSize = function*(player, handSize) {
 	player.ui.setCards(handSize);
 	return yield Game.prototype.setHandSize.call(this, player, handSize);
-}
+};
 
 Interface.prototype.giveCard = function*(player, card) {
 	card = yield Game.prototype.giveCard.call(this, player, card);
@@ -148,13 +158,17 @@ Interface.prototype.giveCard = function*(player, card) {
 		let uiCard = this.ui.deck.draw.pull(card);
 		uiCard.sendTo(this.ui.hand);
 	}
-}
+};
 
 // Resolves a commitment for this interface.
 Interface.prototype.resolveCommitment = function(commitment, value) {
 	commitment.resolve(value);
 	this.run();
-}
+};
+
+Interface.prototype.takeCards = function*(player, cardSet, ref) {
+	yield Game.prototype.takeCards.call(this, player, cardSet);
+};
 
 // The default style for a boolean interaction
 Interface.defaultBooleanStyle = {

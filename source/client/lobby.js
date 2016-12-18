@@ -72,28 +72,41 @@
 
 	UserList.prototype = Object.create(Motion.Acceptor.prototype);
 
-	UserList.prototype.dragOut = function(element) {
-		if (this.canDrag() && element.animated instanceof UserEntry) {
-			let hole = document.createElement("div");
-			hole.className = "user-entry -hole";
-			element.animated.hole = hole;
-			let rect = element.getBoundingClientRect();
-			this.element.replaceChild(hole, element);
-			return {
-				rect: rect,
-				animated: element.animated,
-				hole: hole
+	UserList.prototype.dragGrab = function(element) {
+		if (this.canDrag()) {
+			let entry = Motion.Animated.get(element);
+			if (entry instanceof UserEntry) {
+				entry.fromList = this;
+				entry.pin();
+				let hole = entry.element.parentNode;
+				if (!hole || hole === this.element) {
+					hole = document.createElement("div");
+					hole.className = "user-entry -hole";
+					new Motion.Animated(hole);
+					this.element.replaceChild(hole, entry.element);
+				}
+				hole.holeFor = entry;
+				entry.hole = hole;
+				return entry;
 			}
 		}
-	}
+		return null;
+	};
 
-	UserList.prototype.dragIn = function(animated, left, top, fromAcceptor) {
+	UserList.prototype.dragRelease = function(animated) {
+		animated.settleHole(animated.hole);
+		animated.hole = null;
+
+		this.onDragAdd(animated, animated.fromList);
+		animated.fromList = null;
+	};
+
+	UserList.prototype.dragEnterMove = function(animated, left, top, fromAcceptor) {
 		if (animated instanceof UserEntry) {
-			let children = this.element.children;
 			let prev = null;
-			for (let i = 0; i < children.length; i++) {
-				let child = children[i];
-				let midY = child.offsetTop + child.offsetHeight / 2.0;
+			for (let child of this.element.children) {
+				let rect = Motion.getTargetRect(this.element, child);
+				let midY = rect.top + rect.height / 2.0;
 				if (midY < top) {
 					prev = child;
 				} else {
@@ -105,14 +118,22 @@
 			if (animated.hole === prev) return prev;
 			if (animated.hole === next) return next;
 
+			animated.hole.animated.pin();
+			Motion.Animated.pinAll(animated.hole.parentNode);
+			Motion.Animated.pinAll(this.element);
 			this.element.insertBefore(animated.hole, next);
 			return animated.hole;
 		}
-	}
+	};
 
 	// Gets whether dragging items out of this list is allowed.
 	UserList.prototype.canDrag = function() {
 		return true;
+	};
+
+	// Indicates that an entry has been dragged into this list.
+	UserList.prototype.onDragAdd = function(entry, fromList) {
+		// Override me
 	};
 
 	// Appends an entry at the end of this let.
@@ -131,22 +152,32 @@
 	// Gets the list of entries in this list.
 	UserList.prototype.getEntries = function() {
 		let entries = [];
-		let children = this.element.children;
-		for (let i = 0; i < children.length; i++) {
-			let entry = children[i].animated;
-			if (entry) entries.push(entry);
+		for (child of this.element.children) {
+			let animated = child.animated;
+			if (animated instanceof UserEntry)
+				entries.push(animated);
+			else if (child.holeFor instanceof UserEntry)
+				entries.push(child.holeFor);
 		}
 		return entries;
 	};
 
 	// Removes an entry from this list.
 	UserList.prototype.removeEntry = function(entry) {
-		if (entry.element.parentNode === this.element) {
-			this.element.removeChild(entry.element);
-			return true;
+		if (entry.hole) {
+			if (entry.hole.parentNode === this.element) {
+				entry.delete();
+				this.element.removeChild(entry.hole);
+				return true;
+			}
 		} else {
-			return false;
+			let child = Motion.getImmediateChild(this.element, entry.element);
+			if (child) {
+				this.element.removeChild(child);
+				return true;
+			}
 		}
+		return false;
 	};
 
 	this.UserEntry = UserEntry;
@@ -248,28 +279,26 @@ function start(response) {
 	}
 
 	// Handle player rearrangement
-	playerList.accept = function(entry, hole) {
-		// TODO: What if player disconnects while dragging?
-		UI.UserList.prototype.accept.call(this, entry, hole);
+	playerList.onDragAdd = function(entry, fromList) {
+
+		// TODO: Ignore when the order doesnt change
 
 		// Send player shuffle message
 		ajax(Format.message.lobby.request.encode({
 			type: "shuffle",
-			content: playerList.getEntries().map(e => e.user.userId)
+			content: Array.from(playerList.getEntries(), e => e.user.userId)
 		}));
 
 		// Clear player ready status
 		clearReady();
 	};
-	observerList.accept = function(entry, hole) {
-		// TODO: What if player disconnects while dragging?
-		UI.UserList.prototype.accept.call(this, entry, hole);
-		if (typeof entry.isReady === "boolean") {
+	observerList.onDragAdd = function(entry, fromList) {
+		if (fromList === playerList) {
 
 			// Send player shuffle message
 			ajax(Format.message.lobby.request.encode({
 				type: "shuffle",
-				content: playerList.getEntries().map(e => e.user.userId)
+				content: Array.from(playerList.getEntries(), e => e.user.userId)
 			}));
 
 			makeObserver(entry);
@@ -288,6 +317,7 @@ function start(response) {
 			let entry = UI.UserEntry.create(user, null);
 			userEntries[user.userId] = entry;
 			if (content.isPlayer) {
+				Motion.Animated.pinAll(playerList.element);
 				playerList.appendEntry(entry);
 				clearReady();
 			} else {
@@ -296,6 +326,9 @@ function start(response) {
 			log.log(0, [user, " has joined the lobby"]);
 
 		} else if (type === "userLeave") {
+
+			Motion.Animated.pinAll(playerList.element);
+			Motion.Animated.pinAll(observerList.element);
 
 			let entry = userEntries[content.userId];
 			if (entry) {
@@ -318,6 +351,9 @@ function start(response) {
 			}
 
 		} else if (type === "shuffle") {
+
+			Motion.Animated.pinAll(playerList.element);
+			Motion.Animated.pinAll(observerList.element);
 
 			let observerEntries = observerList.getEntries();
 			let accountedForEntries = { };
@@ -362,6 +398,7 @@ function start(response) {
 		} else if (type === "started") {
 			window.location = "/game/" + content;
 		}
+		Motion.Animated.flush();
 	}
 
 	// Set up chat

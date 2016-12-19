@@ -8,15 +8,16 @@ $font-size-big: 20px;
 $playarea-margin: 20px;
 
 body {
-	user-select: none;
-	cursor: default;
-	position: absolute;
 	width: 100%;
 	height: 100%;
 	margin: 0;
+	user-select: none;
+	cursor: default;
+	position: absolute;
 	background-image: url("/static/images/background.png");
 	background-position: center top;
 	font-family: $font-family;
+	overflow: hidden;
 }
 
 .fill-parent {

@@ -78,13 +78,11 @@
 			if (entry instanceof UserEntry) {
 				entry.fromList = this;
 				entry.pin();
-				let hole = entry.element.parentNode;
-				if (!hole || hole === this.element) {
-					hole = document.createElement("div");
-					hole.className = "user-entry -hole";
-					new Motion.Animated(hole);
-					this.element.replaceChild(hole, entry.element);
-				}
+
+				let hole = document.createElement("div");
+				hole.className = "user-entry -hole";
+				new Motion.Animated(hole);
+				this.element.replaceChild(hole, entry.element);
 				hole.holeFor = entry;
 				entry.hole = hole;
 				return entry;
@@ -94,7 +92,7 @@
 	};
 
 	UserList.prototype.dragRelease = function(animated) {
-		animated.settleHole(animated.hole);
+		animated.settleInto(animated.hole);
 		animated.hole = null;
 
 		this.onDragAdd(animated, animated.fromList);
@@ -115,15 +113,16 @@
 			}
 
 			let next = prev ? prev.nextSibling : this.element.firstChild;
-			if (animated.hole === prev) return prev;
-			if (animated.hole === next) return next;
+			if (animated.hole === prev) return true;
+			if (animated.hole === next) return true;
 
 			animated.hole.animated.pin();
 			Motion.Animated.pinAll(animated.hole.parentNode);
 			Motion.Animated.pinAll(this.element);
 			this.element.insertBefore(animated.hole, next);
-			return animated.hole;
+			return true;
 		}
+		return false;
 	};
 
 	// Gets whether dragging items out of this list is allowed.
@@ -144,9 +143,7 @@
 	// Sets the list of entries in this list.
 	UserList.prototype.setEntries = function(entries) {
 		while (this.element.lastChild) this.element.removeChild(this.element.lastChild);
-		for (let i = 0; i < entries.length; i++) {
-			this.element.appendChild(entries[i].element);
-		}
+		for (entry of entries) this.element.appendChild(entry.element);
 	};
 
 	// Gets the list of entries in this list.

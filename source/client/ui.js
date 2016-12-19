@@ -102,18 +102,6 @@ let UI = new function() {
 	
 	Card.prototype = Object.create(Motion.Animated.prototype);
 	
-	// Sends this free-floating card to the given target acceptor.
-	Card.prototype.sendTo = function(target) {
-		if (target instanceof CardList) {
-			let hole = target.createEnterHole();
-			this.mergeInto(target, hole);
-		} else if (target) {
-			this.mergeInto(target, target.element);
-		} else {
-			document.body.removeChild(this.element);
-		}
-	};
-	
 	// Creates an element representing a card, and returns its logical interface.
 	Card.create = function(cardType) {
 		return new Card(cardType.createElement(false), cardType);
@@ -127,30 +115,42 @@ let UI = new function() {
 	}
 	
 	CardList.prototype = Object.create(Motion.Acceptor.prototype);
+
+	// Creates a new placeholder element for a card.
+	CardList.createHole = function(card) {
+		let hole = document.createElement("div");
+		hole.className = "card-hole";
+		hole.holeFor = card;
+		new Motion.Animated(hole);
+		return hole;
+	};
 	
-	CardList.prototype.dragOut = function(element) {
-		if (element.animated instanceof Card) {
-			let hole = document.createElement("div");
-			hole.className = "card-hole";
-			let rect = element.getBoundingClientRect();
-			element.parentNode.replaceChild(hole, element);
-			element.animated.hole = hole;
-			return {
-				rect: rect,
-				animated: element.animated,
-				hole: hole
-			}
+	CardList.prototype.dragGrab = function(element) {
+		let card = Motion.Animated.get(element);
+		if (card instanceof Card) {
+			card.pin();
+
+			let hole = CardList.createHole(card);
+			card.element.parentNode.replaceChild(hole, card.element);
+			card.hole = hole;
+			return card;
 		}
-	}
-	
-	CardList.prototype.dragIn = function(animated, left, top) {
-		let card = animated;
+		return null;
+	};
+
+	CardList.prototype.dragRelease = function(animated) {
+		animated.settleInto(animated.hole);
+		animated.hole = null;
+	};
+
+	CardList.prototype.dragEnterMove = function(card, left, top, fromAcceptor) {
 		if (card instanceof Card) {
 			let prev = null;
 			let next = this.element.firstChild;
 			while (next !== null) {
 				let item = next.firstChild;
-				let midX = next.offsetLeft + item.offsetWidth / 2.0;
+				let rect = Motion.getTargetRect(this.element, item);
+				let midX = rect.left + rect.width / 2.0;
 				if (midX < left) {
 					prev = next;
 					next = next.nextSibling;
@@ -158,28 +158,51 @@ let UI = new function() {
 					break;
 				}
 			}
-			if (animated.hole && animated.hole.parentNode.parentNode === this.element) {
-				this.element.insertBefore(animated.hole.parentNode, next);
-				return animated.hole;
-			} else {
-				let hole = document.createElement("div");
-				hole.className = "card-hole";
+
+			// Quit early if possible.
+			if (prev && card.hole === prev.firstChild) return true;
+			if (next && card.hole === next.firstChild) return true;
+
+			// Add to this acceptor
+			Motion.Animated.pinAll(this.element);
+			if (fromAcceptor !== this) {
+				fromAcceptor.dragLeave(card);
+
+				let hole = CardList.createHole(card);
 				let container = document.createElement("div");
 				container.className = "card-container";
 				container.appendChild(hole);
-				animated.hole = hole;
+				card.hole = hole;
 				this.element.insertBefore(container, next);
-				return hole;
+			} else {
+				this.element.insertBefore(card.hole.parentNode, next);
 			}
+			return true;
 		}
+		return false;
 	}
-	
-	CardList.prototype.leave = function(animated, hole) {
-		this.element.removeChild(hole.parentNode);
+
+	CardList.prototype.dragLeave = function(card) {
+		this.removeCard(card);
 	};
 
-	CardList.prototype.accept = function(animated, hole) {
-		hole.parentNode.replaceChild(animated.element, hole);
+	// Removes a card from this list.
+	CardList.prototype.removeCard = function(card) {
+		Motion.Animated.pinAll(this.element);
+		if (card.hole) {
+			this.element.removeChild(card.hole.parentNode);
+		} else {
+			this.element.removeChild(card.element.parentNode);
+		}
+	};
+
+	// Appends a card to this list.
+	CardList.prototype.appendCard = function(card) {
+		Motion.Animated.pinAll(this.element);
+		let container = document.createElement("div");
+		container.className = "card-container";
+		container.appendChild(card.element);
+		this.element.appendChild(container);
 	};
 	
 	// Gets the number of cards in this card list.
@@ -192,7 +215,7 @@ let UI = new function() {
 				numCards++;
 		}
 		return numCards;
-	}
+	};
 	
 	// Gets a list of the card types in this card list.
 	CardList.prototype.toTypeList = function() {
@@ -204,49 +227,6 @@ let UI = new function() {
 				cards.push(item.animated.type);
 		}
 		return cards;
-	};
-
-	// Gets a list of the cards in this card list.
-	CardList.prototype.toList = function() {
-
-	};
-
-	// Converts a card of the given type in this list into a free-floating element.
-	CardList.prototype.dislodge = function(cardType) {
-		for (let container of children) {
-			let item = container.firstChild;
-			let card = item.animated;
-			if (card instanceof Card && card.type === cardType) {
-				card.makeFree(item.getBoundingClientRect());
-				this.element.removeChild(container);
-				return card;
-			}
-		}
-		return null;
-	};
-	
-	// Dislodges and sends all cards in this list to the given target.
-	CardList.prototype.sendAllTo = function(target) {
-		while (this.element.lastChild) {
-			let container = this.element.lastChild;
-			let item = container.firstChild;
-			if (item.animated instanceof Card) {
-				item.animated.makeFree(item.getBoundingClientRect());
-				item.animated.sendTo(target);
-			}
-			this.element.removeChild(container);
-		}
-	};
-	
-	// Creates a new invisible hold for this card list
-	CardList.prototype.createEnterHole = function() {
-		let hole = document.createElement("div");
-		hole.className = "card-hole";
-		let container = document.createElement("div");
-		container.className = "card-container";
-		container.appendChild(hole);
-		this.element.appendChild(container);
-		return hole;
 	};
 	
 	// Creates a list of miniaturized cards that expands on mouse over. 
@@ -271,15 +251,14 @@ let UI = new function() {
 	
 	Deck.prototype = Object.create(Motion.Acceptor.prototype);
 
-	// Pulls a card of the given type from this deck.
+	// Pulls a card of the given type from this deck. The card should be immediately be inserted into a
+	// valid acceptor.
 	Deck.prototype.pull = function(cardType) {
-		let rect = this.element.getBoundingClientRect();
 		let card = Card.create(cardType);
-		card.element.style.position = "fixed";
-		card.moveTo(rect.left, rect.right);
+		this.element.appendChild(card.element);
+		card.pin();
 		return card;
 	}
-	
 	
 	// Augments an element to be the game constitution.
 	function Constitution(list) {
@@ -850,32 +829,36 @@ let UI = new function() {
 		};
 		
 		Expression.prototype = Object.create(Motion.Acceptor.prototype);
-		
-		Expression.prototype.dragOut = function(element) {
-			if (element.animated instanceof Card) {
+
+		Expression.prototype.dragGrab = function(element) {
+			let card = Motion.Animated.get(element);
+			if (card instanceof Card) {
+				card.pin();
+
 				let hole = Expression.createSlotHole(element.animated.type.role, true);
 				hole.holeFor = element.animated;
-				let rect = element.getBoundingClientRect();
-				element.parentNode.replaceChild(hole, element);
-				return {
-					rect: rect,
-					animated: element.animated,
-					hole: hole
-				}
+				card.element.parentNode.replaceChild(hole, card.element);
+				card.hole = hole;
+				return card;
 			}
+			return null;
 		};
-		
-		Expression.prototype.dragIn = function(card, left, top, fromAcceptor) {
+
+		Expression.prototype.dragRelease = function(animated) {
+			animated.settleInto(animated.hole);
+			animated.hole = null;
+		};
+
+		Expression.prototype.dragEnterMove = function(card, left, top, fromAcceptor) {
 
 			// Don't allow incoming cards from the same expression
 			if (fromAcceptor !== this && card instanceof Card) {
-				let children = this.element.children;
 				let cur = null;
 				let bestDis = Infinity;
-				for (let i = 0; i < children.length; i++) {
-					let container = children[i];
+				for (let container of this.element.children) {
 					let item = container.firstChild;
-					let midX = container.offsetLeft + item.offsetWidth / 2.0;
+					let rect = Motion.getTargetRect(this.element, item);
+					let midX = rect.left + rect.width / 2.0;
 					let dis = Math.abs(midX - left);
 					if (dis < bestDis) {
 						cur = item;
@@ -886,27 +869,25 @@ let UI = new function() {
 				if (cur) {
 					let role = card.type.role;
 					if (cur.holeFor === card) {
-						return cur;
+						return true;
 					} else if (cur.holeFor === role) {
+						fromAcceptor.dragLeave(card);
+						card.hole = cur;
 						cur.holeFor = card;
 						cur.className = "card-hole-" + role.str.toLowerCase() + "-active";
 						this.addSlots(cur, card.type.slots);
-						return cur;
+						return true;
 					}
 				}
-				return null;
 			}
+			return false;
 		};
 		
-		Expression.prototype.leave = function(animated, hole) {
-			hole.holeFor = animated.type.role;
+		Expression.prototype.dragLeave = function(card) {
+			let hole = card.hole;
+			hole.holeFor = card.type.role;
 			hole.className = "card-hole-" + hole.holeFor.str.toLowerCase();
-			this.removeSlots(hole, animated.type.slots.length);
-			this.updateButtons();
-		};
-		
-		Expression.prototype.accept = function(card, hole) {
-			hole.parentNode.replaceChild(card.element, hole);
+			this.removeSlots(hole, card.type.slots.length);
 			this.updateButtons();
 		};
 		
@@ -917,6 +898,7 @@ let UI = new function() {
 			if (isActive) className += "-active";
 			hole.holeFor = role;
 			hole.className = className;
+			new Motion.Animated(hole);
 			return hole;
 		};
 		
@@ -928,6 +910,7 @@ let UI = new function() {
 		
 		// Adds slots to an expression after the given card element.
 		Expression.prototype.addSlots = function(after, slots) {
+			Motion.Animated.pinAll(this.element);
 			let before = after ? after.parentNode.nextSibling : null;
 			for (let i = 0; i < slots.length; i++) {
 				let hole = Expression.createSlotHole(slots[i], false);
@@ -940,11 +923,12 @@ let UI = new function() {
 		
 		// Removes a certain number slots from an expression after the given card element.
 		Expression.prototype.removeSlots = function(after, count) {
+			Motion.Animated.pinAll(this.element);
 			for (let i = 0; i < count; i++) {
 				let container = after.parentNode.nextSibling;
 				let item = container.firstChild;
-				if (item.animated) {
-					item.animated.sendTo(this.returnTarget);
+				if (item.animated instanceof Card) {
+					this.returnTarget.appendCard(item.animated);
 					count += item.animated.type.slots.length;
 				}
 				this.list.removeChild(container);
@@ -989,20 +973,6 @@ let UI = new function() {
 
 				// Reset and callback
 				this.respond(exp, options.value);
-			}
-		};
-		
-		// Sends all cards currently in the expression into the given target. This should not be called
-		// during a request.
-		Expression.prototype.sendAllTo = function(target) {
-			while (this.list.lastChild) {
-				let container = this.list.lastChild;
-				let item = container.firstChild;
-				if (item.animated instanceof Card) {
-					item.animated.makeFree(item.getBoundingClientRect());
-					item.animated.sendTo(target);
-				}
-				this.list.removeChild(container);
 			}
 		};
 		

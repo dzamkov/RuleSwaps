@@ -41,6 +41,8 @@ var Motion = new function() {
 		this.hoverStyle = null;
 		this.pinRect = null;
 		this.isFree = false;
+		this.isMouseOver = false;
+		this.isMouseHover = false;
 		this.x = 0; this.velX = 0;
 		this.y = 0; this.velY = 0;
 		this.updateCallback = this.update.bind(this);
@@ -50,18 +52,8 @@ var Motion = new function() {
 		this.damping = Math.sqrt(4.0 * this.acceleration);
 
 		element.animated = this;
-		element.addEventListener("mouseenter", function(e) {
-			let target = e.target;
-			if (target.animated && target.animated.hoverStyle) {
-				target.className += " " + target.animated.hoverStyle;
-			}
-		});
-		element.addEventListener("mouseleave", function(e) {
-			let target = e.target;
-			if (target.animated && target.animated.hoverStyle) {
-				target.className = target.className.replace(" " + target.animated.hoverStyle, "");
-			}
-		});
+		element.addEventListener("mouseenter", this.setMouseOver.bind(this, true));
+		element.addEventListener("mouseleave", this.setMouseOver.bind(this, false));
 	};
 
 	// Pins all animated descendants of the given element.
@@ -161,7 +153,7 @@ var Motion = new function() {
 	};
 
 	// Causes this animated element to smoothly take the place of the given placeholder element.
-	Animated.prototype.settleHole = function(hole) {
+	Animated.prototype.settleInto = function(hole) {
 		hole.parentNode.replaceChild(this.element, hole);
 		this.settle();
 	};
@@ -171,7 +163,7 @@ var Motion = new function() {
 		if (!this.isFree) {
 			if (this.x * this.x + this.y * this.y > 1.0) {
 				if (!this.lastTimeStamp) this.lastTimeStamp = timeStamp;
-				let delta = (timeStamp - this.lastTimeStamp) / 1000.0;
+				let delta = Math.min((timeStamp - this.lastTimeStamp) / 1000.0, 0.1);
 				this.lastTimeStamp = timeStamp;
 
 				this.velX += (-this.x * this.acceleration - this.velX * this.damping) * delta;
@@ -197,6 +189,37 @@ var Motion = new function() {
 			this.element.parentNode.removeChild(this.element);
 	};
 
+	// Sets whether the mouse is over this element (which doesn't necessarily correlate hovering, since
+	// dragged elements will always be hovered over and in that case no other element can be).
+	Animated.prototype.setMouseOver = function(isMouseOver) {
+		this.isMouseOver = isMouseOver;
+		this.updateMouseHover();
+	};
+
+	// Updates the mouse hover status of this animated element.
+	Animated.prototype.updateMouseHover = function() {
+		let isMouseHover = window.dragging ? window.dragging.animated === this : this.isMouseOver;
+		if (isMouseHover !== this.isMouseHover) {
+			if (isMouseHover) {
+				this.element.className += " " + this.hoverStyle;
+			} else {
+				this.element.className = this.element.className.replace(" " + this.hoverStyle, "");
+			}
+			this.isMouseHover = isMouseHover;
+		}
+	};
+
+	// Sets whether the mouse is hovering over this element.
+	Animated.prototype.setMouseHover = function(isMouseHover) {
+		if (this.isMouseHover !== isMouseHover) {
+			if (isMouseHover) {
+				this.element.className += " " + this.hoverStyle;
+			} else {
+				this.element.className = this.element.className.replace(" " + this.element.hoverStyle, "");
+			}
+		}
+	};
+
 	// Augments an element with the ability to accept animated elements dragged into it and have
 	// its own animated children dragged out.
 	function Acceptor(element) {
@@ -218,6 +241,7 @@ var Motion = new function() {
 						offsetX: e.clientX - rect.left,
 						offsetY: e.clientY - rect.top,
 					};
+					animated.updateMouseHover();
 				}
 				Animated.flush();
 			}
@@ -301,6 +325,7 @@ var Motion = new function() {
 			if (dragging.animated) {
 				dragging.animated.pin();
 				dragging.acceptor.dragRelease(dragging.animated);
+				dragging.animated.updateMouseHover();
 				Animated.flush();
 			}
 		}

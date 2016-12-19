@@ -81,6 +81,7 @@ $mini-card-list-height: 88px;
 	@extend .card-shape;
 	cursor: pointer;
 	user-select: none;
+	position: relative;
 	&.-hover .card-content {
 		background-color: #e6ffff;
 		border-color: #002966;

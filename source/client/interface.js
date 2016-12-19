@@ -105,6 +105,9 @@ Interface.prototype.run = function() {
 		while (deferred = this.deferred.pop()) {
 			deferred.run();
 		}
+		
+		// Play animations
+		Motion.Animated.flush();
 	}
 }
 
@@ -156,7 +159,8 @@ Interface.prototype.giveCard = function*(player, card) {
 	if (this.playerSelf === player) {
 		console.assert(card);
 		let uiCard = this.ui.deck.draw.pull(card);
-		uiCard.sendTo(this.ui.hand);
+		this.ui.hand.appendCard(uiCard);
+		yield this.delay(100);
 	}
 };
 

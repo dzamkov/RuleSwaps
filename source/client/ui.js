@@ -204,15 +204,20 @@ let UI = new function() {
 		container.appendChild(card.element);
 		this.element.appendChild(container);
 	};
+
+	// Default putting to appending.
+	CardList.prototype.putCard = CardList.prototype.appendCard;
 	
 	// Gets the number of cards in this card list.
 	CardList.prototype.getNumCards = function() {
 		let numCards = 0;
-		let children = this.element.children;
-		for (let i = 0; i < children.length; i++) {
-			let container = children[i];
-			if (container.firstChild.animated instanceof Card)
+		for (let container of this.element.children) {
+			let item = container.firstChild;
+			if (item.animated instanceof Card) {
 				numCards++;
+			} else if (item.holeFor instanceof Card) {
+				numCards++;
+			}
 		}
 		return numCards;
 	};
@@ -228,6 +233,32 @@ let UI = new function() {
 		}
 		return cards;
 	};
+
+	// removes and returns all cards from the given element.
+	function takeAllCards(element) {
+		Motion.Animated.pinAll(element);
+
+		// Get all cards
+		let res = [];
+		for (let container of element.children) {
+			let item = container.firstChild;
+			if (item.animated instanceof Card) {
+				res.push(item.animated);
+			} else if (item.holeFor instanceof Card) {
+				item.holeFor.cancelDrag();
+				res.push(item.holeFor);
+			}
+		}
+
+		// Remove all items
+		while (element.lastChild) element.removeChild(element.lastChild);
+		return res;
+	}
+
+	// Removes and returns all cards in this card list.
+	CardList.prototype.takeAllCards = function() {
+		return takeAllCards(this.element);
+	};
 	
 	// Creates a list of miniaturized cards that expands on mouse over. 
 	function createMiniList(cards) {
@@ -240,25 +271,42 @@ let UI = new function() {
 	}
 	
 	// Augments an element to be a deck container.
-	function Deck(element, isFaceDown) {
-		Motion.Acceptor.call(this, element);
-		this.isFaceDown = isFaceDown;
+	function Deck(element, style) {
+		this.element = element;
+		this.style = style;
 		
-		let card = document.createElement("div");
-		card.className = "card-back";
-		element.appendChild(card);
+		this.dummyContainer = document.createElement("div");
+		this.dummyContainer.className = "container";
+		this.element.appendChild(this.dummyContainer);
 	}
-	
-	Deck.prototype = Object.create(Motion.Acceptor.prototype);
+
+	// Identifies the appearance of a deck.
+	Deck.Style = {
+		FaceDown: 0,
+		FaceUp: 1,
+		Invisible: 2
+	};
 
 	// Pulls a card of the given type from this deck. The card should be immediately be inserted into a
 	// valid acceptor.
-	Deck.prototype.pull = function(cardType) {
+	Deck.prototype.pullCard = function(cardType) {
 		let card = Card.create(cardType);
-		this.element.appendChild(card.element);
+		this.dummyContainer.appendChild(card.element);
 		card.pin();
+		this.dummyContainer.removeChild(card.element);
 		return card;
-	}
+	};
+
+	// Puts a card into this deck.
+	Deck.prototype.putCard = function(card) {
+		let container = document.createElement("div");
+		container.className = "container";
+		container.appendChild(card.element);
+		this.element.appendChild(container);
+		if (this.style === Deck.Style.Invisible) {
+			card.element.className += " -fade-out";
+		}
+	};
 	
 	// Augments an element to be the game constitution.
 	function Constitution(list) {
@@ -761,6 +809,7 @@ let UI = new function() {
 
 			let cards = this;
 
+			// TODO: These 3 things below
 			// Don't accept extra cards
 			let oldDragIn = this.cardList.dragIn;
 			this.cardList.dragIn = function(animated, left, top, fromAcceptor) {
@@ -793,7 +842,9 @@ let UI = new function() {
 		
 		Cards.prototype.onButtonClick = function(options) {
 			if (options.pass) {
-				this.sendAllTo(this.returnTarget);
+				for (let card of this.cardList.takeAllCards()) {
+					this.returnTarget.putCard(card);
+				}
 				this.respond(null, options.value);
 			} else {
 				let cards = this.cardList.toTypeList();
@@ -811,7 +862,6 @@ let UI = new function() {
 		
 		Cards.prototype.respond = Input.prototype.respond;
 		Cards.prototype.request = function(options, callback) {
-			this.sendAllTo(null);
 			this.amount = options.amount;
 			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
 			this.updateButtons();
@@ -878,6 +928,7 @@ let UI = new function() {
 						cur.holeFor = card;
 						cur.className = "card-hole-" + role.str.toLowerCase() + "-active";
 						this.addSlots(cur, card.type.slots);
+						this.updateButtons();
 						return true;
 					}
 				}
@@ -930,7 +981,7 @@ let UI = new function() {
 				let container = after.parentNode.nextSibling;
 				let item = container.firstChild;
 				if (item.animated instanceof Card) {
-					this.returnTarget.appendCard(item.animated);
+					this.returnTarget.putCard(item.animated);
 					count += item.animated.type.slots.length;
 				}
 				this.list.removeChild(container);
@@ -940,17 +991,24 @@ let UI = new function() {
 		// Updates the status of the buttons in this input
 		Expression.prototype.updateButtons = function() {
 			// Check if all slots have been filled
-			let children = this.list.children;
 			let allFilled = true;
-			for (let i = 0; i < children.length; i++) {
-				allFilled = allFilled && !!children[i].firstChild.animated;
+			for (let container of this.list.children) {
+				let item = container.firstChild;
+				allFilled = allFilled && ((item.animated instanceof Card) || (item.holeFor instanceof Card));
 			}
 			setButtonsEnabled(this.buttons, allFilled);
+		};
+
+		// Removes and returns all cards from this expression, and resets it to its initial state.
+		Expression.prototype.takeAllCards = function() {
+			return takeAllCards(this.list);
 		};
 		
 		Expression.prototype.onButtonClick = function(options) {
 			if (options.pass) {
-				this.sendAllTo(this.returnTarget);
+				for (let card of this.takeAllCards()) {
+					this.returnTarget.putCard(card);
+				}
 				this.respond(null, options.value);
 			} else {
 

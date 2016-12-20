@@ -181,11 +181,20 @@ var Motion = new function() {
 		}
 	};
 
+	// If this animated element is being dragged, stops dragging and removes it from the DOM.
+	Animated.prototype.cancelDrag = function() {
+		if (window.dragging && window.dragging.animated === this) {
+			window.dragging = null;
+			document.body.removeChild(this.element);
+			this.settle();
+			return true;
+		}
+		return false;
+	};
+
 	// Removes this animated element from the DOM and stops it from being dragged.
 	Animated.prototype.delete = function() {
-		if (window.dragging && window.dragging.animated === this)
-			window.dragging = null;
-		if (this.element.parentNode)
+		if (!this.cancelDrag() && this.element.parentNode)
 			this.element.parentNode.removeChild(this.element);
 	};
 

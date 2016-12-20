@@ -5,8 +5,9 @@ function Interface(setup, playerInfos, selfId) {
 	// Set up UI
 	this.ui = {
 		deck: {
-			draw: new UI.Deck(document.getElementById("deck-draw")),
-			discard: new UI.Deck(document.getElementById("deck-discard")),
+			draw: new UI.Deck(document.getElementById("deck-draw"), UI.Deck.Style.FaceDown),
+			discard: new UI.Deck(document.getElementById("deck-discard"), UI.Deck.Style.FaceUp),
+			play: new UI.Deck(document.getElementById("deck-play"), UI.Deck.Style.Invisible)
 		},
 		hand: new UI.CardList(document.getElementById("section-player-self-hand")),
 		constitution: new UI.Constitution(
@@ -87,10 +88,6 @@ function Interface(setup, playerInfos, selfId) {
 		
 		// TODO: Hide player-self stuff
 	}
-
-	// A list of actions to be performed the next time the interface pauses. These actions may potentially
-	// be modified beforehand.
-	this.deferred = [];
 }
 
 // Derive interface from game.
@@ -100,12 +97,6 @@ Interface.prototype.run = function() {
 	if (!this.delayTimeout) {
 		Game.prototype.run.call(this);
 
-		// Run deferred actions
-		let deferred;
-		while (deferred = this.deferred.pop()) {
-			deferred.run();
-		}
-		
 		// Play animations
 		Motion.Animated.flush();
 	}
@@ -158,7 +149,7 @@ Interface.prototype.giveCard = function*(player, card) {
 	card = yield Game.prototype.giveCard.call(this, player, card);
 	if (this.playerSelf === player) {
 		console.assert(card);
-		let uiCard = this.ui.deck.draw.pull(card);
+		let uiCard = this.ui.deck.draw.pullCard(card);
 		this.ui.hand.appendCard(uiCard);
 		yield this.delay(100);
 	}
@@ -419,8 +410,10 @@ Interface.prototype.interactSpecify = function*(player, role, style) {
 				pass: true
 			}]
 		}, function(exp) {
+			for (let card of game.ui.input.expression.takeAllCards()) {
+				game.ui.deck.play.putCard(card);
+			}
 			game.resolveCommitment(commitment, exp);
-			game.ui.input.expression.sendAllTo(null);
 		});
 		yield this.awaitCommitment(commitment);
 	}
@@ -447,12 +440,14 @@ Interface.prototype.interactAmend = function*(player, style) {
 		}, function(exp) {
 			if (exp) {
 				let proposal = game.ui.constitution.proposeInsertPick(exp);
+				for (let card of game.ui.input.expression.takeAllCards()) {
+					game.ui.deck.play.putCard(card);
+				}
 				game.resolveCommitment(commitment, {
 					line: proposal.line,
 					exp: exp,
 					proposal: proposal
 				});
-				game.ui.input.expression.sendAllTo(null);
 			} else {
 				game.ui.constitution.cancelInsertPick();
 				game.resolveCommitment(commitment, null);

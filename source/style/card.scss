@@ -106,6 +106,10 @@ $mini-card-list-height: 88px;
 			box-shadow: none;
 		}
 	}
+	&.-fade-out {
+		opacity: 0.0;
+		animation: fade-out 0.2s;
+	}
 }
 
 @keyframes zoom {
@@ -116,6 +120,15 @@ $mini-card-list-height: 88px;
 	100% { 
 		opacity: 1.0;
 		transform: translate(-50%, 45px) scale(1.0);
+	}
+}
+
+@keyframes fade-out {
+	0% {
+		opacity: 1.0;
+	}
+	100% {
+		opacity: 0.0;
 	}
 }
 

@@ -70,11 +70,17 @@ $playarea-sidebar-width: $card-width + 2 * $deck-padding;
 #section-input {
 	position: relative;
 	flex-shrink: 0;
+	transition: height 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+	height: 0;
 	overflow: hidden;
 	border-top: solid 1px black;
 	border-radius: 0 0 $curve-inset $curve-inset;
 	box-shadow: 0 0 5px 0 #101010;
 	background: #565656;
+}
+
+#section-input > *:not(:first-child) {
+	display: none !important;
 }
 
 #section-player-self {
@@ -163,15 +169,6 @@ $playarea-sidebar-width: $card-width + 2 * $deck-padding;
 $input-chat-height: 30px;
 $input-chat-selector-width: 100px;
 $input-chat-button-width: 60px;
-
-.input {
-	transition: height 0.5s cubic-bezier(0.645, 0.045, 0.355, 1);
-	overflow: hidden;
-	
-	&.-hidden {
-		height: 0 !important;
-	}
-}
 
 #input-options {
 	position: relative;

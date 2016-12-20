@@ -636,12 +636,14 @@ let UI = new function() {
 	Input.prototype.respond = function() {
 		if (this.callback) this.callback.apply(null, arguments);
 		this.callback = null;
-		this.container.className = "input -hidden";
+		this.container.parentNode.style.height = "";
 	}
 	
 	// Shows this input interface, requesting a response from the user.
 	Input.prototype.request = function(callback) {
-		this.container.className = "input";
+		let section = this.container.parentNode;
+		section.insertBefore(this.container, section.firstChild);
+		section.style.height = this.container.offsetHeight + "px";
 		this.callback = callback;
 	};
 	

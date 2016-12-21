@@ -1,6 +1,5 @@
 // A client-specific interface to a game.
 function Interface(setup, playerInfos, selfId) {
-	this.delayTimeout = null;
 	
 	// Set up UI
 	this.ui = {
@@ -88,19 +87,157 @@ function Interface(setup, playerInfos, selfId) {
 		
 		// TODO: Hide player-self stuff
 	}
+
+	// The set of effects that have yet to be displayed, along with the timeout handle to display them.
+	this.effects = [];
+	this.delayTimeout = null;
 }
+
+// Describes a visual effect that updates an interface and/or plays an animation that represents a game
+// action. Additionally, an effect can be a request for the user to make a decision.
+function Effect() { }
+
+// Displays this effect using the given set of UI objects. Returns the amount of time to wait
+// (in milliseconds) before going on to the next effect.
+Effect.prototype.display = function(ui) {
+
+	// Override me
+	return 0;
+};
+
+// Constructs a custom effect based on the given display action and timeout delay.
+Effect.custom = function(delay, display) {
+	let effect = new Effect();
+	effect.display = function(ui) {
+		display(ui);
+		return delay;
+	};
+	return effect;
+};
+
+// Constructs an effect to log a message.
+Effect.log = function(depth, contents, style) {
+	return Effect.custom(500, ui => ui.log.log(depth, contents, style));
+};
+
+// An effect which transfers cards.
+Effect.Transfer = function(takeCards, putCards, ref) {
+
+	// A procedure which takes the appropriate animated card elements from a source and returns them as a
+	// list.
+	this.takeCards = takeCards;
+
+	// A procedure which takes a list of animated cards elements and puts them in the appropriate target.
+	this.putCards = putCards;
+
+	// An optionial identifier for the set of cards that were transfered.
+	this.ref = ref;
+}
+
+// A value for 'putCards' which puts cards in the play area.
+Effect.Transfer.putCardsInPlay = function(ui, cards) {
+	for (let card of cards) {
+		ui.deck.play.putCard(card);
+	}
+};
+
+// A value for 'putCards' which gives cards, in order, to the given acceptor.
+Effect.Transfer.giveCards = function(acceptor) {
+	return function(ui, cards) {
+		if (acceptor instanceof Function) acceptor = acceptor(ui);
+		for (card of cards) acceptor.putCard(card);
+	};
+};
+
+Effect.Transfer.prototype = Object.create(Effect.prototype);
+
+Effect.Transfer.prototype.display = function(ui) {
+	let cards = this.takeCards(ui);
+	this.putCards(ui, cards);
+	return 100;
+};
+
+// Constructs an effect to transfer cards.
+Effect.transfer = function(takeCards, putCards, ref) {
+	return new Effect.Transfer(takeCards, putCards, ref);
+};
 
 // Derive interface from game.
 Interface.prototype = Object.create(Game.prototype);
 
-Interface.prototype.run = function() {
-	if (!this.delayTimeout) {
-		Game.prototype.run.call(this);
+// Queues an effect to be displayed by this interface.
+Interface.prototype.queueEffect = function(effect) {
+	this.effects.push(effect);
+};
 
-		// Play animations
-		Motion.Animated.flush();
+// Queues an effect which transfers cards from a given source (to the play area, by default, but may be
+// followed by a call to 'queueTransferTo' with the same ref to change the target).
+Interface.prototype.queueTransferFrom = function(takeCards, ref) {
+
+	// Prefer to invalidate an earlier transfer rather than create a new one.
+	if (ref) {
+		for (let i = this.effects.length - 1; i >= 0; i--) {
+			let effect = this.effects[i];
+			if (effect instanceof Effect.Transfer && effect.ref === ref) {
+				effect.putCards = Effect.Transfer.putCardsInPlay;
+				return;
+			}
+		}
 	}
-}
+
+	// Okay, fine, create a new transfer.
+	this.queueEffect(Effect.transfer(takeCards, Effect.Transfer.putCardsInPlay, ref));
+};
+
+// Queues an effect which transfers cards to a given source (from the play area, by default, but may
+// be from another source defined by 'queueTransferFrom' with the same ref).
+Interface.prototype.queueTransferTo = function(cardTypes, putCards, ref) {
+
+	// Prefer to redirect
+	if (ref) {
+		for (let i = this.effects.length - 1; i >= 0; i--) {
+			let effect = this.effects[i];
+			if (effect instanceof Effect.Transfer && effect.ref === ref) {
+				effect.putCards = putCards;
+				return;
+			}
+		}
+	}
+
+	// Create a new transfer from the play area
+	this.queueEffect(Effect.transfer(function(ui) {
+		let cards = [];
+		for (let type of cardTypes) {
+			cards.push(ui.deck.play.pullCard(type));
+		}
+		return cards;
+	}, putCards, ref));
+
+};
+
+// Displays the next effect queued in this interface, assuming that no effect is currently being displayed.
+Interface.prototype.forceUpdate = function() {
+	this.delayTimeout = null;
+	while (this.effects.length > 0) {
+		let effect = this.effects.shift();
+		let timeout = effect.display(this.ui);
+		if (timeout) {
+			this.delayTimeout = setTimeout(this.forceUpdate.bind(this), timeout);
+			break;
+		}
+	}
+	Motion.Animated.flush();
+};
+
+// Displays the next effect queued in this interface, if possible.
+Interface.prototype.update = function() {
+	if (!this.delayTimeout) this.forceUpdate();
+};
+
+Interface.prototype.run = function() {
+	Game.prototype.run.call(this);
+	this.update();
+};
 
 Interface.prototype.revealTo = function*(player, commitment) {
 	if (this.playerSelf === player) {
@@ -108,20 +245,19 @@ Interface.prototype.revealTo = function*(player, commitment) {
 	} else {
 		return null;
 	}
-}
+};
 
-Interface.prototype.log = function*() {
-	this.ui.log.log(this.getDepth(), arguments, UI.Log.Style.Normal);
-	yield this.delay(500);
+Interface.prototype.log = function() {
+	this.queueEffect(Effect.log(this.getDepth(), arguments, UI.Log.Style.Normal));
 }
 
 Interface.prototype.win = function*(player) {
-	this.ui.log.log(this.getDepth(), [player, " wins!"], UI.Log.Style.Victory);
+	this.queueEffect(Effect.log(this.getDepth(), [player, " wins!"], UI.Log.Style.Victory));
 	yield Game.prototype.win.call(this, player);
 }
 
 Interface.prototype.chat = function(player, message) {
-	this.ui.log.log(this.getDepth(), [player, ": ", message], UI.Log.Style.Chat);
+	this.ui.log.chat(player.user, message);
 }
 
 // An event fired in response to an outgoing chat.
@@ -131,27 +267,40 @@ Interface.prototype.onSay = function(recipient, message) {
 
 Interface.prototype.setActiveLine = function*(line) {
 	// TODO: problem with multiple proposals
-	this.ui.constitution.setActiveLine(line);
+	this.queueEffect(Effect.custom(0, ui => ui.constitution.setActiveLine(line)));
 	return yield Game.prototype.setActiveLine.call(this, line);
 };
 
 Interface.prototype.setCoins = function*(player, count) {
-	player.ui.setCoins(count);
+	this.queueEffect(Effect.custom(0, ui => player.ui.setCoins(count)));
 	return yield Game.prototype.setCoins.call(this, player, count);
 };
 
+Interface.prototype.draw = function*() {
+	let commitment = yield Game.prototype.draw.call(this);
+	this.queueTransferFrom(function(ui) {
+		return [ui.deck.draw.pullCard(commitment.isResolved ? commitment.value : null)];
+	}, commitment);
+	return commitment;
+};
+
+Interface.prototype.discard = function*(cards, ref) {
+	yield Game.prototype.discard.call(this, cards);
+	this.queueTransferTo(cards.toList(), Effect.Transfer.giveCards(ui => ui.deck.discard), ref);
+};
+
 Interface.prototype.setHandSize = function*(player, handSize) {
-	player.ui.setCards(handSize);
+	this.queueEffect(Effect.custom(0, ui => player.ui.setCards(handSize)));
 	return yield Game.prototype.setHandSize.call(this, player, handSize);
 };
 
 Interface.prototype.giveCard = function*(player, card) {
+	let commitment = card;
+	if (!(commitment instanceof Commitment)) commitment = null;
 	card = yield Game.prototype.giveCard.call(this, player, card);
 	if (this.playerSelf === player) {
 		console.assert(card);
-		let uiCard = this.ui.deck.draw.pullCard(card);
-		this.ui.hand.appendCard(uiCard);
-		yield this.delay(100);
+		yield this.queueTransferTo([card], Effect.Transfer.giveCards(ui => ui.hand), commitment);
 	}
 };
 
@@ -470,14 +619,4 @@ Interface.prototype.confirmAmend = function*(amend) {
 Interface.prototype.cancelAmend = function*(amend) {
 	this.ui.constitution.cancelProposal(amend.proposal);
 	return yield Game.prototype.cancelAmend.call(this, amend);
-};
-
-// Stops the interface from running for the given length of time.
-Interface.prototype.delay = function*(time) {
-	if (this.delayTimeout) clearTimeout(this.delayTimeout);
-	this.delayTime = setTimeout((function() {
-		this.delayTime = null;
-		this.run();
-	}).bind(this), time);
-	while (this.delayTime) yield this.pause();
 };

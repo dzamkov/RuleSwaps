@@ -470,6 +470,7 @@ let UI = new function() {
 	// Augments an element to be a game log.
 	function Log(element) {
 		this.element = element;
+		this.lastDepth = 0;
 		element.log = this;
 	}
 	
@@ -547,15 +548,16 @@ let UI = new function() {
 		entry.style.marginLeft = (depth * 20) + "px";
 		buildText(entry, parts);
 		this.element.appendChild(entry);
+		this.lastDepth = depth;
 		this.scrollToBottom();
 	};
 
 	// Appends a chat message to the log.
-	Log.prototype.chat = function(depth, user, message) {
+	Log.prototype.chat = function(user, message) {
 		if (user) {
-			this.log(0, [user, ": ", message], Log.Style.Chat);
+			this.log(this.lastDepth, [user, ": ", message], Log.Style.Chat);
 		} else {
-			this.log(0, [message], Log.Style.Chat);
+			this.log(this.lastDepth, [message], Log.Style.Chat);
 		}
 	};
 	

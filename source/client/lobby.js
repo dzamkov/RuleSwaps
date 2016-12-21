@@ -307,7 +307,7 @@ function start(response) {
 		let type = message.type;
 		let content = message.content;
 		if (type === "chat") {
-			log.chat(0, userEntries[content.userId].user, content.text);
+			log.chat(userEntries[content.userId].user, content.text);
 		} else if (type === "userJoin") {
 
 			let user = User.create(content.userId, content.userInfo);

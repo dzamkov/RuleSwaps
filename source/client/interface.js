@@ -90,27 +90,33 @@ function Interface(setup, playerInfos, selfId) {
 
 	// The set of effects that have yet to be displayed, along with the timeout handle to display them.
 	this.effects = [];
-	this.delayTimeout = null;
+	this.isEffectActive = false;
+	this.forceUpdate = this.forceUpdate.bind(this);
 }
 
 // Describes a visual effect that updates an interface and/or plays an animation that represents a game
 // action. Additionally, an effect can be a request for the user to make a decision.
 function Effect() { }
 
-// Displays this effect using the given set of UI objects. Returns the amount of time to wait
-// (in milliseconds) before going on to the next effect.
-Effect.prototype.display = function(ui) {
+// Displays this effect using the given set of UI objects. Calls the given callback when the effect has
+// finished, or returns true to indicate that the effect finishes immediately.
+Effect.prototype.display = function(ui, callback) {
 
 	// Override me
-	return 0;
+	return true;
 };
 
 // Constructs a custom effect based on the given display action and timeout delay.
 Effect.custom = function(delay, display) {
 	let effect = new Effect();
-	effect.display = function(ui) {
+	effect.display = function(ui, callback) {
 		display(ui);
-		return delay;
+		if (delay > 0) {
+			setTimeout(callback, delay);
+			return false;
+		} else {
+			return true;
+		}
 	};
 	return effect;
 };
@@ -118,6 +124,18 @@ Effect.custom = function(delay, display) {
 // Constructs an effect to log a message.
 Effect.log = function(depth, contents, style) {
 	return Effect.custom(500, ui => ui.log.log(depth, contents, style));
+};
+
+// Constructs an effect that requests input from the user.
+Effect.input = function(display, resolve) {
+	let effect = new Effect();
+	effect.display = function(ui, callback) {
+		display(ui, function() {
+			resolve.apply(this, arguments);
+			callback();
+		});
+	};
+	return effect;
 };
 
 // An effect which transfers cards.
@@ -151,10 +169,11 @@ Effect.Transfer.giveCards = function(acceptor) {
 
 Effect.Transfer.prototype = Object.create(Effect.prototype);
 
-Effect.Transfer.prototype.display = function(ui) {
+Effect.Transfer.prototype.display = function(ui, callback) {
 	let cards = this.takeCards(ui);
 	this.putCards(ui, cards);
-	return 100;
+	setTimeout(callback, 100);
+	return false;
 };
 
 // Constructs an effect to transfer cards.
@@ -217,12 +236,12 @@ Interface.prototype.queueTransferTo = function(cardTypes, putCards, ref) {
 
 // Displays the next effect queued in this interface, assuming that no effect is currently being displayed.
 Interface.prototype.forceUpdate = function() {
-	this.delayTimeout = null;
+	this.isEffectActive = false;
 	while (this.effects.length > 0) {
 		let effect = this.effects.shift();
-		let timeout = effect.display(this.ui);
-		if (timeout) {
-			this.delayTimeout = setTimeout(this.forceUpdate.bind(this), timeout);
+		let immediate = effect.display(this.ui, this.forceUpdate);
+		if (!immediate) {
+			this.isEffectActive = true;
 			break;
 		}
 	}
@@ -231,7 +250,7 @@ Interface.prototype.forceUpdate = function() {
 
 // Displays the next effect queued in this interface, if possible.
 Interface.prototype.update = function() {
-	if (!this.delayTimeout) this.forceUpdate();
+	if (!this.isEffectActive) this.forceUpdate();
 };
 
 Interface.prototype.run = function() {
@@ -344,18 +363,19 @@ Interface.prototype.interactBoolean = function*(player, style) {
 	let commitment = Game.prototype.interactBoolean.call(this, player);
 	if (!commitment.isResolved && player == this.playerSelf) {
 		style = merge(style, Interface.defaultBooleanStyle);
-		this.ui.input.options.request({
-			buttons: [{
-				text: style.yes.text,
-				color: style.yes.color,
-				value: true
-			}, {
-				text: style.no.text,
-				color: style.no.color,
-				value: false
-			}]
-		}, this.resolveCommitment.bind(this, commitment));
-		yield this.awaitCommitment(commitment);
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.input.options.request({
+				buttons: [{
+					text: style.yes.text,
+					color: style.yes.color,
+					value: true
+				}, {
+					text: style.no.text,
+					color: style.no.color,
+					value: false
+				}]
+			}, resolve);
+		}, this.resolveCommitment.bind(this, commitment)));
 	}
 	return commitment;
 };
@@ -374,10 +394,11 @@ Interface.prototype.interactPlayer = function*(player, canPickThemself, style) {
 				});
 			}
 		}
-		this.ui.input.options.request({
-			buttons: buttons
-		}, this.resolveCommitment.bind(this, commitment));
-		yield this.awaitCommitment(commitment);
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.input.options.request({
+				buttons: buttons
+			}, resolve);
+		}, this.resolveCommitment.bind(this, commitment)));
 	}
 	return commitment;
 };
@@ -399,19 +420,20 @@ Interface.prototype.interactPayment = function*(player, style) {
 	let commitment = Game.prototype.interactPayment.call(this, player);
 	if (!commitment.isResolved && player == this.playerSelf) {
 		style = merge(style, Interface.defaultPaymentStyle);
-		this.ui.input.payment.request({
-			limit: this.playerSelf.coins,
-			buttons: [{
-				text: style.accept.text,
-				color: style.accept.color,
-				pass: false
-			}, {
-				text: style.pass.text,
-				color: style.pass.color,
-				pass: true
-			}]
-		}, this.resolveCommitment.bind(this, commitment));
-		yield this.awaitCommitment(commitment);
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.input.payment.request({
+				limit: this.playerSelf.coins,
+				buttons: [{
+					text: style.accept.text,
+					color: style.accept.color,
+					pass: false
+				}, {
+					text: style.pass.text,
+					color: style.pass.color,
+					pass: true
+				}]
+			}, resolve);
+		}, this.resolveCommitment.bind(this, commitment)));
 	}
 	return commitment;
 };
@@ -438,30 +460,30 @@ Interface.prototype.interactBooleanPayment = function*(player, style) {
 	let payment = yield Game.prototype.interactPayment.call(this, player);
 	if (!bool.isResolved && !payment.isResolved && player == this.playerSelf) {
 		style = merge(style, Interface.defaultBooleanPaymentStyle);
-		this.ui.input.payment.request({
-			limit: this.playerSelf.coins,
-			buttons: [{
-				text: style.yes.text,
-				color: style.yes.color,
-				value: true,
-				pass: false
-			}, {
-				text: style.no.text,
-				color: style.no.color,
-				value: false,
-				pass: false
-			}, {
-				text: style.pass.text,
-				color: style.pass.color,
-				value: false,
-				pass: true
-			}]
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.input.payment.request({
+				limit: this.playerSelf.coins,
+				buttons: [{
+					text: style.yes.text,
+					color: style.yes.color,
+					value: true,
+					pass: false
+				}, {
+					text: style.no.text,
+					color: style.no.color,
+					value: false,
+					pass: false
+				}, {
+					text: style.pass.text,
+					color: style.pass.color,
+					value: false,
+					pass: true
+				}]
+			}, resolve);
 		}, function(a, b) {
 			game.resolveCommitment(bool, b);
 			game.resolveCommitment(payment, a);
-		});
-		yield this.awaitCommitment(bool);
-		yield this.awaitCommitment(payment);
+		}));
 	}
 	return { bool: bool, payment: payment };
 };
@@ -469,22 +491,23 @@ Interface.prototype.interactBooleanPayment = function*(player, style) {
 Interface.prototype.interactRole = function*(player, style) {
 	let commitment = Game.prototype.interactRole.call(this, player);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		this.ui.input.options.request({
-			buttons: [{
-				text: "Action",
-				color: Color.White,
-				value: Role.Action
-			}, {
-				text: "Condition",
-				color: Color.White,
-				value: Role.Condition
-			}, {
-				text: "Player",
-				color: Color.White,
-				value: Role.Player
-			}]
-		}, this.resolveCommitment.bind(this, commitment));
-		yield this.awaitCommitment(commitment);
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.input.options.request({
+				buttons: [{
+					text: "Action",
+					color: Color.White,
+					value: Role.Action
+				}, {
+					text: "Condition",
+					color: Color.White,
+					value: Role.Condition
+				}, {
+					text: "Player",
+					color: Color.White,
+					value: Role.Player
+				}]
+			}, resolve);
+		}, this.resolveCommitment.bind(this, commitment)));
 	}
 	return commitment;
 };
@@ -506,26 +529,27 @@ Interface.prototype.interactCards = function*(player, options, style) {
 	let commitment = Game.prototype.interactCards.call(this, player, options);
 	if (!commitment.isResolved && player === this.playerSelf) {
 		style = merge(style, Interface.defaultCardsStyle);
-		this.ui.input.cards.request({
-			amount: options.amount,
-			buttons: [{
-				text: style.accept.text,
-				color: style.accept.color,
-				pass: false
-			}].concat(options.optional ? [{
-				text: style.pass.text,
-				color: style.pass.color,
-				pass: true
-			}] : [])
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.input.cards.request({
+				amount: options.amount,
+				buttons: [{
+					text: style.accept.text,
+					color: style.accept.color,
+					pass: false
+				}].concat(options.optional ? [{
+					text: style.pass.text,
+					color: style.pass.color,
+					pass: true
+				}] : [])
+			}, resolve);
 		}, function(list) {
 			if (list) {
 				game.resolveCommitment(commitment, options.ordered ? list : CardSet.fromList(list));
-				game.ui.input.cards.sendAllTo(null);
 			} else {
 				game.resolveCommitment(commitment, null);
 			}
-		});
-		yield this.awaitCommitment(commitment);
+		}));
+		this.queueTransferFrom(ui => ui.input.cards.takeAllCards(), commitment);
 	}
 	return commitment;
 };
@@ -547,24 +571,21 @@ Interface.prototype.interactSpecify = function*(player, role, style) {
 	let commitment = Game.prototype.interactSpecify.call(this, player, role);
 	if (!commitment.isResolved && player === this.playerSelf) {
 		style = merge(style, Interface.defaultSpecifyStyle);
-		this.ui.input.expression.request({
-			role: role,
-			buttons: [{
-				text: style.accept.text,
-				color: style.accept.color,
-				pass: false
-			}, {
-				text: style.pass.text,
-				color: style.pass.color,
-				pass: true
-			}]
-		}, function(exp) {
-			for (let card of game.ui.input.expression.takeAllCards()) {
-				game.ui.deck.play.putCard(card);
-			}
-			game.resolveCommitment(commitment, exp);
-		});
-		yield this.awaitCommitment(commitment);
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.input.expression.request({
+				role: role,
+				buttons: [{
+					text: style.accept.text,
+					color: style.accept.color,
+					pass: false
+				}, {
+					text: style.pass.text,
+					color: style.pass.color,
+					pass: true
+				}]
+			}, resolve);
+		}, game.resolveCommitment.bind(this, commitment)));
+		this.queueTransferFrom(ui => ui.input.expression.takeAllCards());
 	}
 	return commitment;
 };
@@ -574,49 +595,52 @@ Interface.prototype.interactAmend = function*(player, style) {
 	let commitment = this.declareCommitment(player, this.getAmendFormat(player));
 	if (!commitment.isResolved && player === this.playerSelf) {
 		style = merge(style, Interface.defaultSpecifyStyle);
-		this.ui.constitution.allowInsertPick();
-		this.ui.input.expression.request({
-			role: Role.Action,
-			buttons: [{
-				text: style.accept.text,
-				color: style.accept.color,
-				pass: false
-			}, {
-				text: style.pass.text,
-				color: style.pass.color,
-				pass: true
-			}]
-		}, function(exp) {
-			if (exp) {
-				let proposal = game.ui.constitution.proposeInsertPick(exp);
-				for (let card of game.ui.input.expression.takeAllCards()) {
-					game.ui.deck.play.putCard(card);
+		this.queueEffect(Effect.input(function(ui, resolve) {
+			ui.constitution.allowInsertPick();
+			ui.input.expression.request({
+				role: Role.Action,
+				buttons: [{
+					text: style.accept.text,
+					color: style.accept.color,
+					pass: false
+				}, {
+					text: style.pass.text,
+					color: style.pass.color,
+					pass: true
+				}]
+			}, function(exp) {
+				if (exp) {
+					let proposal = ui.constitution.proposeInsertPick(exp);
+					resolve({
+						line: proposal.line,
+						exp: exp,
+						proposal: proposal
+					});
+				} else {
+					ui.constitution.cancelInsertPick();
+					resolve(null);
 				}
-				game.resolveCommitment(commitment, {
-					line: proposal.line,
-					exp: exp,
-					proposal: proposal
-				});
-			} else {
-				game.ui.constitution.cancelInsertPick();
-				game.resolveCommitment(commitment, null);
-			}
-		});
+			});
+		}, game.resolveCommitment.bind(this, commitment)));
+		this.queueTransferFrom(ui => ui.input.expression.takeAllCards(), commitment);
 	}
 	return yield this.processAmend(commitment);
 };
 
 Interface.prototype.proposeAmendment = function*(amend) {
+	// TODO: effect
 	if (!amend.proposal) amend.proposal = this.ui.constitution.propose(amend.line, amend.exp);
 	yield Game.prototype.proposeAmendment.call(this, amend);
 };
 
 Interface.prototype.confirmAmend = function*(amend) {
+	// TODO: effect
 	this.ui.constitution.confirmProposal(amend.proposal);
 	return yield Game.prototype.confirmAmend.call(this, amend);
 };
 
 Interface.prototype.cancelAmend = function*(amend) {
+	// TODO: effect
 	this.ui.constitution.cancelProposal(amend.proposal);
 	return yield Game.prototype.cancelAmend.call(this, amend);
 };

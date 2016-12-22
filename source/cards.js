@@ -23,28 +23,24 @@
 		yield game.log(player, " wants a ", role.str.toLowerCase(), " card");
 		
 		let discarded = CardSet.create();
-		let card;
-		while (card = yield game.draw()) {
-			card = yield game.reveal(card);
+		let commitment;
+		while (commitment = yield game.draw()) {
+			let card = yield game.reveal(commitment);
 			if (card.role === role) {
-				break;
+				yield game.giveCard(player, commitment);
+				if (discarded.totalCount > 0) {
+					yield game.log(player, " drew and discarded ", discarded, " but kept ", card);
+				} else {
+					yield game.log(player, " drew ", card);
+				}
+				return;
 			} else {
 				discarded.insert(card);
+				yield game.discard(CardSet.fromList([card]), commitment);
 			}
 		}
-		
-		yield game.discard(discarded);
-		if (card) {
-			yield game.giveCard(player, card);
-			if (discarded.totalCount > 0) {
-				yield game.log(player, " drew and discarded ", discarded, " but kept ", card);
-			} else {
-				yield game.log(player, " drew ", card);
-			}
-		} else {
-			if (discarded.totalCount > 0) {
-				yield game.log(player, " discarded ", discarded);
-			}
+		if (discarded.totalCount > 0) {
+			yield game.log(player, " discarded ", discarded);
 		}
 	}));
 		

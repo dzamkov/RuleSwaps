@@ -160,6 +160,8 @@ http.createServer(function(request, response) {
 							["you_gain_5"]),
 						Expression.fromList(
 							["player_draws_to_8", "you"]),
+							Expression.fromList(
+							["you_draw_type"]),
 						Expression.fromList(
 							["specify_action_optional", "you"]),
 						Expression.fromList(

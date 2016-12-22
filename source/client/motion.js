@@ -48,7 +48,7 @@ var Motion = new function() {
 		this.updateCallback = this.update.bind(this);
 		this.lastTimeStamp = null;
 
-		this.acceleration = 500.0;
+		this.acceleration = 300.0;
 		this.damping = Math.sqrt(4.0 * this.acceleration);
 
 		element.animated = this;

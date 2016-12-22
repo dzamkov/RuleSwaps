@@ -317,6 +317,11 @@ let UI = new function() {
 						prevContainer.parentNode.removeChild(prevContainer);
 					}
 				}
+
+				// Replace with static element
+				let element = card.type.createElement();
+				container.replaceChild(element, card.element);
+				element.className += " -static";
 			};
 		}
 	};

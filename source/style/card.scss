@@ -80,7 +80,6 @@ $mini-card-list-height: 88px;
 .card {
 	@extend .card-shape;
 	cursor: pointer;
-	user-select: none;
 	position: relative;
 	&.-hover .card-content {
 		background-color: #e6ffff;
@@ -97,6 +96,9 @@ $mini-card-list-height: 88px;
 	}
 	&.-player .card-header {
 		background: linear-gradient($player-color-light, $player-color-mid);
+	}
+	&.-static {
+		cursor: default;
 	}
 	&.-zoom {
 		pointer-events: none;

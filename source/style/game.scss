@@ -294,10 +294,12 @@ $input-chat-button-width: 60px;
 
 #deck-play {
 	position: absolute;
-	top: 0;
+	top: calc(50% - #{$card-height / 2});
 	left: calc(50% - #{$card-width / 2});
 	width: $card-width;
 	height: $card-height;
+	z-index: -1;
+	pointer-events: none;
 
 	& > .container {
 		@extend .fill-parent;

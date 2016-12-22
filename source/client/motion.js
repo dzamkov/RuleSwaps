@@ -158,6 +158,11 @@ var Motion = new function() {
 		this.settle();
 	};
 
+	// Indicates that the animated element has stopped moving.
+	Animated.prototype.onSettle = function() {
+		// Override me
+	};
+
 	// Handles a frame update for the animation for this animated element.
 	Animated.prototype.update = function(timeStamp) {
 		if (!this.isFree) {
@@ -177,6 +182,7 @@ var Motion = new function() {
 				this.x = 0; this.velX = 0;
 				this.y = 0; this.velY = 0;
 				this.lastTimeStamp = null;
+				this.onSettle();
 			}
 		}
 	};

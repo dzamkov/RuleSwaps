@@ -305,6 +305,19 @@ let UI = new function() {
 		this.element.appendChild(container);
 		if (this.style === Deck.Style.Invisible) {
 			card.element.className += " -fade-out";
+			card.onSettle = function() {
+				container.parentNode.removeChild(container);
+			};
+		} else {
+			let dummyContainer = this.dummyContainer;
+			card.onSettle = function() {
+				let prevContainer = container;
+				while (prevContainer = prevContainer.previousSibling) {
+					if (prevContainer !== dummyContainer) {
+						prevContainer.parentNode.removeChild(prevContainer);
+					}
+				}
+			};
 		}
 	};
 	

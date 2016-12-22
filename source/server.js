@@ -159,7 +159,7 @@ http.createServer(function(request, response) {
 						Expression.fromList(
 							["you_gain_5"]),
 						Expression.fromList(
-							["player_draws_to_8", "you"]),
+							["conditional_player_draws_to_12", "you_reveal_hand", "you"]),
 							Expression.fromList(
 							["you_draw_type"]),
 						Expression.fromList(

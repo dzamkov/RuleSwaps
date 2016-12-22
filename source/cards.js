@@ -412,6 +412,7 @@
 			yield game.log(player, " reveals their hand ", hand);
 			return true;
 		} else {
+			yield game.log(player, " doesn't reveal their hand");
 			return false;
 		}
 	}));
@@ -704,7 +705,7 @@
 	function*(game, slots) {
 		let other = yield game.resolve(slots[0]);
 		let players = yield game.getPlayersFrom(other);
-		let res = players[1];
+		let res = players[1 % players.length];
 		yield game.log(res, " is the player to the left of ", other);
 		return res;
 	}));

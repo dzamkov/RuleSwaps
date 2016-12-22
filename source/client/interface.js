@@ -326,7 +326,7 @@ Interface.prototype.giveCard = function*(player, card) {
 // Resolves a commitment for this interface.
 Interface.prototype.resolveCommitment = function(commitment, value) {
 	commitment.resolve(value);
-	this.run();
+	if (!this.isRunning) this.run();
 };
 
 Interface.prototype.takeCards = function*(player, cardSet, ref) {
@@ -420,9 +420,10 @@ Interface.prototype.interactPayment = function*(player, style) {
 	let commitment = Game.prototype.interactPayment.call(this, player);
 	if (!commitment.isResolved && player == this.playerSelf) {
 		style = merge(style, Interface.defaultPaymentStyle);
+		let limit = this.playerSelf.coins;
 		this.queueEffect(Effect.input(function(ui, resolve) {
 			ui.input.payment.request({
-				limit: this.playerSelf.coins,
+				limit: limit,
 				buttons: [{
 					text: style.accept.text,
 					color: style.accept.color,
@@ -460,9 +461,10 @@ Interface.prototype.interactBooleanPayment = function*(player, style) {
 	let payment = yield Game.prototype.interactPayment.call(this, player);
 	if (!bool.isResolved && !payment.isResolved && player == this.playerSelf) {
 		style = merge(style, Interface.defaultBooleanPaymentStyle);
+		let limit = this.playerSelf.coins;
 		this.queueEffect(Effect.input(function(ui, resolve) {
 			ui.input.payment.request({
-				limit: this.playerSelf.coins,
+				limit: limit,
 				buttons: [{
 					text: style.yes.text,
 					color: style.yes.color,

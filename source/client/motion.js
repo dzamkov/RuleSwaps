@@ -154,7 +154,12 @@ var Motion = new function() {
 
 	// Causes this animated element to smoothly take the place of the given placeholder element.
 	Animated.prototype.settleInto = function(hole) {
-		hole.parentNode.replaceChild(this.element, hole);
+		hole.appendChild(this.element);
+		this.onSettle = function() {
+			if (hole.parentNode && this.element.parentNode === hole) {
+				hole.parentNode.replaceChild(this.element, hole);
+			}
+		};
 		this.settle();
 	};
 

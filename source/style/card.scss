@@ -212,25 +212,26 @@ $card-hole-opacity: 0.5;
 
 .card-hole {
 	@extend .card-shape;
-	border: solid 1px #404040;
-	background-color: #efefef;
-	box-shadow: 0 0 6px 0 #909090;
-	opacity: $card-hole-opacity;
+	border: solid 1px rgba(#404040, $card-hole-opacity);
+	background-color: rgba(#efefef, $card-hole-opacity);
+	box-shadow: 0 0 6px 0 rgba(#909090, $card-hole-opacity);
 }
 
 @mixin card-hole-special($light, $mid, $dark) {
-	border: solid 1px $dark;
+	border: solid 1px rgba($dark, $card-hole-opacity);
 	background: repeating-linear-gradient(
-		45deg, $light, $light 4px, $mid 4px, $mid 8px);
-	box-shadow: 0 0 6px 0 $dark;
-	opacity: $card-hole-opacity;
+		45deg, 
+		rgba($light, $card-hole-opacity),
+		rgba($light, $card-hole-opacity) 4px,
+		rgba($mid, $card-hole-opacity) 4px,
+		rgba($mid, $card-hole-opacity) 8px);
+	box-shadow: 0 0 6px 0 rgba($dark, $card-hole-opacity);
 }
 
 @mixin card-hole-special-active($light, $mid, $dark) {
-	border: solid 1px $dark;
-	background-color: $mid;
-	box-shadow: 0 0 6px 0 $dark;
-	opacity: $card-hole-opacity;
+	border: solid 1px rgba($dark, $card-hole-opacity);
+	background-color: rgba($mid, $card-hole-opacity);
+	box-shadow: 0 0 6px 0 rgba($dark, $card-hole-opacity);
 }
 
 .card-hole-action {

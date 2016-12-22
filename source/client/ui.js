@@ -130,10 +130,15 @@ let UI = new function() {
 		if (card instanceof Card) {
 			card.pin();
 
-			let hole = CardList.createHole(card);
-			card.element.parentNode.replaceChild(hole, card.element);
-			card.hole = hole;
-			return card;
+			if (card.element.parentNode.holeFor === card) {
+				card.hole = card.element.parentNode;
+				return card;
+			} else {
+				let hole = CardList.createHole(card);
+				card.element.parentNode.replaceChild(hole, card.element);
+				card.hole = hole;
+				return card;
+			}
 		}
 		return null;
 	};
@@ -907,11 +912,16 @@ let UI = new function() {
 			if (card instanceof Card) {
 				card.pin();
 
-				let hole = Expression.createSlotHole(element.animated.type.role, true);
-				hole.holeFor = element.animated;
-				card.element.parentNode.replaceChild(hole, card.element);
-				card.hole = hole;
-				return card;
+				if (card.element.parentNode.holeFor === card) {
+					card.hole = card.element.parentNode;
+					return card;
+				} else {
+					let hole = Expression.createSlotHole(element.animated.type.role, true);
+					hole.holeFor = element.animated;
+					card.element.parentNode.replaceChild(hole, card.element);
+					card.hole = hole;
+					return card;
+				}
 			}
 			return null;
 		};
@@ -925,6 +935,7 @@ let UI = new function() {
 
 			// Don't allow incoming cards from the same expression
 			if (fromAcceptor !== this && card instanceof Card) {
+				let role = card.type.role;
 				let cur = null;
 				let bestDis = Infinity;
 				for (let container of this.element.children) {
@@ -932,14 +943,13 @@ let UI = new function() {
 					let rect = Motion.getTargetRect(this.element, item);
 					let midX = rect.left + rect.width / 2.0;
 					let dis = Math.abs(midX - left);
-					if (dis < bestDis) {
+					if (dis < bestDis && (item.holeFor === card || item.holeFor === role)) {
 						cur = item;
 						bestDis = dis;
 					}
 				}
 
 				if (cur) {
-					let role = card.type.role;
 					if (cur.holeFor === card) {
 						return true;
 					} else if (cur.holeFor === role) {

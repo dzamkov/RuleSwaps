@@ -4,6 +4,7 @@ function start(response) {
 	let playerInfos = response.players;
 	let selfId = response.youId;
 	
+	playerInfos = playerInfos.map(p => new User(p.userId, p.name));
 	let inteface = new Interface(setup, playerInfos, selfId);
 	
 	// Send a message upon resolving a commitment.

@@ -28,6 +28,10 @@ server_files := $(common_files) \
 pages := \
 	game \
 	lobby
+	
+node_modules: package.json
+	npm update
+	npm link
 
 $(output_dir)/dist: $(output_dir)/dist/static $(output_dir)/dist/server.js
 
@@ -120,15 +124,15 @@ $(output_dir)/debug/fuzzer.js: $(addprefix $(source_dir)/,$(common_files)) $(sou
 	echo "\"use strict\";" > $@; \
 	cat $^ >> $@
 	
+.PHONY: clean debug
 clean:
 	rm -rf $(output_dir)/*
 	rm -rf $(int_dir)/*
 	
 run: $(output_dir)/dist
-	cd $(output_dir)/dist && nodejs server.js 1888
+	cd $(output_dir)/dist && nodejs server.js 8080
 
-debug: $(output_dir)/debug
-	cd $(output_dir)/debug && nodejs --check server.js && nodejs server.js 1888
+debug: node_modules $(output_dir)/debug
 
 fuzz: $(output_dir)/debug
 	cd $(output_dir)/debug && (nodejs fuzzer.js > fuzzlog.txt)

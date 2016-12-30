@@ -185,7 +185,7 @@ let UI = new function() {
 			return true;
 		}
 		return false;
-	}
+	};
 
 	CardList.prototype.dragLeave = function(card) {
 		this.removeCard(card);
@@ -834,27 +834,27 @@ let UI = new function() {
 
 			let cards = this;
 
-			// TODO: These 3 things below
-			// Don't accept extra cards
-			let oldDragIn = this.cardList.dragIn;
-			this.cardList.dragIn = function(animated, left, top, fromAcceptor) {
+			// Don't accept extra cards, or cards of the wrong type.
+			let oldDragEnterMove = this.cardList.dragEnterMove;
+			this.cardList.dragEnterMove = function(animated, left, top, fromAcceptor) {
 				if (fromAcceptor === this ||
 					!cards.amount ||
 					this.getNumCards() < cards.amount)
-					return oldDragIn.call(this, animated, left, top, fromAcceptor);
+				{
+					if (oldDragEnterMove.call(this, animated, left, top, fromAcceptor)) {
+						
+						// Enable if there are enough cards
+						cards.updateButtons();
+						return true;
+					}
+				}
+				return false;
 			};
-
+			
 			// Disable on leave
-			let oldLeave = this.cardList.leave;
-			this.cardList.leave = function(animated, hole) {
-				oldLeave.call(this, animated, hole);
-				cards.updateButtons();
-			};
-
-			// Enable if there are enough cards
-			let oldAccept = this.cardList.accept;
-			this.cardList.accept = function(card, hole) {
-				oldAccept.call(this, card, hole);
+			let oldDragLeave = this.cardList.dragLeave;
+			this.cardList.dragLeave = function(card) {
+				oldDragLeave.call(this, card);
 				cards.updateButtons();
 			};
 		};
@@ -879,10 +879,9 @@ let UI = new function() {
 			}
 		};
 		
-		// Sends all cards currently in the card list into the given target. This should not be called
-		// during a request.
-		Cards.prototype.sendAllTo = function(target) {
-			this.cardList.sendAllTo(target);
+		// Removes and returns all cards currently in this card list.
+		Cards.prototype.takeAllCards = function() {
+			return this.cardList.takeAllCards();
 		};
 		
 		Cards.prototype.respond = Input.prototype.respond;

@@ -161,7 +161,7 @@ http.createServer(function(request, response) {
 						Expression.fromList(
 							["conditional_player_draws_to_12", "you_reveal_hand", "you"]),
 							Expression.fromList(
-							["you_draw_type"]),
+							["player_discards_2", "you"]),
 						Expression.fromList(
 							["specify_action_optional", "you"]),
 						Expression.fromList(

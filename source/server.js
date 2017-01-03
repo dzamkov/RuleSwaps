@@ -4,7 +4,8 @@ let path = require("path");
 let fs = require("fs");
 let mime = require("mime");
 
-let port = parseInt(process.argv[2], 10);
+let port = parseInt(process.argv[2] || process.env["PORT"] || 1888, 10);
+if (fs.existsSync("output")) process.chdir("output");
 
 // Responds with a generic 500 message.
 function respondError(response) {
@@ -195,4 +196,4 @@ console.log("Total action cards: ", roleCounts[0]);
 console.log("Total condition cards: ", roleCounts[1]);
 console.log("Total player cards: ", roleCounts[2]);
 
-console.log("Server running...");
+console.log("Server running on port " + port);

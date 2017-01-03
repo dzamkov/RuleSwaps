@@ -163,7 +163,7 @@ Effect.Transfer.putCardsInPlay = function(ui, cards) {
 Effect.Transfer.giveCards = function(acceptor) {
 	return function(ui, cards) {
 		if (acceptor instanceof Function) acceptor = acceptor(ui);
-		for (card of cards) acceptor.putCard(card);
+		for (let card of cards) acceptor.putCard(card);
 	};
 };
 

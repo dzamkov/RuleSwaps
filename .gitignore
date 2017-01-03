@@ -1,2 +1,4 @@
 output
+temp
 node_modules
+.vagrant

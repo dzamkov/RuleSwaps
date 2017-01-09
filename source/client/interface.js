@@ -181,6 +181,25 @@ Effect.transfer = function(takeCards, putCards, ref) {
 	return new Effect.Transfer(takeCards, putCards, ref);
 };
 
+// An effect which removes the insert placeholder on the constitution.
+Effect.CancelInsertPick = function(ref) {
+
+	// An optionial identifier for the insert location.
+	this.ref = ref;
+};
+
+Effect.CancelInsertPick.prototype = Object.create(Effect.prototype);
+
+Effect.CancelInsertPick.prototype.display = function(ui) {
+	ui.constitution.cancelInsertPick();
+	return true;
+};
+
+// Constructs an effect which removes the insert placeholder on the constitution.
+Effect.cancelInsertPick = function(ref) {
+	return new Effect.CancelInsertPick(ref);
+};
+
 // Derive interface from game.
 Interface.prototype = Object.create(Game.prototype);
 
@@ -234,6 +253,42 @@ Interface.prototype.queueTransferTo = function(cardTypes, putCards, ref) {
 
 };
 
+// Queues an effect the user from being able to pick an insertion point on the constitution.
+Interface.prototype.queueCancelInsertPick = function(ref) {
+	this.queueEffect(Effect.cancelInsertPick(ref));
+};
+
+// Queues an effect to display an amendment on the constitution.
+Interface.prototype.queueInsertAmend = function(line, amend, ref) {
+
+	// Prefer to upgrade an insert point into an amendment
+	if (ref) {
+		for (let i = this.effects.length - 1; i >= 0; i--) {
+			let effect = this.effects[i];
+			if (effect instanceof Effect.CancelInsertPick && effect.ref === ref) {
+				this.effects.splice(i, 1);
+				this.queueEffect(Effect.custom(0, ui => ui.constitution.insertPickAmend(amend)));
+				return;
+			}
+		}
+	}
+
+	this.queueEffect(Effect.custom(0, ui => ui.insertAmend(line, amend)));
+};
+
+// Queues an effect to upgrade the given proposal amendment into a true amendment.
+Interface.prototype.queueReifyAmend = function(amend) {
+	this.queueEffect(Effect.custom(0, function(ui) {
+		console.assert(!amend.isProposal);
+		ui.constitution.updateAmend(amend);
+	}));
+};
+
+// Queues an effect to remove the given amendment.
+Interface.prototype.queueRemoveAmend = function(amend) {
+	this.queueEffect(Effect.custom(0, ui => ui.constitution.removeAmend(amend)));
+};
+
 // Displays the next effect queued in this interface, assuming that no effect is currently being displayed.
 Interface.prototype.forceUpdate = function() {
 	this.isEffectActive = false;
@@ -284,10 +339,25 @@ Interface.prototype.onSay = function(recipient, message) {
 	// Override me
 };
 
-Interface.prototype.setActiveLine = function*(line) {
-	// TODO: problem with multiple proposals
-	this.queueEffect(Effect.custom(0, ui => ui.constitution.setActiveLine(line)));
-	return yield Game.prototype.setActiveLine.call(this, line);
+Interface.prototype.setActiveAmend = function(amend) {
+	this.queueEffect(Effect.custom(0, ui => ui.constitution.setActive(amend)));
+	return Game.prototype.setActiveAmend.call(this, amend);
+};
+
+Interface.prototype.insertAmend = function(line, exp, isProposal, ref) {
+	let amend = Game.prototype.insertAmend.call(this, line, exp, isProposal);
+	this.queueInsertAmend(line, amend, ref);
+	return amend;
+};
+
+Interface.prototype.reifyAmend = function(amend) {
+	this.queueReifyAmend(amend);
+	return Game.prototype.reifyAmend.call(this, amend);
+};
+
+Interface.prototype.removeAmend = function(amend) {
+	this.queueRemoveAmend(amend);
+	return Game.prototype.removeAmend.call(this, amend);
 };
 
 Interface.prototype.setCoins = function*(player, count) {
@@ -456,7 +526,6 @@ Interface.defaultBooleanPaymentStyle = {
 };
 
 Interface.prototype.interactBooleanPayment = function*(player, style) {
-	let game = this;
 	let bool = yield Game.prototype.interactBoolean.call(this, player);
 	let payment = yield Game.prototype.interactPayment.call(this, player);
 	if (!bool.isResolved && !payment.isResolved && player == this.playerSelf) {
@@ -482,10 +551,10 @@ Interface.prototype.interactBooleanPayment = function*(player, style) {
 					pass: true
 				}]
 			}, resolve);
-		}, function(a, b) {
-			game.resolveCommitment(bool, b);
-			game.resolveCommitment(payment, a);
-		}));
+		}, (function(a, b) {
+			this.resolveCommitment(bool, b);
+			this.resolveCommitment(payment, a);
+		}).bind(this)));
 	}
 	return { bool: bool, payment: payment };
 };
@@ -527,7 +596,6 @@ Interface.defaultCardsStyle = {
 };
 
 Interface.prototype.interactCards = function*(player, options, style) {
-	let game = this;
 	let commitment = Game.prototype.interactCards.call(this, player, options);
 	if (!commitment.isResolved && player === this.playerSelf) {
 		style = merge(style, Interface.defaultCardsStyle);
@@ -544,13 +612,13 @@ Interface.prototype.interactCards = function*(player, options, style) {
 					pass: true
 				}] : [])
 			}, resolve);
-		}, function(list) {
+		}, (function(list) {
 			if (list) {
-				game.resolveCommitment(commitment, options.ordered ? list : CardSet.fromList(list));
+				this.resolveCommitment(commitment, options.ordered ? list : CardSet.fromList(list));
 			} else {
-				game.resolveCommitment(commitment, null);
+				this.resolveCommitment(commitment, null);
 			}
-		}));
+		}).bind(this)));
 		this.queueTransferFrom(ui => ui.input.cards.takeAllCards(), commitment);
 	}
 	return commitment;
@@ -569,7 +637,6 @@ Interface.defaultSpecifyStyle = {
 };
 
 Interface.prototype.interactSpecify = function*(player, role, style) {
-	let game = this;
 	let commitment = Game.prototype.interactSpecify.call(this, player, role);
 	if (!commitment.isResolved && player === this.playerSelf) {
 		style = merge(style, Interface.defaultSpecifyStyle);
@@ -586,63 +653,48 @@ Interface.prototype.interactSpecify = function*(player, role, style) {
 					pass: true
 				}]
 			}, resolve);
-		}, game.resolveCommitment.bind(this, commitment)));
-		this.queueTransferFrom(ui => ui.input.expression.takeAllCards());
+		}, this.resolveCommitment.bind(this, commitment)));
+		this.queueTransferFrom(ui => ui.input.expression.takeAllCards(), commitment);
 	}
 	return commitment;
 };
 
-Interface.prototype.interactAmend = function*(player, style) {
-	let game = this;
-	let commitment = this.declareCommitment(player, this.getAmendFormat(player));
+Interface.prototype.interactNewAmend = function*(player, isLineOptional) {
+	let commitment = Game.prototype.interactNewAmend.call(this, player, isLineOptional);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		style = merge(style, Interface.defaultSpecifyStyle);
+		console.assert(isLineOptional); // TODO: Don't assume this
 		this.queueEffect(Effect.input(function(ui, resolve) {
 			ui.constitution.allowInsertPick();
 			ui.input.expression.request({
 				role: Role.Action,
 				buttons: [{
-					text: style.accept.text,
-					color: style.accept.color,
+					text: "Perform",
+					color: Color.Green,
+					value: null,
 					pass: false
 				}, {
-					text: style.pass.text,
-					color: style.pass.color,
+					text: "Propose",
+					color: Color.Green,
+					value: ui.constitution.getInsertLine.bind(ui.constitution),
+					pass: false
+				}, {
+					text: "Pass",
+					color: Color.Yellow,
 					pass: true
 				}]
-			}, function(exp) {
+			}, function(exp, getInsertLine) {
 				if (exp) {
-					let proposal = ui.constitution.proposeInsertPick(exp);
 					resolve({
-						line: proposal.line,
 						exp: exp,
-						proposal: proposal
+						line: getInsertLine ? getInsertLine() : null,
 					});
 				} else {
-					ui.constitution.cancelInsertPick();
 					resolve(null);
 				}
 			});
-		}, game.resolveCommitment.bind(this, commitment)));
+		}, this.resolveCommitment.bind(this, commitment)));
+		this.queueCancelInsertPick(commitment);
 		this.queueTransferFrom(ui => ui.input.expression.takeAllCards(), commitment);
 	}
-	return yield this.processAmend(commitment);
-};
-
-Interface.prototype.proposeAmendment = function*(amend) {
-	// TODO: effect
-	if (!amend.proposal) amend.proposal = this.ui.constitution.propose(amend.line, amend.exp);
-	yield Game.prototype.proposeAmendment.call(this, amend);
-};
-
-Interface.prototype.confirmAmend = function*(amend) {
-	// TODO: effect
-	this.ui.constitution.confirmProposal(amend.proposal);
-	return yield Game.prototype.confirmAmend.call(this, amend);
-};
-
-Interface.prototype.cancelAmend = function*(amend) {
-	// TODO: effect
-	this.ui.constitution.cancelProposal(amend.proposal);
-	return yield Game.prototype.cancelAmend.call(this, amend);
+	return commitment;
 };

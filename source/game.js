@@ -112,13 +112,22 @@ Log.Negative.prototype.toString = function() {
 	return this.str;
 }
 
+// Identifies and describes an amendment or proposal in a game's constitution.
+function Amendment(exp, isProposal) {
+	console.assert(exp instanceof Expression);
+	this.exp = exp;
+	this.isProposal = !!isProposal;
+}
+
 // An interface for running a game.
 function Game(setup, users) {
 	
 	// Create copy of initial setup
 	this.constitution = new Array(setup.constitution.length);
 	for (let i = 0; i < setup.constitution.length; i++) {
-		this.constitution[i] = Expression.get(setup.constitution[i]);
+		let amendment = new Amendment(Expression.get(setup.constitution[i]));
+		this.constitution[i] = amendment;
+		amendment.line = i;
 	}
 	this.deck = CardSet.create(setup.deck);
 	this.deckSize = this.deck.totalCount;
@@ -132,7 +141,7 @@ function Game(setup, users) {
 	
 	// More initialization
 	this.turn = 0;
-	this.line = 0;
+	this.active = this.constitution[0];
 	this.playerStack = [];
 	this.winner = null;
 	
@@ -157,15 +166,16 @@ function Game(setup, users) {
 		// The high-level playthrough procedure for a game.
 		while (true) {
 			console.assert(this.playerStack.length === 0);
-			yield this.setActiveLine(0);
+			yield this.setActiveAmend(this.constitution[0]);
 			let player = this.players[this.turn % this.players.length];
 			yield this.log(player, " takes the floor for turn " + (this.turn + 1));
 			this.playerStack.push(player);
-			while (this.line < this.constitution.length) {
-				let exp = this.constitution[this.line];
-				yield this.log("The " + getOrdinal(this.line + 1) + " amendment is invoked ", exp);
-				yield this.resolve(exp);
-				yield this.setActiveLine(this.line + 1);
+			let line;
+			while ((line = (this.getLine(this.active) + 1)) < this.constitution.length) {
+				let amendment = this.getAmend(line);
+				yield this.setActiveAmend(amendment);
+				yield this.log("The " + getOrdinal(line + 1) + " amendment is invoked ", amendment.exp);
+				yield this.resolve(amendment.exp);
 			}
 			this.playerStack.pop();
 			this.turn++;
@@ -291,33 +301,69 @@ Game.prototype.revealTo = function*(player, commitment) {
 // Writes to the game log.
 Game.prototype.log = function() {
 	// Override me
-}
+};
 
 // Registers a winner and ends the game.
 Game.prototype.win = function*(player) {
 	this.winner = player;
 	while (true) yield this.pause();
-}
+};
 
-// Gets the current consitution.
-Game.prototype.getConstitution = function() {
-	return this.constitution;
-}
+// Gets the line the given amendment is on.
+Game.prototype.getLine = function(amendment) {
 
-// Sets the constitution line that is currently being executed.
-Game.prototype.setActiveLine = function(line) {
-	this.line = line;
-}
+	// Check cache first
+	if (this.constitution[amendment.lineCache] === amendment)
+		return amendment.lineCache;
+
+	// Traverse constitution to find
+	for (let i = 0; i < this.constitution.length; i++) {
+		let test = this.constitution[i];
+		test.lineCache = i;
+		if (test === amendment)
+			return i;
+	}
+	return null;
+};
+
+// Gets the amendment on the given line of the constitution.
+Game.prototype.getAmend = function(line) {
+	let amendment = this.constitution[line];
+	amendment.lineCache = line;
+	return amendment;
+};
+
+// Sets the amendment that is currently being invoked in the game.
+Game.prototype.setActiveAmend = function(amend) {
+	this.active = amend;
+};
+
+// Inserts a new amendment at the given line. Returns a handle to the amendment.
+Game.prototype.insertAmend = function(line, exp, isProposal) {
+	let amend = new Amendment(exp, isProposal);
+	this.constitution.splice(line, 0, amend);
+	return amend;
+};
+
+// Converts a proposed amendment into a true amendment.
+Game.prototype.reifyAmend = function(amend) {
+	amend.isProposal = false;
+};
+
+// Removes an amendment or proposal from the constitution.
+Game.prototype.removeAmend = function(amend) {
+	this.constitution.splice(this.getLine(amend), 1);
+};
 
 // Gets the number of coins the given player has.
 Game.prototype.getCoins = function(player) {
 	return player.coins;
-}
+};
 
 // Sets the number of coins the given player has.
 Game.prototype.setCoins = function(player, count) {
 	player.coins = count;
-}
+};
 
 // Gives coins to a player.
 Game.prototype.giveCoins = function*(player, count) {
@@ -470,9 +516,10 @@ Game.prototype.interactPayment = function(player) {
 // Requests the given player to specify a payment amount and a boolean. Returns both wrapped in
 // separate commitments.
 Game.prototype.interactBooleanPayment = function*(player) {
-	let bool = yield this.interactBoolean(player);
-	let payment = yield this.interactPayment(player);
-	return { bool: bool, payment: payment };
+	return { 
+		bool: yield this.interactBoolean(player),
+		payment: yield this.interactPayment(player)
+	};
 };
 
 // Requests the given player to pick a card role. Returns that role wrapped in a commitment.
@@ -503,57 +550,19 @@ Game.prototype.interactSpecify = function(player, role) {
 	if (player.hand) exp = exp.withSuperset(player.hand);
 	exp = exp.orNull();
 	return this.declareCommitment(player, exp);
-}
+};
 
-// Gets the format for an amendment to the constitution at this moment.
-Game.prototype.getAmendFormat = function(player) {
+// Requests the given player to specify an expression and (optionally) a place to insert an amendment.
+Game.prototype.interactNewAmend = function(player, isLineOptional) {
 	let exp = Format.exp(Role.Action);
 	if (player.hand) exp = exp.withSuperset(player.hand);
-	return Format.record({
-		line: Format.nat.lessThan(this.constitution.length + 1),
-		exp: exp
-	}).orNull();
-}
-
-// Given a commitment for an amendment, does the processing needed to reveal it and make a proposal.
-Game.prototype.processAmend = function*(commitment) {
-	let amend = yield this.reveal(commitment);
-	if (amend) {
-		yield this.takeCards(commitment.player, CardSet.fromList(amend.exp.toList()));
-		yield this.proposeAmendment(amend);
-	}
-	return amend;
-}
-
-// Causes the given player to specify an amendment. Returns it as a proposed amendment.
-Game.prototype.interactAmend = function*(player) {
-	return yield this.processAmend(this.declareCommitment(player, this.getAmendFormat(player)));
-}
-
-// Proposes an amendment to the constitution. The proposal is viewable by all players, but
-// should be confirmed or canceled before it is invoked.
-Game.prototype.proposeAmendment = function*(amend) {
-	
-	// Proposals count as real amendments until they are canceled (makes indexing easier).
-	this.constitution.splice(amend.line, 0, amend.exp);
-	if (amend.line <= this.line) {
-		yield this.setActiveLine(this.line + 1);
-	}
-}
-
-// Cancels an amendment previously specified by a player.
-Game.prototype.cancelAmend = function*(amend) {
-	this.constitution.splice(amend.line, 1);
-	if (amend.line <= this.line) { // TODO: Track proposals
-		yield this.setActiveLine(this.line - 1);
-	}
-	yield this.discard(CardSet.fromList(amend.exp.toList()));
-}
-
-// Confirms an amendment previously specified by a player.
-Game.prototype.confirmAmend = function*(amend) {
-	// Nothing to do here
-}
+	let line = Format.nat.lessThan(this.constitution.length + 1);
+	if (isLineOptional) line = line.orNull();
+	return this.declareCommitment(player, Format.record({
+		exp: exp,
+		line: line
+	}).orNull());
+};
 
 // References to game objects for disambiguation when needed
 Game.Card = Card;

@@ -341,14 +341,6 @@ $input-chat-button-width: 60px;
 	&:not(:first-child) > .number {
 		border-top: solid 2px rgba(black, 0.5);
 	}
-
-	&.-active .constitution-entry {
-		background: #f7ce5e;
-	}
-
-	&.-proposal .constitution-entry {
-		background: #e12424;
-	}
 }
 
 .constitution-entry {
@@ -356,6 +348,14 @@ $input-chat-button-width: 60px;
 	border-radius: 6px;
 	background: rgba(#111111, 0.3);
 	font-style: normal;
+
+	&.-active {
+		background: #f7ce5e;
+	}
+
+	&.-proposal {
+		background: #e12424;
+	}
 	
 	&.-insert-point {
 		cursor: pointer;

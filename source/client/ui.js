@@ -335,17 +335,21 @@ let UI = new function() {
 	function Constitution(list) {
 		Motion.Acceptor.call(this, list);
 		this.insertPoint = null;
+		this.active = null;
 	}
 	
 	Constitution.prototype = Object.create(Motion.Acceptor.prototype);
 	
 	// Creates an entry for a constitution.
-	Constitution.createEntry = function(exp) {
-		let list = createMiniList(exp.toList());
-		let entry = document.createElement("div");
-		entry.className = "constitution-entry";
-		entry.appendChild(list);
-		return entry;
+	Constitution.createEntry = function(amend) {
+		let list = createMiniList(amend.exp.toList());
+		let element = document.createElement("div");
+		element.className = "constitution-entry";
+		if (amend.isProposal) element.className += " -proposal";
+		element.appendChild(list);
+		amend.entry = new Motion.Animated(element);
+		amend.entry.amend = amend;
+		return amend.entry;
 	};
 
 	// Creates an entry container for a constitution
@@ -355,7 +359,7 @@ let UI = new function() {
 		let container = document.createElement("div");
 		container.className = "constitution-entry-container";
 		container.appendChild(number);
-		container.appendChild(content);
+		if (content) container.appendChild(content);
 		return container;
 	};
 	
@@ -403,92 +407,98 @@ let UI = new function() {
 		for (let i = 0; i < children.length; i++) {
 			children[i].firstChild.innerText = (i + 1).toString();
 		}
-	}
+	};
 	
-	// Populats a constitution from the given list
+	// Populates a constitution from the given list
 	Constitution.prototype.populate = function(constitution) {
+		Motion.Animated.pinAll(this.element);
 		for (let i = 0; i < constitution.length; i++) {
-			this.element.appendChild(
-				Constitution.createContainer(
-					Constitution.createEntry(constitution[i])));
+			let entry = Constitution.createEntry(constitution[i]);
+			this.element.appendChild(Constitution.createContainer(entry.element));
 		}
 		this.renumber();
 	};
+
+	// Inserts an amendment into the constutition.
+	Constitution.prototype.insertAmend = function(line, amend) {
+		Motion.Animated.pinAll(this.element);
+		let entry = Constitution.createEntry(constitution[i]);
+		let container = Constitution.createContainer(entry.element);
+		this.element.insertBefore(container, this.element.children[line] || null);
+		this.renumber();
+	};
 	
-	// Sets the line that is marked as being executed.
-	Constitution.prototype.setActiveLine = function(line) {
-		let children = this.element.children;
-		for (let i = 0; i < children.length; i++) {
-			let container = children[i];
-			let className = container.className;
-			className = className.replace(" -active", "");
-			if (i === line) className += " -active";
-			container.className = className;
+	// Removes an amendment from the constitution.
+	Constitution.prototype.removeAmend = function(amend) {
+		Motion.Animated.pinAll(this.element);
+		this.element.removeChild(amend.entry.element.parentNode);
+		this.renumber();
+	};
+
+	// Sets the amendment that is marked as being active.
+	Constitution.prototype.setActive = function(amend) {
+		if (this.active) {
+			let element = this.active.entry.element;
+			element.className = element.className.replace(" -active", "");
 		}
-	}
-	
-	// Creates a placeholder entry that allows the user to pick an insertion
-	// point in the constitution.
+		amend.entry.element.className += " -active";
+		this.active = amend;
+	};
+
+	// Updates the proposal status of the given amendment.
+	Constitution.prototype.updateAmend = function(amend) {
+		if (this.active !== amend) {
+			let element = amend.entry.element;
+			element.className = element.className.replace(" -proposal", "");
+			if (amend.isProposal) {
+				element.className += " -proposal";
+			}
+		}
+	};
+
+	// Creates a placeholder entry that allows the user to pick an insertion point in the constitution.
 	Constitution.prototype.allowInsertPick = function() {
 		if (!this.insertPoint) {
-			let entry = document.createElement("div");
-			entry.className = "constitution-entry -insert-point";
-			entry.innerText = "Insert amendment here";
-			this.insertPoint = new Motion.Animated(entry);
+			Motion.Animated.pinAll(this.element);
+			let element = document.createElement("div");
+			element.className = "constitution-entry -insert-point";
+			element.innerText = "Insert amendment here";
+			this.insertPoint = new Motion.Animated(element);
 			this.insertPoint.hoverStyle = "-hover";
-			this.element.appendChild(Constitution.createContainer(entry));
+			this.element.appendChild(Constitution.createContainer(element));
+			this.renumber();
 		}
-	}
-	
-	// Removes the ability for the user to select an insertion point.
+	};
+
+	// Removes the insert placeholder from the constitution.
 	Constitution.prototype.cancelInsertPick = function() {
 		if (this.insertPoint) {
+			Motion.Animated.pinAll(this.element);
 			this.element.removeChild(this.insertPoint.element.parentNode);
+			this.renumber();
 			this.insertPoint = null;
 		}
-	}
-	
-	// Upgrades the insertion pick made to this constitution to a proposal.
-	Constitution.prototype.proposeInsertPick = function(exp) {
-		console.assert(this.insertPoint);
-		let entry = Constitution.createEntry(exp);
-		let container = this.insertPoint.element.parentNode;
-		container.replaceChild(entry, this.insertPoint.element);
-		container.className += " -proposal";
-		this.insertPoint = null;
+	};
 
-		// Determine line number
-		let line = 0;
-		let cur = this.element.firstChild;
-		while (cur !== entry.parentNode) {
-			cur = cur.nextSibling;
-			line++;
+	// Replaces the insert placeholder with the given amendment.
+	Constitution.prototype.insertPickAmend = function(amend) {
+		console.assert(this.insertPoint);
+		Motion.Animated.pinAll(this.element);
+		let entry = Constitution.createEntry(amend);
+		this.insertPoint.element.parentNode.replaceChild(entry.element, this.insertPoint.element);
+		this.insertPoint = null;
+	};
+
+	// Gets the line that the insert placeholder is on, or null if it doesn't exist.
+	Constitution.prototype.getInsertLine = function() {
+		if (this.insertPoint) {
+			for (let i = 0; i < this.element.children.length; i++) {
+				if (this.element.children[i] === this.insertPoint.element.parentNode)
+					return i;
+			}
 		}
-		entry.line = line;
-		return entry;
-	}
-	
-	// Creates and insert a proposal into this constitution.
-	Constitution.prototype.propose = function(line, exp) {
-		let entry = Constitution.createEntry(exp);
-		let container = Constitution.createContainer(entry);
-		container.className += " -proposal";
-		this.element.insertBefore(container, this.element.children[line]);
-		return entry;
-	}
-	
-	// Cancels a proposal.
-	Constitution.prototype.cancelProposal = function(proposal) {
-		this.element.removeChild(proposal.parentNode);
-		this.renumber();
-	}
-	
-	// Confirms a proposal.
-	Constitution.prototype.confirmProposal = function(proposal) {
-		let container = proposal.parentNode;
-		container.className = container.className.replace(" -proposal", "");
-		this.renumber();
-	}
+		return null;
+	};
 	
 	// Augments an element to be a game log.
 	function Log(element) {

@@ -362,43 +362,66 @@ let UI = new function() {
 		if (content) container.appendChild(content);
 		return container;
 	};
-	
-	Constitution.prototype.dragOut = function(element) {
-		if (this.insertPoint === element.animated) {
-			let hole = document.createElement("div");
-			hole.className = "constitution-entry -hole";
-			this.insertPoint.hole = hole;
-			let rect = element.getBoundingClientRect();
-			element.parentNode.replaceChild(hole, element);
-			return {
-				rect: rect,
-				animated: element.animated,
-				hole: hole
+
+	Constitution.prototype.dragGrab = function(element) {
+		let entry = Motion.Animated.get(element);
+		if (this.insertPoint === entry) {
+			entry.pin();
+			let hole = entry.element.parentNode;
+			if (!(hole && hole.animated instanceof Motion.Animated)) {
+				hole = document.createElement("div");
+				hole.className = "constitution-entry -hole";
+				new Motion.Animated(hole);
+				entry.element.parentNode.replaceChild(hole, entry.element);
 			}
+			entry.hole = hole;
+			return entry;
 		}
+		return null;
 	};
-	
-	Constitution.prototype.dragIn = function(animated, left, top, fromAcceptor) {
+
+	Constitution.prototype.dragRelease = function(animated) {
+		animated.settleInto(animated.hole);
+		animated.hole = null;
+	};
+
+	Constitution.prototype.dragEnterMove = function(animated, left, top, fromAcceptor) {
 
 		// Only allow incoming from the same acceptor
 		if (fromAcceptor === this) {
-			let prev = null;
-			let next = this.element.firstChild;
-			while (next !== null) {
-				let midY = next.offsetTop + next.offsetHeight / 2.0;
-				if (midY < top) {
-					prev = next;
-					next = next.nextSibling;
-				} else {
+			let cur = null;
+			let bestDis = Infinity;
+			for (let container of this.element.children) {
+				let item = container.lastChild;
+				let midY = container.offsetTop + container.offsetHeight / 2.0;
+				let dis = Math.abs(midY - top);
+				if (dis < bestDis) {
+					cur = item;
+					bestDis = dis;
+				}
+			}
+
+			if (cur === animated.hole) return true;
+
+			// Re-insert hole container at the correct place without shuffling around any other containers.
+			Motion.Animated.pinAll(this.element);
+			let afterHole = false;
+			for (let container of this.element.children) {
+				if (animated.hole.parentNode === container) {
+					afterHole = true;
+				} else if (cur.parentNode === container) {
+					if (afterHole) {
+						this.element.insertBefore(animated.hole.parentNode, container.nextSibling);
+					} else {
+						this.element.insertBefore(animated.hole.parentNode, container);
+					}
 					break;
 				}
 			}
-			if (prev && animated.hole === prev.lastChild) return prev.lastChild;
-			if (next && animated.hole === next.lastChild) return next.lastChild;
-
-			this.element.insertBefore(animated.hole.parentNode, next);
-			return animated.hole;
+			this.renumber();
+			return true;
 		}
+		return false;
 	};
 
 	// Updates the numbering of the entries in this constitution.
@@ -493,7 +516,9 @@ let UI = new function() {
 	Constitution.prototype.getInsertLine = function() {
 		if (this.insertPoint) {
 			for (let i = 0; i < this.element.children.length; i++) {
-				if (this.element.children[i] === this.insertPoint.element.parentNode)
+				let child = this.element.children[i];
+				if (child === this.insertPoint.element.parentNode ||
+					child === this.insertPoint.hole)
 					return i;
 			}
 		}

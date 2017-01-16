@@ -371,7 +371,7 @@ let UI = new function() {
 
 	Constitution.prototype.dragGrab = function(element) {
 		let entry = Motion.Animated.get(element);
-		if (this.insertPoint === entry) {
+		if (entry !== null && this.insertPoint === entry) {
 			entry.pin();
 			let hole = entry.element.parentNode;
 			if (!(hole && hole.animated instanceof Motion.Animated)) {

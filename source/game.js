@@ -166,16 +166,16 @@ function Game(setup, users) {
 		// The high-level playthrough procedure for a game.
 		while (true) {
 			console.assert(this.playerStack.length === 0);
-			yield this.setActiveAmend(this.constitution[0]);
 			let player = this.players[this.turn % this.players.length];
 			yield this.log(player, " takes the floor for turn " + (this.turn + 1));
 			this.playerStack.push(player);
-			let line;
-			while ((line = (this.getLine(this.active) + 1)) < this.constitution.length) {
+			let line = 0;
+			while (line < this.constitution.length) {
 				let amendment = this.getAmend(line);
 				yield this.setActiveAmend(amendment);
 				yield this.log("The " + getOrdinal(line + 1) + " amendment is invoked ", amendment.exp);
 				yield this.resolve(amendment.exp);
+				line = (this.getLine(this.active) + 1);
 			}
 			this.playerStack.pop();
 			this.turn++;

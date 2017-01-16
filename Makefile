@@ -31,7 +31,10 @@ pages := \
 	game \
 	lobby
 
-$(output_dir): $(output_dir)/static $(output_dir)/server.js
+$(output_dir): $(output_dir)/static $(output_dir)/server.js $(output_dir)/config
+
+$(output_dir)/config:
+	echo $(MODE) > $@
 
 $(output_dir)/static: \
 	$(output_dir)/static/images \
@@ -119,7 +122,7 @@ $(output_dir)/fuzzer.js: $(addprefix $(source_dir)/,$(common_files)) $(source_di
 	echo "\"use strict\";" > $@; \
 	cat $^ >> $@
 
-.PHONY: cleanall
+.PHONY: clean all
 clean:
 	rm -rf $(output_dir)/*
 	rm -rf $(int_dir)/*

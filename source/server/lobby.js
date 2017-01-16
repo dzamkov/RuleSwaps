@@ -8,10 +8,8 @@ function Lobby(lobbyId, setup) {
 			Expression.fromList(
 				["you_draw_2"]),
 			Expression.fromList(
-				["insert_amendment_conditional", "you",
+				["specify_action_or_amendment", "you",
 				"player_decides", "auction_winner"]),
-			Expression.fromList(
-				["specify_action_optional", "you"]),
 			Expression.fromList(
 				["wealth_win"])
 		], CardSet.create(defaultDeck),

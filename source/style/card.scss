@@ -205,6 +205,10 @@ $mini-card-list-height: 88px;
 	background-size: $card-width $card-height;
 	background-position: center;
 	box-shadow: 0 0 6px 0 #101010;
+	&.-fade-out {
+		opacity: 0.0;
+		animation: fade-out 0.2s;
+	}
 }
 
 

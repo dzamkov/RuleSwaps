@@ -108,6 +108,11 @@ $user-entry-height: 30px;
 	&.-hole {
 		background: rgba(#cecece, 0.5);
 		box-shadow: none;
+		padding: 0;
+		& > .user-entry {
+			margin: 0 -1px;
+			flex: 1;
+		}
 	}
 
 	& > .name {

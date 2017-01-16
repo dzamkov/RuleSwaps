@@ -132,13 +132,12 @@ let UI = new function() {
 
 			if (card.element.parentNode.holeFor === card) {
 				card.hole = card.element.parentNode;
-				return card;
 			} else {
 				let hole = CardList.createHole(card);
 				card.element.parentNode.replaceChild(hole, card.element);
 				card.hole = hole;
-				return card;
 			}
+			return card;
 		}
 		return null;
 	};
@@ -292,10 +291,17 @@ let UI = new function() {
 		Invisible: 2
 	};
 
+	// Creates a card back animated element.
+	Deck.createCardBack = function() {
+		let element = document.createElement("div");
+		element.className = "card-back";
+		return new Motion.Animated(element);
+	};
+
 	// Pulls a card of the given type from this deck. The card should be immediately be inserted into a
 	// valid acceptor.
 	Deck.prototype.pullCard = function(cardType) {
-		let card = Card.create(cardType);
+		let card = cardType ? Card.create(cardType) : Deck.createCardBack();
 		this.dummyContainer.appendChild(card.element);
 		card.pin();
 		this.dummyContainer.removeChild(card.element);
@@ -445,7 +451,7 @@ let UI = new function() {
 	// Inserts an amendment into the constutition.
 	Constitution.prototype.insertAmend = function(line, amend) {
 		Motion.Animated.pinAll(this.element);
-		let entry = Constitution.createEntry(constitution[i]);
+		let entry = Constitution.createEntry(amend);
 		let container = Constitution.createContainer(entry.element);
 		this.element.insertBefore(container, this.element.children[line] || null);
 		this.renumber();

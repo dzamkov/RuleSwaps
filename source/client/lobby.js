@@ -79,12 +79,16 @@
 				entry.fromList = this;
 				entry.pin();
 
-				let hole = document.createElement("div");
-				hole.className = "user-entry -hole";
-				new Motion.Animated(hole);
-				this.element.replaceChild(hole, entry.element);
-				hole.holeFor = entry;
-				entry.hole = hole;
+				if (entry.element.parentNode !== this.element) {
+					entry.hole = entry.element.parentNode;
+				} else {
+					let hole = document.createElement("div");
+					hole.className = "user-entry -hole";
+					new Motion.Animated(hole);
+					this.element.replaceChild(hole, entry.element);
+					hole.holeFor = entry;
+					entry.hole = hole;
+				}
 				return entry;
 			}
 		}
@@ -299,6 +303,7 @@ function start(response) {
 			}));
 
 			makeObserver(entry);
+			clearReady();
 		}
 	};
 

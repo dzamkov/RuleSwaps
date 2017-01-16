@@ -273,7 +273,7 @@ Interface.prototype.queueInsertAmend = function(line, amend, ref) {
 		}
 	}
 
-	this.queueEffect(Effect.custom(0, ui => ui.insertAmend(line, amend)));
+	this.queueEffect(Effect.custom(0, ui => ui.constitution.insertAmend(line, amend)));
 };
 
 // Queues an effect to upgrade the given proposal amendment into a true amendment.

@@ -405,7 +405,7 @@ function start(response) {
 
 	// Set up chat
 	chat.onSay = function(recipient, text) {
-		log.chat(0, meEntry.user, text);
+		log.chat(meEntry.user, text);
 		ajax(Format.message.lobby.request.encode({
 			type: "chat",
 			content: text

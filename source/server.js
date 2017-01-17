@@ -164,6 +164,8 @@ http.createServer(function(request, response) {
 						Expression.fromList(
 							["specify_action_or_amendment", "you", "majority_vote"]),
 						Expression.fromList(
+							["repeal_last_amendment"]),
+						Expression.fromList(
 							["wealth_win"])
 					], CardSet.create(defaultDeck), [4, 5, 6], [20]), [user]);
 			}).then(game => {

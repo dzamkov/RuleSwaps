@@ -204,6 +204,7 @@
 					(" proposes a new amendment at the top of the constitution") :
 					(" proposes a new amendment below the " + getOrdinal(res.line))) + " ",
 					res.exp);
+				yield game.takeCards(player, CardSet.fromList(res.exp.toList()), commitment);
 				let amendment = yield game.insertAmend(res.line, res.exp, true, commitment);
 				if (yield game.resolve(slots[1])) {
 					yield game.reifyAmend(amendment);
@@ -260,6 +261,18 @@
 				yield game.log(player, " discards ", res)
 				yield game.discard(res);
 			}
+		}
+	}));
+
+	Card.register("repeal_last_amendment", new Card(Role.Action,
+	"Repeal the last amendment in the constitution (unless it is active)",
+	function*(game, slots) {
+		let last = game.constitution[game.constitution.length - 1];
+		if (!last.isProposal && game.active !== last) {
+			yield game.log("The last amendment has been repealed ", last.exp);
+			yield game.removeAmend(last);
+		} else {
+			yield game.log("The last amendment is active and will not be repealed");
 		}
 	}));
 		
@@ -950,6 +963,7 @@ let defaultDeck = CardSet.create({
 	"player_reveals_hand_conditional": 3,
 	"specify_action_or_amendment": 5,
 	"specify_action_or_discard": 3,
+	"repeal_last_amendment": 4,
 	"conditional_twice": 3,
 	"foreach_conditional": 2,
 	"left_player_wins": 1,

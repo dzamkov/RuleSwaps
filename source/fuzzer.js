@@ -51,9 +51,9 @@ while (true) {
 	let player2 = { name: "Champ" };
 	let player3 = { name: "Monty" };
 	let setup = new Game.Setup([
-			Expression.fromList(["you_draw_2"]),
-			Expression.fromList(["specify_action_optional", "you"])
-		], CardSet.create(defaultDeck));
+			Expression.fromList(["you_draw"]),
+			Expression.fromList(["specify_action_or_amendment", "you", "majority_vote"])
+		], CardSet.create(defaultDeck), [4, 5, 6], [20]);
 	let game = new FuzzerGame(setup, [player1, player2, player3]);
 	game.run();
 	process.stdout.write("\n");

@@ -158,13 +158,11 @@ http.createServer(function(request, response) {
 			User.getBySessionId(sessionId).then(user => {
 				return ServerGame.create(new Game.Setup([
 						Expression.fromList(
-							["you_gain_5"]),
+							["you_gain_coins"]),
 						Expression.fromList(
-							["conditional_player_draws_to_12", "you_reveal_hand", "you"]),
+							["conditional_you_draw_to", "you_reveal_hand"]),
 						Expression.fromList(
 							["specify_action_or_amendment", "you", "majority_vote"]),
-						Expression.fromList(
-							["repeal_last_amendment"]),
 						Expression.fromList(
 							["wealth_win"])
 					], CardSet.create(defaultDeck), [4, 5, 6], [20]), [user]);

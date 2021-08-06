@@ -69,7 +69,7 @@ $(output_dir)/server.js: node_modules/babel-polyfill/dist/polyfill.min.js $(addp
 	
 $(output_dir)/static/%.css: $(source_dir)/style/*
 	mkdir -p $(dir $@)
-	sass $(source_dir)/style/$(*F).scss --output-style compressed > $@
+	sass $(source_dir)/style/$(*F).scss --style=compressed > $@
 
 $(output_dir)/static/%.html: $(source_dir)/static/%.html
 	mkdir -p $(dir $@)

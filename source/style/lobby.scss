@@ -1,3 +1,4 @@
+@use 'sass:math';
 @import 'common';
 
 #section-lobby {
@@ -16,14 +17,14 @@
 	@extend .fill-parent;
 	display: flex;
 	flex-direction: row;
-	padding: $playarea-margin / 2;
+	padding: math.div($playarea-margin, 2);
 }
 
 #section-action-bar {
 	min-width: 200px;
 	display: flex;
 	flex-direction: column;
-	margin: $playarea-margin / 2;
+	margin: math.div($playarea-margin, 2);
 	a { margin: 2px; }
 }
 
@@ -37,7 +38,7 @@ $user-entry-height: 30px;
 	background: #767676;
 	margin-bottom: 10px;
 	border-radius: $curve-inset;
-	padding: $user-entry-margin - $user-entry-spacing / 2;
+	padding: $user-entry-margin - math.div($user-entry-spacing, 2);
 	display: flex;
 	flex-direction: column;
 }
@@ -51,7 +52,7 @@ $user-entry-height: 30px;
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	margin: $playarea-margin / 2;
+	margin: math.div($playarea-margin, 2);
 	border-radius: $curve-inset;
 	box-shadow: $section-inner-outset-shadow;
 	overflow: hidden;
@@ -68,7 +69,7 @@ $user-entry-height: 30px;
 
 .user-entry {
 	box-sizing: border-box;
-	margin: $user-entry-spacing / 2;
+	margin: math.div($user-entry-spacing, 2);
 	height: $user-entry-height;
 	border-radius: $curve-entry;
 

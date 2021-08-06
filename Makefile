@@ -1,9 +1,9 @@
 MAKEFLAGS += -r
 
 PATH := $(CURDIR)/node_modules/.bin:$(PATH)
-SHELL := /bin/bash
+SHELL := /bin/sh
 
-MODE ?= RELEASE
+MODE ?= DEBUG
 
 output_dir := output
 source_dir := source
@@ -69,7 +69,7 @@ $(output_dir)/server.js: node_modules/babel-polyfill/dist/polyfill.min.js $(addp
 	
 $(output_dir)/static/%.css: $(source_dir)/style/*
 	mkdir -p $(dir $@)
-	node-sass $(source_dir)/style/$(*F).scss --output-style compressed > $@
+	sass $(source_dir)/style/$(*F).scss --output-style compressed > $@
 
 $(output_dir)/static/%.html: $(source_dir)/static/%.html
 	mkdir -p $(dir $@)
@@ -81,7 +81,7 @@ endif
 ifeq ($(MODE),DEBUG)
 $(output_dir)/static/%.css: $(source_dir)/style/*
 	mkdir -p $(dir $@)
-	node-sass $(source_dir)/style/$(*F).scss > $@
+	sass $(source_dir)/style/$(*F).scss > $@
 
 $(output_dir)/static/%.html: $(source_dir)/static/%.html
 	mkdir -p $(dir $@)

@@ -81,13 +81,12 @@
 	}));
 
 	Card.register("player_discards", new Card(Role.Action,
-	"{Player} must discard 3 cards of their choice",
+	"{Player} must discard 4 cards of their choice",
 	function*(game, slots) {
 		let player = yield game.resolve(slots[0]);
-		yield playerDiscards(game, player, 3);
+		yield playerDiscards(game, player, 4);
 	}));
 	
-
 	Card.register("conditional_you_draw", new Card(Role.Action,
 	"If {Condition}, you draw 5 cards",
 	function*(game, slots) {
@@ -98,20 +97,20 @@
 	}));
 
 	Card.register("conditional_you_draw_to", new Card(Role.Action,
-	"If {Condition}, you draw cards until you have 11",
+	"If {Condition}, you draw cards until you have 12",
 	function*(game, slots) {
 		if (yield game.resolve(slots[0])) {
 			let player = game.getActivePlayer();
-			yield playerDrawsTo(game, player, 11);
+			yield playerDrawsTo(game, player, 12);
 		}
 	}));
 
 	Card.register("conditional_player_discards", new Card(Role.Action,
-	"If {Condition}, {Player} must discard 5 cards of their choice",
+	"If {Condition}, {Player} must discard 8 cards of their choice",
 	function*(game, slots) {
 		if (yield game.resolve(slots[0])) {
 			let player = yield game.resolve(slots[1]);
-			yield playerDiscards(game, player, 5);
+			yield playerDiscards(game, player, 8);
 		}
 	}));
 
@@ -134,28 +133,35 @@
 		yield playerGains(game, player, 5);
 	}));
 
-	Card.register("player_loses_coins", new Card(Role.Action,
-	"{Player} loses 15 coins",
+	Card.register("player_gains_coins", new Card(Role.Action,
+	"{Player} gains 20 coins",
 	function*(game, slots) {
 		var player = yield game.resolve(slots[0]);
-		yield playerLoses(game, player, 15);
+		yield playerGains(game, player, 20);
+	}));
+
+	Card.register("player_loses_coins", new Card(Role.Action,
+	"{Player} loses 20 coins",
+	function*(game, slots) {
+		var player = yield game.resolve(slots[0]);
+		yield playerLoses(game, player, 20);
 	}));
 
 	Card.register("conditional_you_gain_coins", new Card(Role.Action,
-	"If {Condition}, you gain 12 coins",
+	"If {Condition}, you gain 15 coins",
 	function*(game, slots) {
 		if (yield game.resolve(slots[0])) {
 			var player = game.getActivePlayer();
-			yield playerGains(game, player, 12);
+			yield playerGains(game, player, 15);
 		}
 	}));
 
 	Card.register("conditional_player_loses_coins", new Card(Role.Action,
-	"If {Condition}, {Player} loses 25 coins",
+	"If {Condition}, {Player} loses 40 coins",
 	function*(game, slots) {
 		if (yield game.resolve(slots[0])) {
 			var player = yield game.resolve(slots[1]);
-			yield playerLoses(game, player, 25);
+			yield playerLoses(game, player, 40);
 		}
 	}));
 
@@ -384,10 +390,10 @@
 	};
 
 	Card.register("you_pay", new Card(Role.Condition,
-	"You pay 10 coins",
+	"You pay 20 coins",
 	function*(game, slots) {
 		let player = game.getActivePlayer();
-		return yield mayPay(game, player, 10);
+		return yield mayPay(game, player, 20);
 	}));
 		
 	Card.register("you_reveal_hand", new Card(Role.Condition,
@@ -435,10 +441,10 @@
 	};
 
 	Card.register("you_discard", new Card(Role.Condition,
-	"You discard 3 cards",
+	"You discard 4 cards",
 	function*(game, slots) {
 		let player = game.getActivePlayer();
-		return yield mayDiscard(game, player, 3);
+		return yield mayDiscard(game, player, 4);
 	}));
 
 	let decides = function*(game, player) {
@@ -933,6 +939,7 @@ let defaultDeck = CardSet.create({
 	"conditional_you_draw_to": 4,
 	"conditional_player_discards": 4,
 	"you_gain_coins": 3,
+	"player_gains_coins": 5,
 	"player_loses_coins": 5,
 	"conditional_you_gain_coins": 6,
 	"conditional_player_loses_coins": 4,

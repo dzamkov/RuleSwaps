@@ -29,7 +29,8 @@ server_files := $(common_files) \
 
 pages := \
 	game \
-	lobby
+	lobby \
+	decklist
 
 $(output_dir): $(output_dir)/static $(output_dir)/server.js $(output_dir)/config
 

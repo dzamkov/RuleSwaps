@@ -1,0 +1,61 @@
+@use 'sass:math';
+@import 'common';
+@import 'card';
+
+#section-decklist {
+	@extend .section-back;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: ($card-width + 16px) * 6 + $playarea-margin * 2 + 36px;
+	height: 800px;
+	margin: auto;
+}
+
+#section-decklist-content {
+	@extend .fill-parent;
+	display: flex;
+	flex-direction: row;
+	padding: math.div($playarea-margin, 2);
+}
+
+#section-decklist-list-container {
+	position: relative;
+	flex-grow: 1;
+	margin: math.div($playarea-margin, 2);
+	border-radius: $curve-inset;
+	box-shadow: $section-inner-outset-shadow, $section-inner-inset-shadow;
+	overflow: hidden;
+}
+
+#section-decklist-list {
+	@extend .fill-parent;
+	padding: 8px;
+	overflow-x: hidden;
+	overflow-y: scroll;
+	background: #5f6d5b;
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.card-space {
+	position: relative;
+	padding: 8px;
+	& > .card {
+		cursor: default;
+		& > .card-content {
+			box-shadow: 0 0 6px rgba(black, 0.5);
+		}
+	}
+}
+
+.card-count {
+	position: absolute;
+	left: 90px;
+	top: 0px;
+	color: white;
+	font-size: 30px;
+	text-shadow: 0 0 5px black, 0 0 5px black, 0 0 5px black;
+}

@@ -173,6 +173,9 @@ http.createServer(function(request, response) {
 				response.end();
 			});
 			return;
+		} else if (parts.length === 2 && parts[1] === "decklist") {
+			respondFile(response, "static/decklist.html");
+			return;
 		}
 
 		respondNotFound(response);

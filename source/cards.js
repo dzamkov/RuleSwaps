@@ -36,7 +36,6 @@
 			yield game.log(player, " doesn't have any cards");
 		}
 	};
-
 	Card.register("you_draw", new Card(Role.Action,
 		"You draw 2 cards",
 		function* (game, slots) {
@@ -308,6 +307,57 @@
 				if (player.handSize <= downTo) {
 					yield game.log(player,
 						" chose not to perform an action and doesn't have more than ",
+						Log.Cards(downTo));
+				} else {
+					yield game.log(player, " chose to discard down to ", Log.Cards(downTo));
+					let amount = player.handSize - downTo;
+					commitment = yield game.interactCards(player, {
+						ordered: false,
+						optional: false,
+						amount: amount
+					}, {
+						accept: { text: "Discard" }
+					});
+					let res = yield game.reveal(commitment);
+					yield game.takeCards(player, res, commitment);
+					yield game.log(player, " discards ", res)
+					yield game.discard(res);
+				}
+			}
+		}));
+	
+	Card.register("player_propose_or_discard", new Card(Role.Action,
+		"{Player} must propose an amendment, to be ratified if {Condition}, or discard down to 5 cards",
+		function* (game, slots) {
+			let downTo = 5;
+			let player = yield game.resolve(slots[0]);
+			yield game.log(player, " must propose an amendment, or discard down to ", Log.Cards(downTo));
+			let commitment = yield game.interactNewAmend(player, false, {
+				pass: {
+					text: "Discard",
+					color: Color.Red
+				}
+			});
+			let res = yield game.reveal(commitment);
+			if (res) {
+				yield game.log(player,
+					((res.line === 0) ?
+						(" proposes a new amendment at the top of the constitution") :
+						(" proposes a new amendment below the " + getOrdinal(res.line))) + " ",
+					res.exp);
+				yield game.takeCards(player, CardSet.fromList(res.exp.toList()), commitment);
+				let amendment = yield game.insertAmend(res.line, res.exp, true, commitment);
+				if (yield game.resolve(slots[1])) {
+					yield game.reifyAmend(amendment);
+					yield game.log(player, "'s amendment has been ratified");
+				} else {
+					yield game.removeAmend(amendment);
+					yield game.log(player, "'s amendment was not ratified");
+				}
+			} else {
+				if (player.handSize <= downTo) {
+					yield game.log(player,
+						" chose not to propose an amendment and doesn't have more than ",
 						Log.Cards(downTo));
 				} else {
 					yield game.log(player, " chose to discard down to ", Log.Cards(downTo));
@@ -1096,6 +1146,7 @@ let defaultDeck = CardSet.create({
 	"conditional_you_propose": 5,
 	"player_perform_or_propose": 2,
 	"player_perform_or_discard": 3,
+	"player_propose_or_discard": 2,
 	"repeal_last_amendment": 3,
 	"conditional_twice": 4,
 	"sequence": 2,

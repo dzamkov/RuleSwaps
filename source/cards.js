@@ -224,7 +224,34 @@
 		game.inConstitution = oldInConstitution;
 	};
 
-	Card.register("perform_action_or_amendment", new Card(Role.Action,
+	Card.register("conditional_you_propose", new Card(Role.Action,
+		"You may propose an amendment, to be ratified if {Condition} and {Condition}",
+		function* (game, slots) {
+			let player = game.getActivePlayer();
+			yield game.log(player, " may propose an amendment");
+			let commitment = yield game.interactNewAmend(player, false);
+			let res = yield game.reveal(commitment);
+			if (res) {
+				yield game.log(player,
+					((res.line === 0) ?
+						(" proposes a new amendment at the top of the constitution") :
+						(" proposes a new amendment below the " + getOrdinal(res.line))) + " ",
+					res.exp);
+				yield game.takeCards(player, CardSet.fromList(res.exp.toList()), commitment);
+				let amendment = yield game.insertAmend(res.line, res.exp, true, commitment);
+				if ((yield game.resolve(slots[0])) && (yield game.resolve(slots[1]))) {
+					yield game.reifyAmend(amendment);
+					yield game.log(player, "'s amendment has been ratified");
+				} else {
+					yield game.removeAmend(amendment);
+					yield game.log(player, "'s amendment was not ratified");
+				}
+			} else {
+				yield game.log(player, " waives the right to propose an amendment");
+			}
+		}));
+
+	Card.register("player_perform_or_propose", new Card(Role.Action,
 		"{Player} may perform an action, or propose an amendment, to be ratified if {Condition}",
 		function* (game, slots) {
 			let player = yield game.resolve(slots[0]);
@@ -258,7 +285,7 @@
 			}
 		}));
 
-	Card.register("perform_action_or_discard", new Card(Role.Action,
+	Card.register("player_perform_or_discard", new Card(Role.Action,
 		"{Player} must perform an action, or discard down to 5 cards",
 		function* (game, slots) {
 			let downTo = 5;
@@ -1066,8 +1093,9 @@ let defaultDeck = CardSet.create({
 	"player_loses_coins": 6,
 	"conditional_player_loses_coins": 3,
 	"player_reveals_hand": 3,
-	"perform_action_or_amendment": 2,
-	"perform_action_or_discard": 3,
+	"conditional_you_propose": 5,
+	"player_perform_or_propose": 2,
+	"player_perform_or_discard": 3,
 	"repeal_last_amendment": 3,
 	"conditional_twice": 4,
 	"sequence": 2,

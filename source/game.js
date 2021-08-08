@@ -144,6 +144,7 @@ function Game(setup, users) {
 	this.active = this.constitution[0];
 	this.playerStack = [];
 	this.winner = null;
+	this.inConstitution = true;
 	
 	this.canResolveRandomness = false;
 	this.isRunning = false;

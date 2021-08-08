@@ -214,21 +214,28 @@
 			yield game.log(player, " reveals their hand ", hand);
 		}));
 
-	Card.register("specify_action_or_amendment", new Card(Role.Action,
-		"{Player} may specify and perform an action, or propose an amendment, to be ratified if {Condition}",
+	let playerPerforms = function* (game, player, exp) {
+		let oldInConstitution = game.inConstitution;
+		game.inConstitution = false;
+		yield game.log(player, " performs an action ", exp);
+		yield game.pushPlayerStack(player);
+		yield game.resolve(exp);
+		yield game.popPlayerStack(player);
+		game.inConstitution = oldInConstitution;
+	};
+
+	Card.register("perform_action_or_amendment", new Card(Role.Action,
+		"{Player} may perform an action, or propose an amendment, to be ratified if {Condition}",
 		function* (game, slots) {
 			let player = yield game.resolve(slots[0]);
-			yield game.log(player, " may specify and perform an action or propose an amendment");
+			yield game.log(player, " may perform an action or propose an amendment");
 			let commitment = yield game.interactNewAmend(player, true);
 			let res = yield game.reveal(commitment);
 			if (res) {
 				if (res.line === null) {
 					let cards = CardSet.fromList(res.exp.toList());
 					yield game.takeCards(player, cards, commitment);
-					yield game.log(player, " performs an action ", res.exp);
-					yield game.pushPlayerStack(player);
-					yield game.resolve(res.exp);
-					yield game.popPlayerStack(player);
+					yield playerPerforms(game, player, res.exp);
 					yield game.discard(cards, commitment);
 				} else {
 					yield game.log(player,
@@ -251,12 +258,12 @@
 			}
 		}));
 
-	Card.register("specify_action_or_discard", new Card(Role.Action,
-		"{Player} must specify and perform an action, or discard down to 5 cards",
+	Card.register("perform_action_or_discard", new Card(Role.Action,
+		"{Player} must perform an action, or discard down to 5 cards",
 		function* (game, slots) {
 			let downTo = 5;
 			let player = yield game.resolve(slots[0]);
-			yield game.log(player, " must specify and perform an action, or discard down to ", Log.Cards(downTo));
+			yield game.log(player, " must perform an action, or discard down to ", Log.Cards(downTo));
 			let commitment = yield game.interactSpecify(player, Role.Action,
 				(player.handSize > downTo) ? {
 					pass: {
@@ -268,10 +275,7 @@
 			if (exp) {
 				let cardList = exp.toList();
 				yield game.takeCards(player, CardSet.fromList(cardList), commitment);
-				yield game.log(player, " performs an action ", exp);
-				yield game.pushPlayerStack(player);
-				yield game.resolve(exp);
-				yield game.popPlayerStack(player);
+				yield playerPerforms(game, player, exp);
 				yield game.discard(CardSet.fromList(cardList));
 			} else {
 				if (player.handSize <= downTo) {
@@ -353,10 +357,46 @@
 		}));
 
 	Card.register("left_player_wins", new Card(Role.Action,
-		"The player to your left wins",
+		"If this is in the constitution and {Condition}, the player to your left wins",
 		function* (game, slots) {
-			let players = game.getPlayersFrom(game.getActivePlayer());
-			yield game.win(players[1 % players.length]);
+			if (game.inConstitution) {
+				if (yield game.resolve(slots[0])) {
+					let players = game.getPlayersFrom(game.getActivePlayer());
+					yield game.win(players[1 % players.length]);
+				}
+			} else {
+				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
+				return false;
+			}
+		}));
+
+	Card.register("exhaustion_win", new Card(Role.Action,
+		"If this is in the constitution, you may perform an action. If you have no cards afterward, you win",
+		function* (game, slots) {
+			if (game.inConstitution) {
+				let player = game.getActivePlayer();
+				let commitment = yield game.interactSpecify(player, Role.Action, {
+					accept: { text: "Perform" }
+				});
+				let exp = yield game.reveal(commitment);
+				if (exp) {
+					let cardList = exp.toList();
+					yield game.takeCards(player, CardSet.fromList(cardList), commitment);
+					yield playerPerforms(game, player, exp);
+					yield game.discard(CardSet.fromList(cardList));
+					if (player.handSize === 0) {
+						yield game.log(player, " has no cards left");
+						yield game.win(player);
+					} else {
+						yield game.log(player, " still has cards left");
+					}
+				} else {
+					yield game.log(player, " chose not to perform an action");
+				}
+			} else {
+				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
+				return false;
+			}
 		}));
 
 	Card.register("wealth_win", new Card(Role.Action,
@@ -371,45 +411,35 @@
 			}
 		}));
 
-	Card.register("composition_win", new Card(Role.Action,
-		"Reveal your hand. If you have exactly 3 action, 3 condition and 3 player cards, you win",
+	Card.register("conditional_win", new Card(Role.Action,
+		"If this is in the constitution, {Condition}, {Condition} and {Condition}, you win",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
-			let hand = yield game.reveal(yield game.getHand(player));
-			let roleCounts = hand.getRoleCounts();
-			if (roleCounts[0] === 3 && roleCounts[1] === 3 && roleCounts[2] === 3) {
-				yield game.log(player, " reveals their hand ", hand,
-					" which has exactly 3 action, 3 condition and 3 player cards!");
-				yield game.win(player);
+			if (game.inConstitution) {
+				if ((yield game.resolve(slots[0])) &&
+					(yield game.resolve(slots[1])) &&
+					(yield game.resolve(slots[2])))
+					yield game.win(game.getActivePlayer());
 			} else {
-				yield game.log(player, " reveals their hand ", hand,
-					" which doesn't satisfy the necessary criteria");
+				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
+				return false;
 			}
 		}));
 
-	Card.register("conditional_win", new Card(Role.Action,
-		"If {Condition}, {Condition}, {Condition} and {Condition}, you win",
-		function* (game, slots) {
-			if ((yield game.resolve(slots[0])) &&
-				(yield game.resolve(slots[1])) &&
-				(yield game.resolve(slots[2])) &&
-				(yield game.resolve(slots[3])))
-				yield game.win(game.getActivePlayer());
-		}));
-
 	Card.register("player_win", new Card(Role.Action,
-		"If {Player}, {Player}, {Player} and {Player} are the same, that player wins",
+		"If this is in the constitution, and {Player}, {Player} and {Player} are the same, that player wins",
 		function* (game, slots) {
-			let p1 = yield game.resolve(slots[0]);
-			let p2 = yield game.resolve(slots[1]);
-			if (p1 === p2) {
-				let p3 = yield game.resolve(slots[2]);
-				if (p1 === p3) {
-					let p4 = yield game.resolve(slots[3]);
-					if (p1 === p4) {
+			if (game.inConstitution) {
+				let p1 = yield game.resolve(slots[0]);
+				let p2 = yield game.resolve(slots[1]);
+				if (p1 === p2) {
+					let p3 = yield game.resolve(slots[2]);
+					if (p1 === p3) {
 						yield game.win(p1);
 					}
 				}
+			} else {
+				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
+				return false;
 			}
 		}));
 
@@ -709,6 +739,18 @@
 			}
 			yield game.log.apply(game, message);
 			return pass;
+		}));
+
+	Card.register("in_constitution", new Card(Role.Condition,
+		"This is in the constitution",
+		function* (game, slots) {
+			if (game.inConstitution) {
+				yield game.log("Card ", Log.Positive("is"), " in the constitution");
+				return true;
+			} else {
+				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
+				return false;
+			}
 		}));
 
 	// Players
@@ -1024,18 +1066,18 @@ let defaultDeck = CardSet.create({
 	"player_loses_coins": 6,
 	"conditional_player_loses_coins": 3,
 	"player_reveals_hand": 3,
-	"specify_action_or_amendment": 2,
-	"specify_action_or_discard": 3,
+	"perform_action_or_amendment": 2,
+	"perform_action_or_discard": 3,
 	"repeal_last_amendment": 3,
 	"conditional_twice": 4,
 	"sequence": 2,
 	"while": 2,
 	"foreach_conditional": 2,
 	"left_player_wins": 1,
-	"wealth_win": 1,
-	"composition_win": 1,
-	"conditional_win": 1,
-	"player_win": 1,
+	"exhaustion_win": 1,
+	"wealth_win": 2,
+	"conditional_win": 2,
+	"player_win": 2,
 
 	"coin_flip": 3,
 	"you_pay": 5,
@@ -1054,6 +1096,7 @@ let defaultDeck = CardSet.create({
 	"majority_vote": 3,
 	"payment_vote": 3,
 	"wealth_vote": 2,
+	"in_constitution": 2,
 
 	"you": 4,
 	"poorest_player": 3,

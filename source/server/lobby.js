@@ -5,7 +5,7 @@ function Lobby(lobbyId, setup) {
 	this.setup = setup || new Game.Setup([
 			Expression.fromList(["wealth_win"]),
 			Expression.fromList(["you_gain_coins"]),
-			Expression.fromList(["specify_action_or_amendment", "you", "auction_winner_decides"]),
+			Expression.fromList(["perform_action_or_amendment", "you", "auction_winner_decides"]),
 			Expression.fromList(["you_draw"])
 		], CardSet.create(defaultDeck),
 		[4, 5, 6], [20]);

@@ -160,11 +160,9 @@ http.createServer(function(request, response) {
 						Expression.fromList(
 							["you_gain_coins"]),
 						Expression.fromList(
-							["conditional_you_draw_to", "you_reveal_hand"]),
+							["you_draw"]),
 						Expression.fromList(
-							["specify_action_or_amendment", "you", "majority_vote"]),
-						Expression.fromList(
-							["wealth_win"])
+							["exhaustion_win"])
 					], CardSet.create(defaultDeck), [4, 5, 6], [20]), [user]);
 			}).then(game => {
 

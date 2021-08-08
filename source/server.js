@@ -162,7 +162,7 @@ http.createServer(function(request, response) {
 						Expression.fromList(
 							["you_draw"]),
 						Expression.fromList(
-							["player_propose_or_discard", "you", "coin_flip"])
+							["player_perform_or_propose", "you", "coin_flip"])
 					], CardSet.create(defaultDeck), [4, 5, 6], [20]), [user]);
 			}).then(game => {
 

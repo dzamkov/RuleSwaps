@@ -4,8 +4,8 @@ function Lobby(lobbyId, setup) {
 	this.host = null;
 	this.setup = setup || new Game.Setup([
 			Expression.fromList(["wealth_win"]),
-			Expression.fromList(["you_gain_coins"]),
-			Expression.fromList(["player_perform_or_propose", "you", "auction_winner_decides"]),
+			Expression.fromList(["conditional_you_gain_coins", "you_discard"]),
+			Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
 			Expression.fromList(["you_draw"])
 		], CardSet.create(defaultDeck),
 		[4, 5, 6], [20]);

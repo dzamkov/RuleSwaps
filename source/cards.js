@@ -578,6 +578,40 @@
 			}
 		}));
 
+	Card.register("you_offer_coins_right", new Card(Role.Condition,
+		"The player to your right accepts an offering of coins",
+		function* (game, slots) {
+			let player = game.getActivePlayer();
+			let players = yield game.getPlayersFrom(player);
+			let recipient = players[players.length - 1];
+			yield game.log(player, " may offer coins to ", recipient);
+			let offer = yield game.interactPayment(player, { accept: { text: "Offer" } });
+			yield game.revealTo(recipient, offer);
+			let amount = offer.value;
+			if (amount !== null) {
+				yield game.log(player, " has offered ", Log.Coins(amount));
+			} else {
+				yield game.log(player, " has made an offer");
+			}
+			let res = yield game.reveal(yield game.interactBoolean(recipient, {
+				yes: { text: "Accept" },
+				no: { text: "Decline" }
+			}));
+			if (res) {
+				amount = yield game.reveal(offer);
+				yield game.log(recipient, " has ", Log.Positive("accepted"),
+					" an offer of ", Log.Coins(amount), " from ", player);
+				yield game.takeCoins(player, amount);
+				yield game.giveCoins(recipient, amount);
+				return true;
+			} else {
+				yield game.log(recipient, " has ", Log.Negative("declined"),
+					" an offer from ", player);
+				return false;
+			}
+		}));
+	
+
 	Card.register("you_reveal_hand", new Card(Role.Condition,
 		"You reveal your hand",
 		function* (game, slots) {
@@ -623,10 +657,10 @@
 	};
 
 	Card.register("you_discard", new Card(Role.Condition,
-		"You discard 4 cards",
+		"You discard 3 cards",
 		function* (game, slots) {
 			let player = game.getActivePlayer();
-			return yield mayDiscard(game, player, 4);
+			return yield mayDiscard(game, player, 3);
 		}));
 
 	let decides = function* (game, player) {
@@ -1126,32 +1160,32 @@
 
 let defaultDeck = CardSet.create({
 	"you_draw": 2,
-	"conditional_you_draw": 1,
-	"player_draws": 1,
-	"conditional_player_draws": 1,
+	"conditional_you_draw": 2,
+	"player_draws": 2,
+	"conditional_player_draws": 2,
 	"you_draw_type": 5,
-	"you_draw_to": 2,
+	"you_draw_to": 1,
 	"conditional_you_draw_to": 1,
 	"player_draws_to": 1,
 	"conditional_player_draws_to": 1,
 	"player_discards": 4,
 	"conditional_player_discards": 2,
-	"you_gain_coins": 5,
+	"you_gain_coins": 3,
 	"conditional_you_gain_coins": 3,
 	"player_gains_coins": 3,
-	"conditional_player_gains_coins": 2,
-	"player_loses_coins": 6,
-	"conditional_player_loses_coins": 3,
-	"player_reveals_hand": 3,
+	"conditional_player_gains_coins": 3,
+	"player_loses_coins": 3,
+	"conditional_player_loses_coins": 5,
+	"player_reveals_hand": 2,
 	"conditional_you_propose": 5,
 	"player_perform_or_propose": 2,
 	"player_perform_or_discard": 3,
-	"player_propose_or_discard": 2,
-	"repeal_last_amendment": 3,
-	"conditional_twice": 4,
-	"sequence": 2,
+	"player_propose_or_discard": 3,
+	"repeal_last_amendment": 2,
+	"conditional_twice": 3,
+	"sequence": 1,
 	"while": 2,
-	"foreach_conditional": 2,
+	"foreach_conditional": 1,
 	"left_player_wins": 1,
 	"exhaustion_win": 1,
 	"wealth_win": 2,
@@ -1161,6 +1195,7 @@ let defaultDeck = CardSet.create({
 	"coin_flip": 3,
 	"you_pay": 5,
 	"you_have_coins": 1,
+	"you_offer_coins_right": 3,
 	"you_reveal_hand": 2,
 	"you_discard": 3,
 	"player_decides": 2,
@@ -1180,8 +1215,8 @@ let defaultDeck = CardSet.create({
 	"you": 4,
 	"poorest_player": 3,
 	"wealthiest_player": 3,
-	"left_player": 2,
-	"right_player": 2,
+	"left_player": 1,
+	"right_player": 1,
 	"most_paid_picks": 3,
 	"most_discarded_picks": 3,
 	"auction_winner_picks": 3,

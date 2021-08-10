@@ -229,17 +229,6 @@ var Motion = new function() {
 		}
 	};
 
-	// Sets whether the mouse is hovering over this element.
-	Animated.prototype.setMouseHover = function(isMouseHover) {
-		if (this.isMouseHover !== isMouseHover) {
-			if (isMouseHover) {
-				this.element.className += " " + this.hoverStyle;
-			} else {
-				this.element.className = this.element.className.replace(" " + this.element.hoverStyle, "");
-			}
-		}
-	};
-
 	// Augments an element with the ability to accept animated elements dragged into it and have
 	// its own animated children dragged out.
 	function Acceptor(element) {

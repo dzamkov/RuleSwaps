@@ -132,7 +132,6 @@ function Game(setup, playerInfos) {
 	}
 	this.deck = CardSet.create(setup.deck);
 	this.deckSize = this.deck.totalCount;
-	this.maxHandSize = setup.maxHandSize;
 
 	// Create player data
 	this.players = new Array(playerInfos.length);
@@ -193,12 +192,11 @@ function Game(setup, playerInfos) {
 }
 
 // Describes an initial configuration of a game.
-Game.Setup = function (constitution, deck, initialDraws, initialCoins, maxHandSize) {
+Game.Setup = function (constitution, deck, initialDraws, initialCoins) {
 	this.constitution = constitution;
 	this.deck = deck;
 	this.initialDraws = initialDraws;
 	this.initialCoins = initialCoins;
-	this.maxHandSize = maxHandSize;
 };
 
 // Runs this game until it is forced to stop (user interaction, waiting for message, etc).

@@ -559,8 +559,7 @@ Format.gameSetup = Format.record({
 	constitution: Format.list(Format.exp(Role.Action)),
 	deck: Format.cardSet,
 	initialDraws: Format.list(Format.nat),
-	initialCoins: Format.list(Format.nat),
-	maxHandSize: Format.nat
+	initialCoins: Format.list(Format.nat)
 });
 
 // The format for a persistent user identifier.

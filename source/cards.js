@@ -3,37 +3,17 @@
 	// Actions
 	// -----------------------
 
-	let checkHandSize = function* (game, player) {
-		let limit = game.maxHandSize;
-		if (player.handSize > limit) {
-			yield game.log(player, " has exceeded the maximum hand size and must discard down to ", Log.Cards(limit));
-			let commitment = yield game.interactCards(player, {
-				ordered: false,
-				optional: false,
-				amount: player.handSize - limit
-			}, {
-				accept: { text: "Discard" }
-			});
-			let res = yield game.reveal(commitment);
-			yield game.takeCards(player, res, commitment);
-			yield game.log(player, " discards ", res)
-			yield game.discard(res);
-		}
-	}
-
 	let playerDraws = function* (game, player, amount) {
 		yield game.log(player, " draws ", Log.Cards(amount));
 		yield game.drawCards(player, amount);
-		yield checkHandSize(game, player);
 	};
 
-	let playerDrawsTo = function* (game, player, amount) {
-		if (player.handSize < amount) {
-			yield game.log(player, " draws up to ", Log.Cards(amount));
-			yield game.drawCards(player, amount - player.handSize);
-			yield checkHandSize(game, player);
+	let playerDrawsTo = function* (game, player, upTo) {
+		if (player.handSize < upTo) {
+			yield game.log(player, " draws up to ", Log.Cards(upTo));
+			yield game.drawCards(player, upTo - player.handSize);
 		} else {
-			yield game.log(player, " already has ", Log.Cards(amount));
+			yield game.log(player, " already has ", Log.Cards(upTo));
 		}
 	};
 
@@ -56,6 +36,29 @@
 			yield game.log(player, " doesn't have any cards");
 		}
 	};
+
+	let playerDiscardsTo = function* (game, player, downTo, skipsMessage, discardsMessage) {
+		if (player.handSize <= downTo) {
+			skipsMessage = skipsMessage || " doesn't have more than ";
+			yield game.log(player, skipsMessage, Log.Cards(downTo));
+		} else {
+			discardsMessage = discardsMessage || " must discard down to ";
+			yield game.log(player, discardsMessage, Log.Cards(downTo));
+			let amount = player.handSize - downTo;
+			let commitment = yield game.interactCards(player, {
+				ordered: false,
+				optional: false,
+				amount: amount
+			}, {
+				accept: { text: "Discard" }
+			});
+			let res = yield game.reveal(commitment);
+			yield game.takeCards(player, res, commitment);
+			yield game.log(player, " discards ", res)
+			yield game.discard(res);
+		}
+	}
+
 	Card.register("you_draw", new Card(Role.Action,
 		"You draw 2 cards",
 		function* (game, slots) {
@@ -125,7 +128,6 @@
 					} else {
 						yield game.log(player, " drew ", card);
 					}
-					yield checkHandSize(game, player);
 					return;
 				} else {
 					discarded.insert(card);
@@ -182,6 +184,27 @@
 			}
 		}));
 
+	let mostCardsPlayer = function* (game) {
+		let players = game.players;
+		let top = getTop(players, player => player.handSize).map(i => players[i]);
+		if (top.length > 1) {
+			let message = [];
+			concatPlayers(message, top);
+			message.push(" are tied for having the most cards");
+			yield game.log.apply(game, message);
+			return yield tiebreak(game, top);
+		} else {
+			yield game.log(top[0], " has the most cards");
+			return top[0];
+		}
+	}
+
+	Card.register("most_cards_player_discards_to", new Card(Role.Action,
+		"Whoever has the most cards must discard down to 15 cards",
+		function* (game, slots) {
+			let player = yield mostCardsPlayer(game);
+			yield playerDiscardsTo(game, player, 15);
+		}));
 
 	let playerGains = function* (game, player, amount) {
 		yield game.log(player, " gains ", Log.Coins(amount));
@@ -341,25 +364,9 @@
 				yield playerPerforms(game, player, exp);
 				yield game.discard(CardSet.fromList(cardList));
 			} else {
-				if (player.handSize <= downTo) {
-					yield game.log(player,
-						" chose not to perform an action and doesn't have more than ",
-						Log.Cards(downTo));
-				} else {
-					yield game.log(player, " chose to discard down to ", Log.Cards(downTo));
-					let amount = player.handSize - downTo;
-					commitment = yield game.interactCards(player, {
-						ordered: false,
-						optional: false,
-						amount: amount
-					}, {
-						accept: { text: "Discard" }
-					});
-					let res = yield game.reveal(commitment);
-					yield game.takeCards(player, res, commitment);
-					yield game.log(player, " discards ", res)
-					yield game.discard(res);
-				}
+				yield playerDiscardsTo(game, player, downTo,
+					" chose not to perform an action and doesn't have more than ",
+					" chose to discard down to ");
 			}
 		}));
 
@@ -392,25 +399,9 @@
 					yield game.log(player, "'s amendment was not ratified");
 				}
 			} else {
-				if (player.handSize <= downTo) {
-					yield game.log(player,
-						" chose not to propose an amendment and doesn't have more than ",
-						Log.Cards(downTo));
-				} else {
-					yield game.log(player, " chose to discard down to ", Log.Cards(downTo));
-					let amount = player.handSize - downTo;
-					commitment = yield game.interactCards(player, {
-						ordered: false,
-						optional: false,
-						amount: amount
-					}, {
-						accept: { text: "Discard" }
-					});
-					let res = yield game.reveal(commitment);
-					yield game.takeCards(player, res, commitment);
-					yield game.log(player, " discards ", res)
-					yield game.discard(res);
-				}
+				yield playerDiscardsTo(game, player, downTo,
+					" chose not to propose an amendment and doesn't have more than ",
+					" chose to discard down to ");
 			}
 		}));
 
@@ -886,7 +877,6 @@
 			let same = (card.role === role);
 			yield game.log(player, " drew the " + (same ? "right" : "wrong") + " type of card ", card);
 			yield game.giveCard(player, card);
-			yield checkHandSize(game, player);
 			return same;
 		}
 		return false;
@@ -1197,18 +1187,7 @@
 	Card.register("most_cards_player", new Card(Role.Player,
 		"Whoever has the most cards",
 		function* (game, slots) {
-			let players = game.players;
-			let top = getTop(players, player => player.handSize).map(i => players[i]);
-			if (top.length > 1) {
-				let message = [];
-				concatPlayers(message, top);
-				message.push(" are tied for having the most cards");
-				yield game.log.apply(game, message);
-				return yield tiebreak(game, top);
-			} else {
-				yield game.log(top[0], " has the most cards");
-				return top[0];
-			}
+			return yield mostCardsPlayer(game);
 		}));
 
 	Card.register("left_player", new Card(Role.Player,
@@ -1381,6 +1360,7 @@ let defaultDeck = CardSet.create({
 	"conditional_player_draws_to": 1,
 	"player_discards": 4,
 	"conditional_player_discards": 2,
+	"most_cards_player_discards_to": 2,
 	"you_gain_coins": 3,
 	"conditional_you_gain_coins": 3,
 	"player_gains_coins": 3,

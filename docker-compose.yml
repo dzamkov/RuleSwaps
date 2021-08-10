@@ -1,6 +1,11 @@
 version: "3.7"
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: dev
+    command: sh -c "nodemon output/server.js"
     ports:
-      - "8080:80"
+      - 1888:80
+    volumes:
+      - ./source:/app/source

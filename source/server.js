@@ -42,7 +42,10 @@ function respondFile(response, file) {
 		if (err) {
 			respondError(response);
 		} else {
-			response.writeHead(200, { "Content-Type": "text/html" });
+			response.writeHead(200, { 
+				"Content-Type": "text/html",
+				"Cache-Control": "public,max-age=60"
+			});
 			response.write(file, "binary");
 			response.end();
 		}
@@ -81,7 +84,10 @@ http.createServer(function(request, response) {
 			if (err) {
 				respondNotFound(response);
 			} else {
-				response.writeHead(200, { "Content-Type": mime.lookup(filename) });
+				response.writeHead(200, { 
+					"Content-Type": mime.lookup(filename),
+					"Cache-Control": "public,max-age=60"
+				});
 				response.write(file, "binary");
 				response.end();
 			}

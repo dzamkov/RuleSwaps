@@ -43,7 +43,7 @@ function respondFile(response, file) {
 			respondError(response);
 		} else {
 			response.writeHead(200, { 
-				"Content-Type": "text/html",
+				"Content-Type": mime.lookup(filename),
 				"Cache-Control": "public,max-age=60"
 			});
 			response.write(file, "binary");
@@ -80,19 +80,7 @@ http.createServer(function(request, response) {
 	
 	// Check for static file
 	if (pathname.startsWith("/static/")) {
-		let filename = path.join(process.cwd(), pathname);
-		fs.readFile(filename, "binary", function(err, file) {
-			if (err) {
-				respondNotFound(response);
-			} else {
-				response.writeHead(200, { 
-					"Content-Type": mime.lookup(filename),
-					"Cache-Control": "public,max-age=60"
-				});
-				response.write(file, "binary");
-				response.end();
-			}
-		});
+		respondFile(response, pathname);
 	} else {
 		
 		// Get headers
@@ -105,6 +93,9 @@ http.createServer(function(request, response) {
 		console.assert(parts[0] === "");
 		if (pathname === "/") {
 			respondFile(response, "static/home.html");
+			return;
+		} else if (pathname === "/favicon.ico") {
+			respondFile(response, "static/images/favicon-16x16.png");
 			return;
 		} else if (pathname === "/decklist") {
 			respondFile(response, "static/decklist.html");

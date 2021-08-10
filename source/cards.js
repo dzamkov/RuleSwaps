@@ -1328,7 +1328,7 @@
 		}));
 
 	Card.register("first", new Card(Role.Player,
-		"The first player, going clockwise, who satisfies {Condition}",
+		"The first player, going clockwise, who satisfies {Condition} (Defaults to you if no one satisfies the condition)",
 		function* (game, slots) {
 			let players = game.getPlayersFrom(game.getActivePlayer());
 			for (let i = 0; i < players.length; i++) {

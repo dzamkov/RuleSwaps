@@ -66,14 +66,6 @@ function getRequestContents(request) {
 	});
 }
 
-let setup = new Game.Setup([
-		Expression.fromList(["wealth_win"]),
-		Expression.fromList(["you_perform_for_coins"]),
-		Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
-		Expression.fromList(["conditional_you_draft", "in_constitution"])
-	], CardSet.create(defaultDeck),
-	[4, 5, 6], [20], 20);
-
 http.createServer(function(request, response) {
 	let pathname = path.normalize(url.parse(request.url).pathname);
 	
@@ -96,14 +88,14 @@ http.createServer(function(request, response) {
 		} else if (pathname === "/favicon.ico") {
 			respondFile(response, "static/images/favicon-16x16.png");
 			return;
-		} else if (pathname === "/decklist") {
-			respondFile(response, "static/decklist.html");
+		} else if (pathname === "/rulebook") {
+			respondFile(response, "static/rulebook.html");
 			return;
 		} else if (pathname === "/practice") {
 
 			// Create a practice game
 			User.getBySessionId(sessionId).then(user => {
-				return ServerGame.create(setup, [
+				return ServerGame.create(defaultSetup, [
 					{ user: user, name: user.info.name },
 					{ user: null, name: "JaneBot" },
 					{ user: null, name: "MontyBot" }
@@ -119,7 +111,7 @@ http.createServer(function(request, response) {
 		} else if (pathname === "/createprivate") {
 
 			// Create a private lobby
-			Lobby.create(setup).then(lobby => {
+			Lobby.create(defaultSetup).then(lobby => {
 
 				// Redirect to lobby
 				response.writeHead(302, { "Location": "/lobby/" + lobby.lobbyId });

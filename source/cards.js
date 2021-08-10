@@ -169,14 +169,14 @@
 		}));
 
 	Card.register("player_discards", new Card(Role.Action,
-		"{Player} must discard 2 cards of their choice",
+		"{Player} must discard 2 cards",
 		function* (game, slots) {
 			let player = yield game.resolve(slots[0]);
 			yield playerDiscards(game, player, 2);
 		}));
 
 	Card.register("conditional_player_discards", new Card(Role.Action,
-		"If {Condition}, {Player} must discard 8 cards of their choice",
+		"If {Condition}, {Player} must discard 8 cards",
 		function* (game, slots) {
 			if (yield game.resolve(slots[0])) {
 				let player = yield game.resolve(slots[1]);
@@ -1426,3 +1426,10 @@ let defaultDeck = CardSet.create({
 	"picks_other": 2,
 	"first": 2
 });
+
+let defaultSetup = new Game.Setup([
+	Expression.fromList(["wealth_win"]),
+	Expression.fromList(["you_perform_for_coins"]),
+	Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
+	Expression.fromList(["conditional_you_draft", "in_constitution"])
+], defaultDeck, [4, 5, 6], [20], 20);

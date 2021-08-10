@@ -30,7 +30,7 @@ pages := \
 	home \
 	game \
 	lobby \
-	decklist
+	rulebook
 
 $(output_dir): $(output_dir)/static $(output_dir)/server.js $(output_dir)/config
 

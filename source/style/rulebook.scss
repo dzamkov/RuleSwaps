@@ -1,0 +1,129 @@
+@use 'sass:math';
+@import 'common';
+@import 'card';
+
+#section-rulebook {
+	@extend .section-back;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: ($card-width + 16px) * 6 + $playarea-margin * 2 + 50px;
+	height: 800px;
+	margin: auto;
+}
+
+#section-rulebook-main {
+	@extend .fill-parent;
+	display: flex;
+	flex-direction: row;
+	padding: math.div($playarea-margin, 2);
+}
+
+#section-rulebook-content-container {
+	position: relative;
+	flex-grow: 1;
+	margin: math.div($playarea-margin, 2);
+	border-radius: $curve-inset;
+	box-shadow: $section-inner-outset-shadow, $section-inner-inset-shadow;
+	overflow: hidden;
+}
+
+#section-rulebook-content {
+	@extend .fill-parent;
+	padding: 16px;
+	overflow-x: hidden;
+	overflow-y: scroll;
+	background: #f0f0f0;
+}
+
+.rulebook-subsection {
+	padding: 4px 8px;
+	margin: 8px;
+	border-radius: 6px;
+	background: rgba(#111111, 0.2);
+}
+
+#section-rulebook-decklist {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+h1 {
+	text-align: center;
+}
+
+.action { 
+	color: $action-color-text
+}
+
+.condition { 
+	color: $condition-color-text
+}
+
+.player { 
+	color: $player-color-text
+}
+
+p {
+	font-size: 16px;
+	&.subtitle {
+		margin: 2px;
+		font-size: 12px;
+	}
+}
+
+.center-container {
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+}
+
+.card-list {
+	display: flex;
+	flex-direction: row;
+	justify-content: center;
+}
+
+.amendment {
+	padding: 4px 8px;
+	margin: 8px;
+	display: flex;
+	flex-direction: row;
+	border-radius: 6px;
+	background: #dcdcdc;
+	& > .number {
+		flex-shrink: 0;
+		margin-left: 10px;
+		margin-right: 10px;
+		width: 100px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		color: black;
+		font-size: $font-size-big;
+	}
+}
+
+.card-space {
+	position: relative;
+	padding: 8px;
+	& > .card {
+		cursor: default;
+		& > .card-content {
+			box-shadow: 0 0 6px rgba(black, 0.5);
+		}
+	}
+}
+
+.card-count {
+	position: absolute;
+	left: 90px;
+	top: 0px;
+	color: white;
+	font-size: 30px;
+	text-shadow: 0 0 5px black, 0 0 5px black, 0 0 5px black;
+}

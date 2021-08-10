@@ -4,14 +4,17 @@ $card-height: 160px;
 $action-color-light: #ee7777;
 $action-color-mid: #bb2121;
 $action-color-dark: #702020;
+$action-color-text: #d00000;
 
 $condition-color-light: #85ce85;
 $condition-color-mid: #2e863c;
 $condition-color-dark: #006010;
+$condition-color-text: #239023;
 
 $player-color-light: #5577f1;
 $player-color-mid: #1841bb;
 $player-color-dark: #102060;
+$player-color-text: #0000ff;
 
 $mini-card-list-height: 88px;
 
@@ -177,17 +180,17 @@ $mini-card-list-height: 88px;
 	
 	& .-action {
 		@extend .-slot;
-		color: #d00000;
-	}
-	
-	& .-player {
-		@extend .-slot;
-		color: #0000ff;
+		color: $action-color-text;
 	}
 	
 	& .-condition {
 		@extend .-slot;
-		color: #239023;
+		color: $condition-color-text;
+	}
+	
+	& .-player {
+		@extend .-slot;
+		color: $player-color-text;
 	}
 }
 

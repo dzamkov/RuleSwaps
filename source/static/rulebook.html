@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>RuleSwaps</title>
+		<link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16x16.png">
+		<link rel="stylesheet" type="text/css" href="/static/rulebook.css" />
+		<script type="text/javascript" src="/static/common.js"></script>
+		<script type="text/javascript" src="/static/rulebook.js"></script>
+	</head>
+	<body>
+		<div id="section-rulebook">
+			<div id="section-rulebook-main">
+				<div id="section-rulebook-content-container">
+					<div id="section-rulebook-content">
+						<h1>Rules</h1>
+						<p>
+							RuleSwaps is a game where you create new rules as you play and compete
+							to shift the rules in your favor.
+							The core of RuleSwaps is a deck of cards where each card contains a fragment
+							of an instruction.
+							These cards can be assembled to build actions that are played out in the game.
+							In RuleSwaps, every action taken, and every choice made, is written somewhere
+							on a card.
+						</p>
+						<h2>Building Actions</h2>
+						<p>
+							There are three type of cards in RuleSwaps: <span class="action">Action</span>,
+							<span class="condition">Condition</span> and <span class="player">Player</span>.
+							To build an action, you'll need to start with an <span class="action">Action</span> card.
+							Sometimes, that's all you'll need, but in most cases, your card will have "slots"
+							that need to be filled in using other cards. Slots appear as colored, parenthesized
+							text. Read through your card. If you hit a slot, you'll need to place down another
+							card whose type matches the slot. Then continue by reading through <em>that</em>
+							card, again filling in slots as you go. Repeat the process until you've read through
+							all the cards and filled in all the slots. You should end up with one long sentence
+							that tells you what the action does.
+						</p>
+						<div class="center-container">
+							<div class="rulebook-subsection">
+								<div class="card-list" data-cards="conditional_player_loses_coins you_pay wealthiest_player"></div>
+								<p class="subtitle"><b>Example: </b>This action would be read as "If (You pay 20 coins), (Wealthiest player) loses 30 coins"</p>
+							</div>
+						</div>
+						<p>
+							To "perform" an action, you would just follow the combined instructions from the cards.
+						</p>
+						<h2>The Constitution</h2>
+						<p>
+							So what do you actually do on your turn? That's entirely determined by a set of cards
+							known as <em>The Constitution</em>. These are set up at the start of the game, and
+							may be altered during play. The Constitution is made up of actions, called <em>Amendments</em>.
+							Every round, each player will go through the amendments, in order, and perform
+							the actions they describe (i.e. "invoking" the amendment). The standard unmodified
+							constitution is as follows:
+						</p>
+						<div class="center-container">
+							<div class="rulebook-subsection">
+								<div class="constitution"></div>
+							</div>
+						</div>
+						<p>
+							Note that some of the amendments allow you to perform an action or propose an
+							amendment. When you invoke these amendments, that's your chance to build actions of
+							and apply them to the game.
+						</p>
+						<h2>Setup</h2>
+						<p>
+							To start the game, all players get 20 coins. One player is chosen to go first and draws
+							4 cards. The next player going clockwise draws 5 cards and every subsequent player
+							draws 6 cards. Afterwards, the game begins. Each player, starting with the first and
+							going clockwise, invokes the amendments of constitution in the order they appear. This
+							continues until a player wins.
+						</p>
+						<h2>Victory Conditions</h2>
+						<p>
+							The primary way of winning is to simply perform an action that says you win.
+							This usually requires you to satisfy some conditions first. For example, the standard
+							constitution has this action as an amendment:
+						</p>
+						<div class="center-container">
+							<div class="rulebook-subsection">
+								<div class="card-list" data-cards="wealth_win"></div>
+							</div>
+						</div>
+						<p>
+							If you have 100 coins at the time you perform this action, you win and the game ends.
+							Besides cards, there is one other way to win the game: if anyone draws the last card
+							from the deck, that player wins and the game ends immediately.
+						</p>
+						<h2>Clarifications</h2>
+						<ul>
+							<li>
+								If a card tells you to "perform an action", that means you build an action using
+								cards from your hand and then perform that action. Afterwards, discard the cards
+								used in the action.
+							</li>
+							<li>
+								If a card tells you to "propose an amendment", that means you build an action using
+								cards from your hand and also specify a place in constitution where those cards
+								would go. If the amendment is "ratified", those cards become a permanent addition
+								to the constitution. Otherwise, the cards are discarded.
+							</li>
+							<li>
+								Whenever a player needs to discard, it is their choice which cards to discard.
+							</li>
+						</ul>
+						<h1>Decklist</h1>
+						<div id="section-rulebook-decklist"></div>
+					</div>
+					<div class="section-shadow"></div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

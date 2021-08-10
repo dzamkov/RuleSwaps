@@ -2,8 +2,5 @@ version: "3.7"
 services:
   app:
     build: .
-    command: sh -c "npm install -g nodemon && nodemon output/server.js"
     ports:
-      - "1888:1888"
-    volumes:
-      - ./source:/app/source
+      - "8080:80"

@@ -7,7 +7,6 @@ MODE ?= DEBUG
 
 output_dir := output
 source_dir := source
-int_dir := temp
 
 common_files := \
 	card.js \
@@ -51,23 +50,18 @@ $(output_dir)/static/images: $(source_dir)/static/images/*
 	mkdir -p $(dir $@)
 	rsync -rupE $(source_dir)/static/images $(@D)
 
-$(int_dir)/%.js: $(source_dir)/%.js
-	mkdir -p $(dir $@)
-	babel $< --presets es2015 -o $@
-	
-
 ifeq ($(MODE),RELEASE)
-$(output_dir)/static/%.js: $(int_dir)/client/%.js
+$(output_dir)/static/%.js: $(source_dir)/client/%.js
 	mkdir -p $(dir $@)
-	uglifyjs $^ --compress warnings=false -o $@
+	terser $^ --compress -o $@
 	
-$(output_dir)/static/common.js: node_modules/babel-polyfill/dist/polyfill.min.js $(addprefix $(int_dir)/,$(client_common_files))
+$(output_dir)/static/common.js: $(addprefix $(source_dir)/,$(client_common_files))
 	mkdir -p $(dir $@)
-	uglifyjs $^ --compress warnings=false -o $@
+	terser $^ --compress -o $@
 	
-$(output_dir)/server.js: node_modules/babel-polyfill/dist/polyfill.min.js $(addprefix $(int_dir)/,$(server_files))
+$(output_dir)/server.js:  $(addprefix $(source_dir)/,$(server_files))
 	mkdir -p $(dir $@)
-	uglifyjs $^ --compress warnings=false -o $@
+	terser $^ --compress -o $@
 	
 $(output_dir)/static/%.css: $(source_dir)/style/*
 	mkdir -p $(dir $@)
@@ -127,6 +121,5 @@ $(output_dir)/fuzzer.js: $(addprefix $(source_dir)/,$(common_files)) $(source_di
 .PHONY: clean all
 clean:
 	rm -rf $(output_dir)/*
-	rm -rf $(int_dir)/*
 	
 all: $(output_dir)

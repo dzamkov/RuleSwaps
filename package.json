@@ -9,14 +9,9 @@
   "author": "Dmitry Zamkov",
   "license": "MIT",
   "devDependencies": {
-    "babel": "^6.5.2",
-    "babel-cli": "^6.18.0",
-    "babel-loader": "^6.2.7",
-    "babel-preset-es2015": "^6.18.0",
-    "babel-polyfill": "^6.16.0",
     "html-minifier": "^3.1.1",
     "sass": "^1.37.5",
-    "uglifyjs": "^2.4.10"
+    "terser": "^5.7.1"
   },
   "dependencies": {
     "mime": "^1.3.4"

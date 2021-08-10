@@ -4,7 +4,7 @@ let path = require("path");
 let fs = require("fs");
 let mime = require("mime");
 
-let port = parseInt(process.argv[2] || process.env["PORT"] || 1888, 10);
+let port = parseInt(process.argv[2] || process.env["PORT"] || 80, 10);
 if (fs.existsSync("output")) process.chdir("output");
 
 // Responds with a generic 500 message.

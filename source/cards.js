@@ -976,7 +976,7 @@
 			if (poorest.length > 1) {
 				let message = [];
 				concatPlayers(message, poorest);
-				message.push(" are tied for poorest player.");
+				message.push(" are tied for poorest player");
 				yield game.log.apply(game, message);
 				return yield tiebreak(game, poorest);
 			} else {
@@ -993,12 +993,46 @@
 			if (wealthiest.length > 1) {
 				let message = [];
 				concatPlayers(message, wealthiest);
-				message.push(" are tied for wealthiest player.");
+				message.push(" are tied for wealthiest player");
 				yield game.log.apply(game, message);
 				return yield tiebreak(game, wealthiest);
 			} else {
 				yield game.log(wealthiest[0], " is the wealthiest player");
 				return wealthiest[0];
+			}
+		}));
+
+	Card.register("fewest_cards_player", new Card(Role.Player,
+		"Whoever has the fewest cards",
+		function* (game, slots) {
+			let players = game.players;
+			let top = getTop(players, player => -player.handSize).map(i => players[i]);
+			if (top.length > 1) {
+				let message = [];
+				concatPlayers(message, top);
+				message.push(" are tied for having the fewest cards");
+				yield game.log.apply(game, message);
+				return yield tiebreak(game, top);
+			} else {
+				yield game.log(top[0], " has the fewest cards");
+				return top[0];
+			}
+		}));
+
+	Card.register("most_cards_player", new Card(Role.Player,
+		"Whoever has the most cards",
+		function* (game, slots) {
+			let players = game.players;
+			let top = getTop(players, player => player.handSize).map(i => players[i]);
+			if (top.length > 1) {
+				let message = [];
+				concatPlayers(message, top);
+				message.push(" are tied for having the most cards");
+				yield game.log.apply(game, message);
+				return yield tiebreak(game, top);
+			} else {
+				yield game.log(top[0], " has the most cards");
+				return top[0];
 			}
 		}));
 
@@ -1215,6 +1249,8 @@ let defaultDeck = CardSet.create({
 	"you": 4,
 	"poorest_player": 3,
 	"wealthiest_player": 3,
+	"fewest_cards_player": 2,
+	"most_cards_player": 2,
 	"left_player": 1,
 	"right_player": 1,
 	"most_paid_picks": 3,

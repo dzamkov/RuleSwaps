@@ -476,6 +476,34 @@
 			}
 		}));
 
+	Card.register("composition_win", new Card(Role.Action,
+		"If this is in the constitution, you may reveal your hand. If you have exactly 3 cards of each type, you win",
+		function* (game, slots) {
+			if (game.inConstitution) {
+				let player = game.getActivePlayer();
+				let res = yield game.reveal(yield game.interactBoolean(player, {
+					yes: { text: "Reveal hand" },
+					no: { text: "Don't reveal hand" }
+				}));
+				if (res) {
+					let hand = yield game.reveal(yield game.getHand(player));
+					let roleCounts = hand.getRoleCounts();
+					if (roleCounts[0] === 3 && roleCounts[1] === 3 && roleCounts[2] === 3) {
+						yield game.log(player, " reveals their hand ", hand,
+							" which has exactly 3 action, 3 condition and 3 player cards!");
+						yield game.win(player);
+					} else {
+						yield game.log(player, " reveals their hand ", hand,
+							" which doesn't satisfy the necessary criteria");
+					}
+				} else {
+					yield game.log(player, " doesn't reveal their hand");
+				}
+			} else {
+				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
+			}
+		}));
+
 	Card.register("wealth_win", new Card(Role.Action,
 		"If you have 100 coins, you win",
 		function* (game, slots) {
@@ -489,34 +517,28 @@
 		}));
 
 	Card.register("conditional_win", new Card(Role.Action,
-		"If this is in the constitution, {Condition}, {Condition} and {Condition}, you win",
+		"If {Condition}, {Condition}, {Condition} and {Condition}, you win",
 		function* (game, slots) {
-			if (game.inConstitution) {
-				if ((yield game.resolve(slots[0])) &&
-					(yield game.resolve(slots[1])) &&
-					(yield game.resolve(slots[2])))
-					yield game.win(game.getActivePlayer());
-			} else {
-				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
-				return false;
-			}
+			if ((yield game.resolve(slots[0])) &&
+				(yield game.resolve(slots[1])) &&
+				(yield game.resolve(slots[2])) &&
+				(yield game.resolve(slots[3])))
+				yield game.win(game.getActivePlayer());
 		}));
 
 	Card.register("player_win", new Card(Role.Action,
-		"If this is in the constitution, and {Player}, {Player} and {Player} are the same, that player wins",
+		"If {Player}, {Player}, {Player} and {Player} are the same, that player wins",
 		function* (game, slots) {
-			if (game.inConstitution) {
-				let p1 = yield game.resolve(slots[0]);
-				let p2 = yield game.resolve(slots[1]);
-				if (p1 === p2) {
-					let p3 = yield game.resolve(slots[2]);
-					if (p1 === p3) {
+			let p1 = yield game.resolve(slots[0]);
+			let p2 = yield game.resolve(slots[1]);
+			if (p1 === p2) {
+				let p3 = yield game.resolve(slots[2]);
+				if (p1 === p3) {
+					let p4 = yield game.resolve(slots[3]);
+					if (p1 === p4) {
 						yield game.win(p1);
 					}
 				}
-			} else {
-				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
-				return false;
 			}
 		}));
 
@@ -1222,6 +1244,7 @@ let defaultDeck = CardSet.create({
 	"foreach_conditional": 1,
 	"left_player_wins": 1,
 	"exhaustion_win": 1,
+	"composition_win": 1,
 	"wealth_win": 2,
 	"conditional_win": 2,
 	"player_win": 2,

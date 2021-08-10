@@ -2,13 +2,7 @@
 function Lobby(lobbyId, setup) {
 	this.lobbyId = lobbyId;
 	this.host = null;
-	this.setup = setup || new Game.Setup([
-			Expression.fromList(["wealth_win"]),
-			Expression.fromList(["conditional_you_gain_coins", "you_discard"]),
-			Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
-			Expression.fromList(["you_draw"])
-		], CardSet.create(defaultDeck),
-		[4, 5, 6], [20]);
+	this.setup = setup;
 	this.nextTabNum = 0;
 	this.startTimeoutHandle = null;
 	this.game = null;
@@ -26,13 +20,25 @@ function Lobby(lobbyId, setup) {
 // The set of all active lobbies, organized by lobby ID.
 Lobby.active = { };
 
-// Gets or creates a lobby.
-Lobby.get = function(lobbyId, setup) {
+// Creates and registers a new lobby with the given initial setup. Returns the lobby wrapped
+// in a promise.
+Lobby.create = function(setup) {
+	return new Promise((resolve, reject) => {
+		crypto.randomBytes(12, (err, buf) => {
+			if (err) return reject(err);
+			let lobbyId = buf.toString("hex"); // TODO: base 36?
+			let lobby = new Lobby(lobbyId, setup);
+			Lobby.active[lobbyId] = lobby;
+			resolve(lobby);
+		});
+	});
+};
+
+// Gets a lobby by its lobby ID, returned as a promise.
+Lobby.get = function(lobbyId) {
 	let lobby = Lobby.active[lobbyId];
-	if (lobby) return lobby;
-	lobby = new Lobby(lobbyId, setup);
-	Lobby.active[lobbyId] = lobby;
-	return lobby;
+	if (lobby) return Promise.resolve(lobby);
+	return Promise.resolve(null);
 };
 
 // Called to indicate this lobby was abandoned.

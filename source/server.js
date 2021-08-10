@@ -63,6 +63,13 @@ function getRequestContents(request) {
 	});
 }
 
+let setup = new Game.Setup([
+		Expression.fromList(["wealth_win"]),
+		Expression.fromList(["conditional_you_gain_coins", "you_discard"]),
+		Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
+		Expression.fromList(["you_draw"])
+	], CardSet.create(defaultDeck),
+	[4, 5, 6], [20]);
 
 http.createServer(function(request, response) {
 	let pathname = path.normalize(url.parse(request.url).pathname);
@@ -89,8 +96,38 @@ http.createServer(function(request, response) {
 
 		let parts = pathname.split("/");
 		console.assert(parts[0] === "");
-		if (parts.length === 3 && parts[1] === "game") {
-			if (parts.length === 3 && request.method === "GET") {
+		if (pathname === "/") {
+			respondFile(response, "static/home.html");
+			return;
+		} else if (pathname === "/decklist") {
+			respondFile(response, "static/decklist.html");
+			return;
+		} else if (pathname === "/practice") {
+
+			// Create a practice game
+			User.getBySessionId(sessionId).then(user => {
+				return ServerGame.create(setup, [user]);
+			}).then(game => {
+
+				// Redirect to game
+				response.writeHead(302, { "Location": "/game/" + game.gameId });
+				response.end();
+			});
+			return;
+
+		} else if (pathname === "/createprivate") {
+
+			// Create a private lobby
+			Lobby.create(setup).then(lobby => {
+
+				// Redirect to lobby
+				response.writeHead(302, { "Location": "/lobby/" + lobby.lobbyId });
+				response.end();
+			});
+			return;
+			
+		} else if (parts.length === 3 && parts[1] === "game") {
+			if (request.method === "GET") {
 
 				respondFile(response, "static/game.html");
 				return;
@@ -124,7 +161,7 @@ http.createServer(function(request, response) {
 				return;
 			}
 		} else if (parts.length === 3 && parts[1] === "lobby") {
-			if (parts.length === 3 && request.method === "GET") {
+			if (request.method === "GET") {
 
 				respondFile(response, "static/lobby.html");
 				return;
@@ -135,45 +172,28 @@ http.createServer(function(request, response) {
 				let lobbyId = parts[2];
 				Promise.all([
 					getRequestContents(request),
-					User.getBySessionId(sessionId)
+					User.getBySessionId(sessionId),
+					Lobby.get(lobbyId)
 				]).then(values => {
 					let buf = values[0];
 					let user = values[1];
-					if (buf === "CLOSE") {
-						user.getTab(tabId).close();
+					let lobby = values[2];
+					if (lobby) {
+						if (buf === "CLOSE") {
+							user.getTab(tabId).close();
+						} else {
+							let message = JSON.parse(buf); // TODO: Handle errors here
+							message = Format.message.lobby.request.decode(message);
+							let tab = user.getTab(tabId);
+							tab.bump();
+							lobby.handle(tab, message, respondJSON.bind(null, response));
+						}
 					} else {
-						let message = JSON.parse(buf); // TODO: Handle errors here
-						message = Format.message.lobby.request.decode(message);
-						let lobby = Lobby.get(lobbyId);
-						let tab = user.getTab(tabId);
-						tab.bump();
-						lobby.handle(tab, message, respondJSON.bind(null, response));
+						respondJSON(response, null);
 					}
 				});
 				return;
 			}
-		} else if (parts.length === 2 && parts[1] === "test") {
-
-			// Create a test game
-			User.getBySessionId(sessionId).then(user => {
-				return ServerGame.create(new Game.Setup([
-						Expression.fromList(
-							["you_gain_coins"]),
-						Expression.fromList(
-							["you_draw"]),
-						Expression.fromList(
-							["player_perform_or_propose", "you", "coin_flip"])
-					], CardSet.create(defaultDeck), [4, 5, 6], [20]), [user]);
-			}).then(game => {
-
-				// Redirect to game
-				response.writeHead(302, { "Location": "/game/" + game.gameId });
-				response.end();
-			});
-			return;
-		} else if (parts.length === 2 && parts[1] === "decklist") {
-			respondFile(response, "static/decklist.html");
-			return;
 		}
 
 		respondNotFound(response);

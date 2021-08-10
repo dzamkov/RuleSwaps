@@ -1,0 +1,51 @@
+@use 'sass:math';
+@import 'common';
+@import 'card';
+
+#section-home {
+	@extend .section-back;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	width: 300px;
+	height: 200px;
+	margin: auto;
+}
+
+#section-home-content {
+	@extend .fill-parent;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	padding: math.div($playarea-margin, 2);
+}
+
+#section-title {
+	margin-left: auto;
+	margin-right: auto;
+	font-size: 40px;
+	font-weight: 900;
+	& > .action-color {
+		color: rgba(white, 0.8);
+		text-shadow: 0 0 3px $action-color-dark, 0 0 3px $action-color-dark, 0 0 3px $action-color-dark;
+	}
+	& > .condition-color {
+		color: rgba(white, 0.8);
+		text-shadow: 0 0 3px $condition-color-dark, 0 0 3px $condition-color-dark, 0 0 3px $condition-color-dark;
+	}
+	& > .player-color {
+		color: rgba(white, 0.8);
+		text-shadow: 0 0 3px $player-color-dark, 0 0 3px $player-color-dark, 0 0 3px $player-color-dark;
+	}
+}
+
+#section-buttons {
+	display: flex;
+	flex-direction: column;
+	a {
+		 margin: 2px;
+		 text-decoration: none;
+	}
+}

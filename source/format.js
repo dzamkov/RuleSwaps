@@ -792,7 +792,7 @@ Format.message = {
 		// Various response messages, organized by request type.
 		response: {
 
-			// A response to the initial request for lobby information. When null, indicates that you                      
+			// A response to the initial request for lobby information. When null, indicates that you
 			// may not access the lobby.
 			intro: Format.record({
 			

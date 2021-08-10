@@ -28,6 +28,7 @@ server_files := $(common_files) \
 	server.js
 
 pages := \
+	home \
 	game \
 	lobby \
 	decklist

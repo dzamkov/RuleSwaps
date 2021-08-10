@@ -198,6 +198,12 @@ function start(response) {
 	let readyButton = new UI.Button(document.getElementById("ready-button"), false);
 	let unreadyButton = new UI.Button(document.getElementById("unready-button"), false);
 
+	// Handle bad lobby
+	if (!response) {
+		log.log(0, "This lobby either doesn't exist, or isn't accessible to you");
+		return;
+	}
+
 	// User entries
 	let userEntries = {};
 	(function() {
@@ -427,18 +433,20 @@ function start(response) {
 }
 
 // Handle loading
-let loaded = false;
+let isLoaded = false;
+let hasResponse = false;
 let introResponse = null;
 
 window.onload = function() {
-	loaded = true;
-	if (loaded && introResponse) start(introResponse);
+	isLoaded = true;
+	if (hasResponse) start(introResponse);
 }
 
 ajax(Format.message.lobby.request.encode({
 	type: "intro",
 	content: null
 }), function(response) {
+	hasResponse = true;
 	introResponse = Format.message.lobby.response.intro.decode(response);
-	if (loaded && introResponse) start(introResponse);
+	if (isLoaded) start(introResponse);
 });

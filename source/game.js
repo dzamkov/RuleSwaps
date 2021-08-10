@@ -298,7 +298,7 @@ Game.prototype.reveal = function*(commitment) {
 // current interface is not allowed to look at that player's private information.
 Game.prototype.revealTo = function*(player, commitment) {
 	// Override me
-	return null;
+	return yield this.awaitCommitment(commitment);
 };
 
 // Writes to the game log.

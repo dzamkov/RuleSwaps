@@ -627,7 +627,7 @@ Interface.prototype.interactCards = function* (player, options, style) {
 // The default style for a specify interaction
 Interface.defaultSpecifyStyle = {
 	accept: {
-		text: "Accept",
+		text: "Perform",
 		color: Color.Green
 	},
 	pass: {

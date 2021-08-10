@@ -207,6 +207,7 @@ Format.CardSet.prototype.decode = function(source) {
 };
 
 Format.CardSet.prototype.tryRandom = function() {
+	if (this.allowNull && Math.random() < 0.4) return null;
 	let superset = CardSet.create(this.superset || defaultDeck);
 	let size = this.size || Format.nat.lessThan(superset.totalCount).random();
 	let res = CardSet.create();

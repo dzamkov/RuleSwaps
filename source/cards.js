@@ -68,6 +68,25 @@
 			}
 		}));
 
+	Card.register("you_draft", new Card(Role.Action,
+		"You draw 3 cards, then discard 2",
+		function* (game, slots) {
+			// TODO: Actual drafting
+			let player = game.getActivePlayer();
+			yield playerDraws(game, player, 3);
+			yield playerDiscards(game, player, 2);
+		}));
+
+	Card.register("conditional_you_draft", new Card(Role.Action,
+		"If {Condition}, you draw 6 cards, then discard 3",
+		function* (game, slots) {
+			if (yield game.resolve(slots[0])) {
+				let player = game.getActivePlayer();
+				yield playerDraws(game, player, 6);
+				yield playerDiscards(game, player, 3);
+			}
+		}));
+
 	Card.register("you_draw_type", new Card(Role.Action,
 		"Name a card type and draw until you get a card of that type (discard all others drawn)",
 		function* (game, slots) {
@@ -116,7 +135,7 @@
 	Card.register("player_draws_to", new Card(Role.Action,
 		"{Player} draws until they have 12 cards",
 		function* (game, slots) {
-			let player = game.resolve(slots[0]);
+			let player = yield game.resolve(slots[0]);
 			yield playerDrawsTo(game, player, 12);
 		}));
 
@@ -124,7 +143,7 @@
 		"If {Condition}, {Player} draws until they have 15 cards",
 		function* (game, slots) {
 			if (yield game.resolve(slots[0])) {
-				let player = game.resolve(slots[1]);
+				let player = yield game.resolve(slots[1]);
 				yield playerDrawsTo(game, player, 15);
 			}
 		}));
@@ -325,7 +344,7 @@
 				}
 			}
 		}));
-	
+
 	Card.register("player_propose_or_discard", new Card(Role.Action,
 		"{Player} must propose an amendment, to be ratified if {Condition}, or discard down to 5 cards",
 		function* (game, slots) {
@@ -374,6 +393,24 @@
 					yield game.log(player, " discards ", res)
 					yield game.discard(res);
 				}
+			}
+		}));
+
+	Card.register("you_perform_for_coins", new Card(Role.Action,
+		"You may perform an action. If you do, gain 5 coins for each card used",
+		function* (game, slots) {
+			let player = game.getActivePlayer();
+			yield game.log(player, " may perform an action");
+			let commitment = yield game.interactSpecify(player, Role.Action);
+			let exp = yield game.reveal(commitment);
+			if (exp) {
+				let cardList = exp.toList();
+				yield game.takeCards(player, CardSet.fromList(cardList), commitment);
+				yield playerPerforms(game, player, exp);
+				yield game.discard(CardSet.fromList(cardList));
+				yield playerGains(game, player, 5 * cardList.length);
+			} else {
+				yield game.log(player, " declines");
 			}
 		}));
 
@@ -563,14 +600,14 @@
 			yield game.log(player, " may pay ", Log.Coins(amount));
 			let res = yield game.reveal(yield game.interactBoolean(player, {
 				yes: { text: ["Pay ", Log.Coins(amount)] },
-				no: { text: "Don't pay" }
+				no: { text: "Refuse" }
 			}));
 			if (res) {
 				yield game.log(player, " pays ", Log.Coins(amount));
 				yield game.takeCoins(player, amount);
 				return true;
 			} else {
-				yield game.log(player, " doesn't pay ", Log.Coins(amount));
+				yield game.log(player, " refuses");
 				return false;
 			}
 		} else {
@@ -584,6 +621,61 @@
 		function* (game, slots) {
 			let player = game.getActivePlayer();
 			return yield mayPay(game, player, 20);
+		}));
+
+	Card.register("you_give_coins", new Card(Role.Condition,
+		"You give 10 coins to {Player} (Could be yourself)",
+		function* (game, slots) {
+			let amount = 10;
+			let player = game.getActivePlayer();
+			let recipient = yield game.resolve(slots[0]);
+			if (player.coins >= amount) {
+				yield game.log(player, " may give ", Log.Coins(10), " to ", recipient);
+				let res = yield game.reveal(yield game.interactBoolean(player, {
+					yes: { text: ["Give ", Log.Coins(amount)] },
+					no: { text: "Refuse" }
+				}));
+				if (res) {
+					yield game.log(player, " gives ", Log.Coins(amount), " to ", recipient);
+					yield game.takeCoins(player, amount);
+					yield game.giveCoins(recipient, amount);
+					return true;
+				} else {
+					yield game.log(player, " refuses");
+					return false;
+				}
+			} else {
+				yield game.log(player, " doesn't have ", Log.Coins(amount));
+				return false;
+			}
+		}));
+
+	Card.register("you_have_cards", new Card(Role.Condition,
+		"You have at least 12 cards",
+		function* (game, slots) {
+			let amount = 12;
+			let player = game.getActivePlayer();
+			if (player.handSize >= amount) {
+				yield game.log(player, " has over ", Log.Cards(amount));
+				return true;
+			} else {
+				yield game.log(player, " doesn't have ", Log.Cards(amount));
+				return false;
+			}
+		}));
+
+	Card.register("you_dont_have_cards", new Card(Role.Condition,
+		"You have at most 2 cards",
+		function* (game, slots) {
+			let amount = 2;
+			let player = game.getActivePlayer();
+			if (player.handSize <= amount) {
+				yield game.log(player, " doesn't have over ", Log.Cards(amount));
+				return true;
+			} else {
+				yield game.log(player, " has over ", Log.Cards(amount));
+				return false;
+			}
 		}));
 
 	Card.register("you_have_coins", new Card(Role.Condition,
@@ -632,7 +724,7 @@
 				return false;
 			}
 		}));
-	
+
 
 	Card.register("you_reveal_hand", new Card(Role.Condition,
 		"You reveal your hand",
@@ -683,6 +775,30 @@
 		function* (game, slots) {
 			let player = game.getActivePlayer();
 			return yield mayDiscard(game, player, 3);
+		}));
+
+	Card.register("you_perform", new Card(Role.Condition,
+		"You perform an action",
+		function* (game, slots) {
+			let player = game.getActivePlayer();
+			yield game.log(player, " may perform an action");
+			let commitment = yield game.interactSpecify(player, Role.Action, {
+				pass: {
+					text: "Refuse",
+					color: Color.Red
+				}
+			});
+			let exp = yield game.reveal(commitment);
+			if (exp) {
+				let cardList = exp.toList();
+				yield game.takeCards(player, CardSet.fromList(cardList), commitment);
+				yield playerPerforms(game, player, exp);
+				yield game.discard(CardSet.fromList(cardList));
+				return true;
+			} else {
+				yield game.log(player, " refuses");
+				return false;
+			}
 		}));
 
 	let decides = function* (game, player) {
@@ -892,6 +1008,24 @@
 	Card.register("you", new Card(Role.Player,
 		"You", function (game, slots) {
 			return game.getActivePlayer();
+		}));
+
+	Card.register("your_left_player", new Card(Role.Player,
+		"The player to your left", function* (game, slots) {
+			let other = game.getActivePlayer();
+			let players = yield game.getPlayersFrom(other);
+			let res = players[1 % players.length];
+			yield game.log(res, " is the player to the left of ", other);
+			return res;
+		}));
+
+	Card.register("your_right_player", new Card(Role.Player,
+		"The player to your right", function* (game, slots) {
+			let other = game.getActivePlayer();
+			let players = yield game.getPlayersFrom(other);
+			let res = players[players.length - 1];
+			yield game.log(res, " is the player to the right of ", other);
+			return res;
 		}));
 
 	function getTop(list, measure) {
@@ -1219,7 +1353,9 @@ let defaultDeck = CardSet.create({
 	"conditional_you_draw": 2,
 	"player_draws": 2,
 	"conditional_player_draws": 2,
-	"you_draw_type": 5,
+	"you_draft": 3,
+	"conditional_you_draft": 2,
+	"you_draw_type": 3,
 	"you_draw_to": 1,
 	"conditional_you_draw_to": 1,
 	"player_draws_to": 1,
@@ -1237,6 +1373,7 @@ let defaultDeck = CardSet.create({
 	"player_perform_or_propose": 2,
 	"player_perform_or_discard": 3,
 	"player_propose_or_discard": 3,
+	"you_perform_for_coins": 2,
 	"repeal_last_amendment": 2,
 	"conditional_twice": 3,
 	"sequence": 1,
@@ -1251,10 +1388,14 @@ let defaultDeck = CardSet.create({
 
 	"coin_flip": 3,
 	"you_pay": 5,
+	"you_give_coins": 3,
+	"you_have_cards": 1,
+	"you_dont_have_cards": 2,
 	"you_have_coins": 1,
 	"you_offer_coins_right": 3,
 	"you_reveal_hand": 2,
 	"you_discard": 3,
+	"you_perform": 3,
 	"player_decides": 2,
 	"auction_winner_decides": 4,
 	"or": 1,
@@ -1270,12 +1411,14 @@ let defaultDeck = CardSet.create({
 	"in_constitution": 2,
 
 	"you": 4,
+	"your_left_player": 2,
+	"your_right_player": 2,
 	"poorest_player": 3,
 	"wealthiest_player": 3,
 	"fewest_cards_player": 2,
 	"most_cards_player": 2,
-	"left_player": 1,
-	"right_player": 1,
+	"left_player": 2,
+	"right_player": 2,
 	"most_paid_picks": 3,
 	"most_discarded_picks": 3,
 	"auction_winner_picks": 3,

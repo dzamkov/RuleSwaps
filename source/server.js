@@ -68,9 +68,10 @@ function getRequestContents(request) {
 
 let setup = new Game.Setup([
 		Expression.fromList(["wealth_win"]),
-		Expression.fromList(["conditional_you_gain_coins", "you_discard"]),
+		Expression.fromList(["you_perform_for_coins"]),
 		Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
-		Expression.fromList(["you_draw"])
+		Expression.fromList(["you_draw"]),
+		Expression.fromList(["you_draft"]),
 	], CardSet.create(defaultDeck),
 	[4, 5, 6], [20]);
 

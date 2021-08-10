@@ -278,10 +278,12 @@ let UI = new function() {
 	function Deck(element, style) {
 		this.element = element;
 		this.style = style;
+		this.numCards = 0;
 		
 		this.dummyContainer = document.createElement("div");
 		this.dummyContainer.className = "container";
 		this.element.appendChild(this.dummyContainer);
+		this.mainContainer = null;
 	}
 
 	// Identifies the appearance of a deck.
@@ -298,7 +300,39 @@ let UI = new function() {
 		return new Motion.Animated(element);
 	};
 
-	// Pulls a card of the given type from this deck. The card should be immediately be inserted into a
+	// Sets the number of cards in this deck
+	Deck.prototype.setSize = function(numCards) {
+		if (numCards !== this.numCards) {
+			this.numCards = numCards;
+			if (this.style === Deck.Style.FaceDown) {
+				if (numCards > 0) {
+
+					// Create a card back if one does not yet exist
+					if (!this.mainContainer) {
+						this.mainContainer = document.createElement("div");
+						this.mainContainer.className = "container";
+						let element = document.createElement("div");
+						element.className = "card-back";
+						let counter = document.createElement("div");
+						counter.className = "counter";
+						counter.innerText = numCards;
+						element.appendChild(counter);
+						this.mainContainer.appendChild(element);
+						this.element.appendChild(this.mainContainer);
+					} else {
+						this.mainContainer.firstChild.firstChild.innerText = numCards;
+						trigger(this.mainContainer.firstChild.firstChild, "-pulse");
+					}
+				} else {
+					if (this.mainContainer) {
+						this.mainContainer.parentNode.removeChild(this.mainContainer);
+					}
+				}
+			}
+		}
+	};
+
+	// Pulls a card of the given type from this deck. The card should be immediately inserted into a
 	// valid acceptor.
 	Deck.prototype.pullCard = function(cardType) {
 		let card = cardType ? Card.create(cardType) : Deck.createCardBack();
@@ -321,19 +355,17 @@ let UI = new function() {
 			};
 		} else {
 			let dummyContainer = this.dummyContainer;
-			card.onSettle = function() {
-				let prevContainer = container;
-				while (prevContainer = prevContainer.previousSibling) {
-					if (prevContainer !== dummyContainer) {
-						prevContainer.parentNode.removeChild(prevContainer);
-					}
+			card.onSettle = (function() {
+				if (this.mainContainer) {
+					this.mainContainer.parentNode.removeChild(this.mainContainer);
 				}
 
 				// Replace with static element
 				let element = card.type.createElement();
 				container.replaceChild(element, card.element);
 				element.className += " -static";
-			};
+				this.mainContainer = container;
+			}).bind(this);
 		}
 	};
 	

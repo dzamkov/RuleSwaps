@@ -72,7 +72,7 @@ let setup = new Game.Setup([
 		Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
 		Expression.fromList(["conditional_you_draft", "in_constitution"])
 	], CardSet.create(defaultDeck),
-	[4, 5, 6], [20]);
+	[4, 5, 6], [20], 20);
 
 http.createServer(function(request, response) {
 	let pathname = path.normalize(url.parse(request.url).pathname);

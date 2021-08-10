@@ -3,15 +3,35 @@
 	// Actions
 	// -----------------------
 
+	let checkHandSize = function* (game, player) {
+		let limit = game.maxHandSize;
+		if (player.handSize > limit) {
+			yield game.log(player, " has exceeded the maximum hand size and must discard down to ", Log.Cards(limit));
+			let commitment = yield game.interactCards(player, {
+				ordered: false,
+				optional: false,
+				amount: player.handSize - limit
+			}, {
+				accept: { text: "Discard" }
+			});
+			let res = yield game.reveal(commitment);
+			yield game.takeCards(player, res, commitment);
+			yield game.log(player, " discards ", res)
+			yield game.discard(res);
+		}
+	}
+
 	let playerDraws = function* (game, player, amount) {
 		yield game.log(player, " draws ", Log.Cards(amount));
 		yield game.drawCards(player, amount);
+		yield checkHandSize(game, player);
 	};
 
 	let playerDrawsTo = function* (game, player, amount) {
 		if (player.handSize < amount) {
 			yield game.log(player, " draws up to ", Log.Cards(amount));
 			yield game.drawCards(player, amount - player.handSize);
+			yield checkHandSize(game, player);
 		} else {
 			yield game.log(player, " already has ", Log.Cards(amount));
 		}
@@ -95,8 +115,8 @@
 			yield game.log(player, " wants a ", role.str.toLowerCase(), " card");
 
 			let discarded = CardSet.create();
-			let commitment;
-			while (commitment = yield game.draw()) {
+			while (true) {
+				let commitment = yield game.draw(player);
 				let card = yield game.reveal(commitment);
 				if (card.role === role) {
 					yield game.giveCard(player, commitment);
@@ -105,14 +125,12 @@
 					} else {
 						yield game.log(player, " drew ", card);
 					}
+					yield checkHandSize(game, player);
 					return;
 				} else {
 					discarded.insert(card);
 					yield game.discard(CardSet.fromList([card]), commitment);
 				}
-			}
-			if (discarded.totalCount > 0) {
-				yield game.log(player, " discarded ", discarded);
 			}
 		}));
 
@@ -862,12 +880,13 @@
 		}));
 
 	let drawRole = function* (game, player, role) {
-		let card = yield game.draw();
+		let card = yield game.draw(player);
 		if (card) {
 			card = yield game.reveal(card);
 			let same = (card.role === role);
 			yield game.log(player, " drew the " + (same ? "right" : "wrong") + " type of card ", card);
 			yield game.giveCard(player, card);
+			yield checkHandSize(game, player);
 			return same;
 		}
 		return false;

@@ -365,8 +365,8 @@ Interface.prototype.setCoins = function* (player, count) {
 	return yield Game.prototype.setCoins.call(this, player, count);
 };
 
-Interface.prototype.draw = function* () {
-	let commitment = yield Game.prototype.draw.call(this);
+Interface.prototype.draw = function* (player) {
+	let commitment = yield Game.prototype.draw.call(this, player);
 	this.queueTransferFrom(function (ui) {
 		return [ui.deck.draw.pullCard(commitment.isResolved ? commitment.value : null)];
 	}, commitment);
@@ -376,6 +376,11 @@ Interface.prototype.draw = function* () {
 Interface.prototype.discard = function* (cards, ref) {
 	yield Game.prototype.discard.call(this, cards);
 	this.queueTransferTo(cards.toList(), Effect.Transfer.giveCards(ui => ui.deck.discard), ref);
+};
+
+Interface.prototype.setDeckSize = function* (size) {
+	this.queueEffect(Effect.custom(0, ui => ui.deck.draw.setSize(size)));
+	return yield Game.prototype.setDeckSize.call(this, size);
 };
 
 Interface.prototype.setHandSize = function* (player, handSize) {

@@ -60,14 +60,6 @@ ServerGame.get = function(gameId, callback) {
 
 ServerGame.prototype = Object.create(Game.prototype);
 
-ServerGame.prototype.getDeckSize = function() {
-	return this.deck.totalCount;
-};
-
-ServerGame.prototype.setDeckSize = function(size) {
-	console.assert(this.deck.totalCount === size);
-};
-
 ServerGame.prototype.declareCommitment = function(player, format) {
 	let commitment = Game.prototype.declareCommitment.call(this, player, format);
 	if (!commitment.isResolved) this.unresolved++;

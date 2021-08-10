@@ -172,7 +172,10 @@ Lobby.prototype.setStarting = function(isStarting) {
 	if (!this.startTimeoutHandle && isStarting) {
 		this.startTimeoutHandle = setTimeout((function() {
 			this.startTimeoutHandle = false;
-			ServerGame.create(this.setup, this.players.map(p => p.user)).then((game => {
+			ServerGame.create(this.setup, this.players.map(p => ({
+				user: p.user,
+				name: p.user.info.name
+			}))).then((game => {
 				this.game = game;
 				this.broadcast({
 					type: "started",

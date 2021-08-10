@@ -331,7 +331,7 @@ Interface.prototype.win = function* (player) {
 }
 
 Interface.prototype.chat = function (player, message) {
-	this.ui.log.chat(player.user, message);
+	this.ui.log.chat(player, message);
 }
 
 // An event fired in response to an outgoing chat.

@@ -579,10 +579,14 @@ Format.userInfo = Format.record({
 });
 
 // Provides the public information describing a player, excluding identifiers.
-Format.playerInfo = Format.userInfo.extend({
+Format.playerInfo = Format.record({
 	
-	// The identifier for the user corresponding to this player.
-	userId: Format.userId
+	// The identifier for the user corresponding to this player, or null if this
+	// player is a bot.
+	userId: Format.userId.orNull(),
+
+	// The name of the player.
+	name: Format.str
 
 });
 

@@ -1,14 +1,15 @@
 // Identifies and describes a player in a game.
-function Player(coins, hand, handSize, user) {
+function Player(coins, hand, handSize, user, name) {
 	this.coins = coins;
 	this.hand = hand;
 	this.handSize = handSize;
 	this.user = user;
+	this.name = name;
 };
 
 Player.prototype.toString = function() {
-	if (this.user.name) {
-		return this.user.name;
+	if (this.name) {
+		return this.name;
 	} else if (this.id) {
 		return "Player " + this.id;
 	} else {
@@ -120,7 +121,7 @@ function Amendment(exp, isProposal) {
 }
 
 // An interface for running a game.
-function Game(setup, users) {
+function Game(setup, playerInfos) {
 	
 	// Create copy of initial setup
 	this.constitution = new Array(setup.constitution.length);
@@ -133,9 +134,10 @@ function Game(setup, users) {
 	this.deckSize = this.deck.totalCount;
 	
 	// Create player data
-	this.players = new Array(users.length);
+	this.players = new Array(playerInfos.length);
 	for (let i = 0; i < this.players.length; i++) {
-		this.players[i] = new Player(0, CardSet.create({ }), 0, users[i]);
+		let playerInfo = playerInfos[i];
+		this.players[i] = new Player(0, CardSet.create({ }), 0, playerInfo.user, playerInfo.name);
 		this.players[i].id = i;
 	}
 	
@@ -498,20 +500,33 @@ Game.prototype.random = function*(range) {
 	return commitment;
 };
 
+// Requests the given player specify a value of the given format. Returns that value wrapped in a
+// commitment.
+Game.prototype.interact = function(player, format) {
+	let commitment = this.declareCommitment(player, format);
+	if (!player.user && this.canResolveRandomness) {
+
+		// Handle response for bot
+		this.resolveCommitment(commitment, format.random());
+
+	}
+	return commitment;
+};
+
 // Requests the given player specify a boolean value. Returns that value wrapped in a commitment.
 Game.prototype.interactBoolean = function(player) {
-	return this.declareCommitment(player, Format.bool);
+	return this.interact(player, Format.bool);
 };
 
 // Requests the given player pick another player. Returns that player wrapped in a commitment.
 Game.prototype.interactPlayer = function(player, canPickThemself) {
 	// TODO: Restrict format when canPickThemself is false
-	return this.declareCommitment(player, Format.id(Format.nat, this.players));
+	return this.interact(player, Format.id(Format.nat, this.players));
 };
 
 // Requests the given player to specify a payment amount. Returns that amount wrapped in a commitment.
 Game.prototype.interactPayment = function(player) {
-	return this.declareCommitment(player, Format.nat.lessThan(player.coins + 1));
+	return this.interact(player, Format.nat.lessThan(player.coins + 1));
 };
 
 // Requests the given player to specify a payment amount and a boolean. Returns both wrapped in
@@ -525,7 +540,7 @@ Game.prototype.interactBooleanPayment = function*(player) {
 
 // Requests the given player to pick a card role. Returns that role wrapped in a commitment.
 Game.prototype.interactRole = function(player) {
-	return this.declareCommitment(player, Format.id(Format.nat, Role));
+	return this.interact(player, Format.id(Format.nat, Role));
 };
 
 // Requests the given player to select a list or set of cards subject to restrictions.
@@ -541,7 +556,7 @@ Game.prototype.interactCards = function(player, options) {
 	if (player.hand) format = format.withSuperset(player.hand);
 	if (options.amount) format = format.withSize(options.amount);
 	if (options.optional) format = format.orNull();
-	return this.declareCommitment(player, format);
+	return this.interact(player, format);
 };
 
 // Requests the given player to specify an expression of the given role. Returns that expression wrapped in
@@ -550,7 +565,7 @@ Game.prototype.interactSpecify = function(player, role) {
 	let exp = Format.exp(Role.Action);
 	if (player.hand) exp = exp.withSuperset(player.hand);
 	exp = exp.orNull();
-	return this.declareCommitment(player, exp);
+	return this.interact(player, exp);
 };
 
 // Requests the given player to specify an expression and (optionally) a place to insert an amendment.
@@ -559,7 +574,7 @@ Game.prototype.interactNewAmend = function(player, isLineOptional) {
 	if (player.hand) exp = exp.withSuperset(player.hand);
 	let line = Format.nat.lessThan(this.constitution.length + 1);
 	if (isLineOptional) line = line.orNull();
-	return this.declareCommitment(player, Format.record({
+	return this.interact(player, Format.record({
 		exp: exp,
 		line: line
 	}).orNull());

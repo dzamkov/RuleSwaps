@@ -1,18 +1,19 @@
 // A game handled by a server
-function ServerGame(gameId, setup, users) {
-	Game.call(this, setup, users);
+function ServerGame(gameId, setup, playerInfos) {
+	Game.call(this, setup, playerInfos);
 	this.canResolveRandomness = true;
 	
 	this.gameId = gameId;
 	this.setup = setup;
-	this.users = users;
 
 	// Mapping from user ID to player
 	this.playerForUserId = { };
 	for (let i = 0; i < this.players.length; i++) {
 		let player = this.players[i];
-		this.playerForUserId[player.user.userId] = player;
-		player.user.games[gameId] = this;
+		if (player.user) {
+			this.playerForUserId[player.user.userId] = player;
+			player.user.games[gameId] = this;
+		}
 	}
 	
 	// The first commitment in the frame we are waiting on.
@@ -75,7 +76,7 @@ ServerGame.prototype.declareCommitment = function(player, format) {
 
 // Resolves a commitment for this game.
 ServerGame.prototype.resolveCommitment = function(commitment, value) {
-	console.assert(commitment.player === null);
+	console.assert(commitment.player === null || commitment.player.user === null);
 	commitment.resolve(value);
 	this.unresolved--;
 };
@@ -196,12 +197,11 @@ ServerGame.prototype.handle = function(tab, message, callback) {
 	tab = this.getTab(tab);
 	let player = this.playerForUserId[tab.user.userId];
 	if (message.type === "intro") {
-
 		callback(Format.message.game.response.intro.encode({
 			setup: this.setup,
 			players: this.players.map(p => ({
-				userId: p.user.userId,
-				name: p.user.info.name
+				userId: p.user ? p.user.userId : null,
+				name: p.name
 			})),
 			youId: player ? player.id : null,
 			data: this.buildPollResponse(player, 0, 0)

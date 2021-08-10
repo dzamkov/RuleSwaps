@@ -106,7 +106,11 @@ http.createServer(function(request, response) {
 
 			// Create a practice game
 			User.getBySessionId(sessionId).then(user => {
-				return ServerGame.create(setup, [user]);
+				return ServerGame.create(setup, [
+					{ user: user, name: user.info.name },
+					{ user: null, name: "JaneBot" },
+					{ user: null, name: "MontyBot" }
+				]);
 			}).then(game => {
 
 				// Redirect to game

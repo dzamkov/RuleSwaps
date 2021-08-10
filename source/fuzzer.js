@@ -28,17 +28,6 @@ FuzzerGame.prototype.log = function() {
 	}
 };
 
-FuzzerGame.prototype.awaitCommitment = function(commitment) {
-	if (!commitment.isResolved) {
-		commitment.resolve(commitment.format.random());
-	}
-	return commitment.value;
-};
-
-FuzzerGame.prototype.revealTo = function*(player, commitment) {
-	return this.awaitCommitment(commitment);
-};
-
 FuzzerGame.prototype.win = function*(player) {
 	this.log(player, " wins!");
 	this.winner = player;

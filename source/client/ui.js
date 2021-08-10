@@ -554,7 +554,6 @@ let UI = new function() {
 			for (let i = 0; i < parts.length; i++) {
 				let part = parts[i];
 				if (part instanceof Player || part instanceof User) {
-					if (part instanceof Player) part = part.user;
 					let user = document.createElement("span");
 					user.className = "-user";
 					user.innerText = part.name;
@@ -700,7 +699,7 @@ let UI = new function() {
 		
 		let name = document.createElement("div");
 		name.className = "player-name";
-		name.innerText = player.user.name;
+		name.innerText = player.name;
 		container.appendChild(name);
 		
 		let info = document.createElement("div");

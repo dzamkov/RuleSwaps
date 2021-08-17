@@ -57,17 +57,21 @@ Lobby.prototype.getTab = function(tab) {
 		if (!this.users[tab.user.userId]) {
 			this.users[tab.user.userId] = tab.user;
 
+			// Add as player
+			this.players.push({ user: tab.user, isReady: false });
+			this.setStarting(false);
+			this.clearReady();
+
 			// Add as host if no other exists
 			if (!this.host) {
 				this.host = tab.user;
-				this.players.push({ user: tab.user, isReady: false });
 			} else {
 				this.broadcast({
 					type: "userJoin",
 					content: {
 						userId: tab.user.userId,
 						userInfo: tab.user.info,
-						isPlayer: false
+						isPlayer: true
 					}
 				}, tab.uniqueId);
 			}
@@ -125,8 +129,11 @@ Lobby.prototype.getTab = function(tab) {
 						lobby.host = newHost;
 					}
 
-					// Abort start
-					if (isPlayer) lobby.setStarting(false);
+					// Abort start and clear ready status
+					if (isPlayer) {
+						lobby.setStarting(false);
+						lobby.clearReady();
+					}
 
 					// Send disconnect message
 					lobby.broadcast({
@@ -186,6 +193,14 @@ Lobby.prototype.setStarting = function(isStarting) {
 	} else if (this.startTimeoutHandle && !isStarting) {
 		clearTimeout(this.startTimeoutHandle);
 		this.startTimeoutHandle = null;
+	}
+};
+
+// Clears the ready status on all players.
+Lobby.prototype.clearReady = function() {
+	for (let i = 0; i < this.players.length; i++) {
+		let player = this.players[i];
+		player.isReady = false;
 	}
 };
 
@@ -254,8 +269,9 @@ Lobby.prototype.handle = function(tab, message, callback) {
 				}
 			}
 
-			// Abort start
+			// Abort start and clear ready status
 			this.setStarting(false);
+			this.clearReady();
 
 			// Broadcast shuffle message
 			this.broadcast({

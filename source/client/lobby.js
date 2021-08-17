@@ -234,7 +234,7 @@ function start(response) {
 	changeNameButton.onClick = function() {
 		let oldName = meEntry.user.name;
 		let newName = prompt("Choose a new name", oldName);
-		if (oldName !== newName) {
+		if (newName && oldName !== newName) {
 			meEntry.user.name = newName;
 			meEntry.setUser(meEntry.user);
 			ajax(Format.message.lobby.request.encode({

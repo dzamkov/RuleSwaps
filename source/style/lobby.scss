@@ -32,19 +32,42 @@ $user-entry-margin: 6px;
 $user-entry-spacing: 4px;
 $user-entry-height: 30px;
 
-#section-player-list {
+.user-list {
 	@extend .section-inner;
-	min-height: 160px;
-	background: #767676;
 	margin-bottom: 10px;
 	border-radius: $curve-inset;
 	padding: $user-entry-margin - math.div($user-entry-spacing, 2);
+	position: relative;
 	display: flex;
 	flex-direction: column;
 }
 
+#section-player-list {
+	@extend .user-list;
+	min-height: ($user-entry-height + $user-entry-spacing) * 5;
+	background: #909090;
+	&::before {
+		content: "Players";
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		color: rgba(#000000,0.3)
+	}
+}
+
 #section-observer-list {
-	@extend #section-player-list;
+	@extend .user-list;
+	min-height: ($user-entry-height + $user-entry-spacing) * 2;
+	background: #767676;
+	&::before {
+		content: "Observers";
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		color: rgba(#000000,0.3)
+	}
 }
 
 #section-chat {
@@ -84,6 +107,7 @@ $user-entry-height: 30px;
 	font-size: $font-size-small;
 	color: white;
 	text-shadow: 0 0 2px black, 0 0 2px black;
+	z-index: 1;
 
 	&.-player {
 		background: #7fabc8;

@@ -588,8 +588,8 @@ Interface.prototype.interactRole = function* (player, style) {
 	return commitment;
 };
 
-// The default style for a cards interaction
-Interface.defaultCardsStyle = {
+// The default style for a hand interaction
+Interface.defaultHandStyle = {
 	accept: {
 		text: "Accept",
 		color: Color.Green
@@ -600,18 +600,19 @@ Interface.defaultCardsStyle = {
 	}
 };
 
-Interface.prototype.interactCards = function* (player, options, style) {
-	let commitment = Game.prototype.interactCards.call(this, player, options);
+Interface.prototype.interactHand = function* (player, options, style) {
+	let commitment = Game.prototype.interactHand.call(this, player, options);
 	if (!commitment.isResolved && player === this.playerSelf) {
-		style = merge(style, Interface.defaultCardsStyle);
+		style = merge(style, Interface.defaultHandStyle);
 		this.queueEffect(Effect.input(function (ui, resolve) {
+			let optional = !options.amount || options.amount.contains(0);
 			ui.input.cards.request({
 				amount: options.amount,
 				buttons: [{
 					text: style.accept.text,
 					color: style.accept.color,
 					pass: false
-				}].concat(options.optional ? [{
+				}].concat(optional ? [{
 					text: style.pass.text,
 					color: style.pass.color,
 					pass: true
@@ -621,7 +622,7 @@ Interface.prototype.interactCards = function* (player, options, style) {
 			if (list) {
 				this.resolveCommitment(commitment, options.ordered ? list : CardSet.fromList(list));
 			} else {
-				this.resolveCommitment(commitment, null);
+				this.resolveCommitment(commitment, options.ordered ? [] : CardSet.fromList([]));
 			}
 		}).bind(this)));
 		this.queueTransferFrom(ui => ui.input.cards.takeAllCards(), commitment);

@@ -123,13 +123,44 @@ Format.Bool.prototype.decode = function(value) {
 	return value;
 };
 
-
 Format.Bool.prototype.random = function() {
 	return Math.random() < 0.5 ? false : true;
 };
 
 Format.bool = new Format.Bool();
 
+// A format for a non-negative integer less than a given limit.
+Format.Nat = function(limit) {
+	this.limit = limit;
+};
+
+Format.Nat.prototype = Object.create(Format.prototype);
+
+Format.Nat.prototype.encode = function(value) {
+	console.assert(typeof value === "number" && value >= 0 && value < this.limit);
+	return value;
+};
+
+Format.Nat.prototype.decode = function(value) {
+	if (typeof value !== "number") throw Format.Exception;
+	let num = Math.floor(value);
+	if (num !== value) throw Format.Exception;
+	if (!(num >= 0 && num < this.limit)) throw Format.Exception;
+	return num;
+};
+
+Format.Nat.prototype.lessThan = function(limit) {
+	return new Format.Nat(Math.min(this.limit, limit));
+};
+
+Format.Nat.prototype.random = function() {
+	if (!isFinite(this.limit))
+		return Math.floor(Math.exp(0.5 / Math.random()) - 1);
+	else
+		return Math.floor(Math.random() * this.limit);
+};
+
+Format.nat = new Format.Nat(Infinity);
 
 // A format for a card.
 Format.Card = function(allowNull) {
@@ -169,30 +200,85 @@ Format.Card.prototype.random = function() {
 
 Format.card = new Format.Card(false);
 
+// A set of non-negative integers.
+function NatSet(sorted) {
+	this.sorted = sorted;
+}
+
+NatSet.prototype.contains = function(value) {
+	console.assert(Math.floor(value) == value);
+
+	// Use binary search to find value in sorted list
+	let lo = 0;
+	let hi = this.sorted.length;
+	while (lo < hi) {
+		let mid = Math.floor((lo + hi) / 2);
+		let pivot = this.sorted[mid];
+		if (value < pivot) {
+			hi = mid;
+		} else if (value > pivot) {
+			lo = mid + 1;
+		} else {
+			return true;
+		}
+	}
+	return false;
+};
+
+NatSet.prototype.random = function() {
+	return this.sorted[Math.floor(Math.random() * this.sorted.length)];
+};
+
+NatSet.prototype.orZero = function() {
+	if (this.sorted[0] === 0)
+		return this;
+	return new NatSet([0].concat(this.sorted));
+};
+
+NatSet.prototype.max = function() {
+	return this.sorted[this.sorted.length - 1];
+};
+
+NatSet.prototype.andLessThan = function(limit) {
+	if (this.sorted[this.sorted.length - 1] < limit)
+		return this;
+	let sorted = [];
+	for (let i = 0; i < this.sorted.length; i++) {
+		if (this.sorted[i] < limit)
+			sorted.push(this.sorted[i]);
+		else
+			break;
+	}
+	return new NatSet(sorted);
+};
+
+NatSet.singleton = function(value) {
+	return new NatSet([value]);
+};
+
+NatSet.lessThan = function(limit) {
+	let sorted = [];
+	for (let i = 0; i < limit; i++)
+		sorted.push(i);
+	return new NatSet(sorted);
+};
 
 // A format for a card set.
-Format.CardSet = function(allowNull, size, superset) {
-	this.allowNull = allowNull;
-	this.size = size;
+Format.CardSet = function(superset, size) {
+	console.assert(size === null || size instanceof NatSet);
+	if (superset && size) size = size.andLessThan(superset.totalCount + 1);
 	this.superset = superset;
+	this.size = size;
 };
 
 Format.CardSet.prototype = Object.create(Format.prototype);
 
 Format.CardSet.prototype.encode = function(cards) {
-	if (cards === null) {
-		console.assert(this.allowNull);
-		return null;
-	}
 	return cards.counts;
 };
 
 Format.CardSet.prototype.decode = function(source) {
-	if (source === null) {
-		if (this.allowNull) return null;
-		throw Format.Exception;
-	}
-
+	if (source === null) throw Format.Exception;
 	if (!(source instanceof Object)) throw Format.Exception;
 	let counts = { };
 	let totalCount = 0;
@@ -202,14 +288,13 @@ Format.CardSet.prototype.decode = function(source) {
 		counts[card] = count;
 		totalCount += count;
 	}
-	if (this.size && totalCount !== this.size) throw Format.Exception;
+	if (this.size && !this.size.contains(totalCount)) throw Format.Exception;
 	return new CardSet(counts, totalCount);
 };
 
 Format.CardSet.prototype.tryRandom = function() {
-	if (this.allowNull && Math.random() < 0.4) return null;
 	let superset = CardSet.create(this.superset || defaultDeck);
-	let size = this.size || Format.nat.lessThan(superset.totalCount).random();
+	let size = (this.size || NatSet.lessThan(superset.totalCount)).random();
 	let res = CardSet.create();
 	for (let i = 0; i < size; i++) {
 		let card = superset.draw();
@@ -220,18 +305,14 @@ Format.CardSet.prototype.tryRandom = function() {
 };
 
 Format.CardSet.prototype.withSuperset = function(superset) {
-	return new Format.CardSet(this.allowNull, this.size, superset);
+	return new Format.CardSet(superset, this.size);
 };
 
 Format.CardSet.prototype.withSize = function(size) {
-	return new Format.CardSet(this.allowNull, size, this.superset);
+	return new Format.CardSet(this.superset, size);
 };
 
-Format.CardSet.prototype.orNull = function() {
-	return new Format.CardSet(true, this.size, this.superset);
-};
-
-Format.cardSet = new Format.CardSet(false, null, null);
+Format.cardSet = new Format.CardSet(null, null);
 
 
 // A format for an expression, or null.
@@ -304,44 +385,11 @@ Format.exp = function(role) {
 	return new Format.Exp(role, false, null);
 };
 
-// A format for a non-negative integer less than a given limit.
-Format.Nat = function(limit) {
-	this.limit = limit;
-};
-
-Format.Nat.prototype = Object.create(Format.prototype);
-
-Format.Nat.prototype.encode = function(value) {
-	console.assert(typeof value === "number" && value >= 0 && value < this.limit);
-	return value;
-};
-
-Format.Nat.prototype.decode = function(value) {
-	if (typeof value !== "number") throw Format.Exception;
-	let num = Math.floor(value);
-	if (num !== value) throw Format.Exception;
-	if (!(num >= 0 && num < this.limit)) throw Format.Exception;
-	return num;
-};
-
-Format.Nat.prototype.lessThan = function(limit) {
-	return new Format.Nat(Math.min(this.limit, limit));
-};
-
-Format.Nat.prototype.random = function() {
-	if (!isFinite(this.limit))
-		return Math.floor(Math.exp(0.5 / Math.random()) - 1);
-	else
-		return Math.floor(Math.random() * this.limit);
-};
-
-Format.nat = new Format.Nat(Infinity);
-
 
 // A format for a list of things.
-Format.List = function(inner, allowNull) {
+Format.List = function(inner, size) {
 	this.inner = inner;
-	this.allowNull = allowNull;
+	this.size = size;
 };
 
 Format.List.prototype = Object.create(Format.prototype);
@@ -356,11 +404,9 @@ Format.List.prototype.encode = function(list) {
 };
 
 Format.List.prototype.decode = function(source) {
-	if (source === null) {
-		if (this.allowNull) return null;
-		throw Format.Exception;
-	}
+	if (source === null) throw Format.Exception;
 	if (!(source instanceof Array)) throw Format.Exception;
+	if (this.size && !this.size.contains(source.length)) throw Format.Exception;
 	let nList = new Array(source.length);
 	for (let i = 0; i < source.length; i++) {
 		let item = nList[i] = this.inner.decode(source[i]);
@@ -370,8 +416,7 @@ Format.List.prototype.decode = function(source) {
 };
 
 Format.List.prototype.tryRandom = function() {
-	if (this.allowNull && Math.random() < 0.1) return null;
-	let len = Format.nat.random();
+	let len = this.size ? this.size.random() : Math.floor(Math.exp(0.5 / Math.random()) - 1);
 	let list = [];
 	for (let i = 0; i < len; i++) {
 		let inner = this.inner.tryRandom();
@@ -381,13 +426,9 @@ Format.List.prototype.tryRandom = function() {
 	return list;
 };
 
-Format.List.prototype.orNull = function() {
-	return new Format.List(this.inner, true);
-};
-
 Format.list = function(inner) {
 	console.assert(inner instanceof Format);
-	return new Format.List(inner, false);
+	return new Format.List(inner, null);
 };
 
 Format.list.card = Format.list(Format.card);

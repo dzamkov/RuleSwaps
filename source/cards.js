@@ -21,10 +21,9 @@
 		let discard = Math.min(amount, player.handSize);
 		if (discard > 0) {
 			yield game.log(player, " must discard ", Log.Cards(discard));
-			let commitment = yield game.interactCards(player, {
+			let commitment = yield game.interactHand(player, {
 				ordered: false,
-				optional: false,
-				amount: discard
+				amount: NatSet.singleton(discard)
 			}, {
 				accept: { text: "Discard" }
 			});
@@ -45,10 +44,9 @@
 			discardsMessage = discardsMessage || " must discard down to ";
 			yield game.log(player, discardsMessage, Log.Cards(downTo));
 			let amount = player.handSize - downTo;
-			let commitment = yield game.interactCards(player, {
+			let commitment = yield game.interactHand(player, {
 				ordered: false,
-				optional: false,
-				amount: amount
+				amount: NatSet.singleton(amount)
 			}, {
 				accept: { text: "Discard" }
 			});
@@ -107,6 +105,33 @@
 				let player = game.getActivePlayer();
 				yield playerDraws(game, player, 6);
 				yield playerDiscards(game, player, 3);
+			}
+		}));
+	
+	Card.register("you_redraw", new Card(Role.Action,
+		"You may discard up to 4 cards, then draw the same number of cards",
+		function* (game, slots) {
+			let limit = 4;
+			let player = game.getActivePlayer();
+			if (player.handSize > 0) {
+				yield game.log(player, " may discard up to ", Log.Cards(limit));
+				let commitment = yield game.interactHand(player, {
+					ordered: false,
+					amount: NatSet.lessThan(limit + 1)
+				}, {
+					accept: { text: "Discard" }
+				});
+				let res = yield game.reveal(commitment);
+				if (res.totalCount > 0) {
+					yield game.takeCards(player, res, commitment);
+					yield game.log(player, " discards ", res);
+					yield game.discard(res);
+					yield playerDraws(game, player, res.totalCount);
+				} else {
+					yield game.log(player, " doesn't discard");
+				}
+			} else {
+				yield game.log(player, " doesn't have any cards");
 			}
 		}));
 
@@ -307,40 +332,6 @@
 				}
 			} else {
 				yield game.log(player, " waives the right to propose an amendment");
-			}
-		}));
-
-	Card.register("player_perform_or_propose", new Card(Role.Action,
-		"{Player} may perform an action, or propose an amendment, to be ratified if {Condition}",
-		function* (game, slots) {
-			let player = yield game.resolve(slots[0]);
-			yield game.log(player, " may perform an action or propose an amendment");
-			let commitment = yield game.interactNewAmend(player, true);
-			let res = yield game.reveal(commitment);
-			if (res) {
-				if (res.line === null) {
-					let cards = CardSet.fromList(res.exp.toList());
-					yield game.takeCards(player, cards, commitment);
-					yield playerPerforms(game, player, res.exp);
-					yield game.discard(cards, commitment);
-				} else {
-					yield game.log(player,
-						((res.line === 0) ?
-							(" proposes a new amendment at the top of the constitution") :
-							(" proposes a new amendment below the " + getOrdinal(res.line))) + " ",
-						res.exp);
-					yield game.takeCards(player, CardSet.fromList(res.exp.toList()), commitment);
-					let amendment = yield game.insertAmend(res.line, res.exp, true, commitment);
-					if (yield game.resolve(slots[1])) {
-						yield game.reifyAmend(amendment);
-						yield game.log(player, "'s amendment has been ratified");
-					} else {
-						yield game.removeAmend(amendment);
-						yield game.log(player, "'s amendment was not ratified");
-					}
-				}
-			} else {
-				yield game.log(player, " waives the right to specify an action");
 			}
 		}));
 
@@ -756,15 +747,14 @@
 	let mayDiscard = function* (game, player, amount) {
 		if (player.handSize >= amount) {
 			yield game.log(player, " may discard ", Log.Cards(amount));
-			let commitment = yield game.interactCards(player, {
+			let commitment = yield game.interactHand(player, {
 				ordered: false,
-				optional: true,
-				amount: 3
+				amount: NatSet.singleton(amount).orZero()
 			}, {
 				accept: { text: "Discard" }
 			});
 			let res = yield game.reveal(commitment);
-			if (res) {
+			if (res.totalCount > 0) {
 				yield game.takeCards(player, res, commitment);
 				yield game.log(player, " discards ", res)
 				yield game.discard(res);
@@ -1256,9 +1246,8 @@
 			yield game.log("Whoever discards the most cards will chose a player");
 			let discards = new Array(players.length);
 			for (let i = 0; i < discards.length; i++) {
-				discards[i] = yield game.interactCards(players[i], {
-					ordered: false,
-					optional: true
+				discards[i] = yield game.interactHand(players[i], {
+					ordered: false
 				}, {
 					accept: { text: "Discard" }
 				});
@@ -1266,7 +1255,7 @@
 			for (let i = 0; i < discards.length; i++) {
 				let res = yield game.reveal(discards[i]);
 				discards[i] = res;
-				if (res) {
+				if (res.totalCount > 0) {
 					yield game.takeCards(players[i], res, discards[i]);
 					yield game.discard(res);
 				}
@@ -1280,7 +1269,7 @@
 				message.push(mostDiscarded[0], " discarded the most cards");
 			}
 			for (let i = 0; i < discards.length; i++) {
-				if (discards[i]) {
+				if (discards[i].totalCount > 0) {
 					message.push(Log.Break, players[i], " discarded ", discards[i]);
 				} else {
 					message.push(Log.Break, players[i], " didn't discard anything");
@@ -1351,9 +1340,10 @@ let defaultDeck = CardSet.create({
 	"conditional_you_draw": 2,
 	"player_draws": 2,
 	"conditional_player_draws": 2,
-	"you_draft": 3,
-	"conditional_you_draft": 2,
-	"you_draw_type": 3,
+	"you_draft": 2,
+	"conditional_you_draft": 1,
+	"you_redraw": 2,
+	"you_draw_type": 2,
 	"you_draw_to": 1,
 	"conditional_you_draw_to": 1,
 	"player_draws_to": 1,
@@ -1368,8 +1358,7 @@ let defaultDeck = CardSet.create({
 	"player_loses_coins": 3,
 	"conditional_player_loses_coins": 5,
 	"player_reveals_hand": 2,
-	"conditional_you_propose": 5,
-	"player_perform_or_propose": 2,
+	"conditional_you_propose": 3,
 	"player_perform_or_discard": 3,
 	"player_propose_or_discard": 3,
 	"you_perform_for_coins": 2,
@@ -1429,7 +1418,8 @@ let defaultDeck = CardSet.create({
 
 let defaultSetup = new Game.Setup([
 	Expression.fromList(["wealth_win"]),
+	Expression.fromList(["you_redraw"]),
 	Expression.fromList(["you_perform_for_coins"]),
-	Expression.fromList(["player_perform_or_propose", "you", "payment_vote"]),
-	Expression.fromList(["conditional_you_draft", "in_constitution"])
+	Expression.fromList(["conditional_you_propose", "in_constitution", "payment_vote"]),
+	Expression.fromList(["conditional_you_draw", "in_constitution"])
 ], defaultDeck, [4, 5, 6], [20], 20);

@@ -533,19 +533,17 @@ Game.prototype.interactRole = function (player) {
 	return this.interact(player, Format.id(Format.nat, Role));
 };
 
-// Requests the given player to select a list or set of cards subject to restrictions.
+// Requests the given player to select a list or set of cards from their hand subject to restrictions.
 //
 // 	options
 //		ordered  - does the order of cards matter?
-//		optional - can the player skip this interaction without selecting cards?
-//		amount   - if set, the exact number of cards that can be selected.
+//		amount   - A NatSet given the number of cards that can be selected. Unrestricted if null.
 //
 //	returns a commitment of either a set or lists of cards.
-Game.prototype.interactCards = function (player, options) {
+Game.prototype.interactHand = function (player, options) {
 	let format = options.ordered ? Format.list.card : Format.cardSet;
 	if (player.hand) format = format.withSuperset(player.hand);
 	if (options.amount) format = format.withSize(options.amount);
-	if (options.optional) format = format.orNull();
 	return this.interact(player, format);
 };
 

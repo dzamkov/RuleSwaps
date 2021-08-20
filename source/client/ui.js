@@ -911,7 +911,7 @@ let UI = new function() {
 			this.cardList.dragEnterMove = function(animated, left, top, fromAcceptor) {
 				if (fromAcceptor === this ||
 					!cards.amount ||
-					this.getNumCards() < cards.amount)
+					this.getNumCards() < cards.amount.max())
 				{
 					if (oldDragEnterMove.call(this, animated, left, top, fromAcceptor)) {
 						
@@ -934,7 +934,7 @@ let UI = new function() {
 		// Updates the status of the buttons in this input
 		Cards.prototype.updateButtons = function() {
 			let numCards = this.cardList.getNumCards();
-			setButtonsEnabled(this.buttons, numCards > 0 && (!this.amount || this.amount === numCards));
+			setButtonsEnabled(this.buttons, numCards > 0 && (!this.amount || this.amount.contains(numCards)));
 		};
 		
 		Cards.prototype.onButtonClick = function(options) {
@@ -945,7 +945,7 @@ let UI = new function() {
 				this.respond(null, options.value);
 			} else {
 				let cards = this.cardList.toTypeList();
-				if (cards.length > 0 && (!this.amount || cards.length === this.amount)) {
+				if (cards.length > 0 && (!this.amount || this.amount.contains(cards.length))) {
 					this.respond(cards, options.value);
 				}
 			}

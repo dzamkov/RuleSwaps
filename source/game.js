@@ -114,9 +114,10 @@ Log.Negative.prototype.toString = function () {
 }
 
 // Identifies and describes an amendment or proposal in a game's constitution.
-function Amendment(exp, isProposal) {
+function Amendment(exp, author, isProposal) {
 	console.assert(exp instanceof Expression);
 	this.exp = exp;
+	this.author = author;
 	this.isProposal = !!isProposal;
 }
 
@@ -126,7 +127,7 @@ function Game(setup, playerInfos) {
 	// Create copy of initial setup
 	this.constitution = new Array(setup.constitution.length);
 	for (let i = 0; i < setup.constitution.length; i++) {
-		let amendment = new Amendment(Expression.get(setup.constitution[i]));
+		let amendment = new Amendment(Expression.get(setup.constitution[i]), null);
 		this.constitution[i] = amendment;
 		amendment.line = i;
 	}
@@ -143,10 +144,13 @@ function Game(setup, playerInfos) {
 
 	// More initialization
 	this.turn = 0;
-	this.active = this.constitution[0];
-	this.playerStack = [];
-	this.winner = null;
+	this.depth = 0;
 	this.inConstitution = true;
+	this.activeAmend = this.constitution[0];
+	this.turnPlayer = null;
+	this.activePlayer = null;
+	this.author = null;
+	this.winner = null;
 
 	this.canResolveRandomness = false;
 	this.isRunning = false;
@@ -168,19 +172,22 @@ function Game(setup, playerInfos) {
 
 		// The high-level playthrough procedure for a game.
 		while (true) {
-			console.assert(this.playerStack.length === 0);
+			console.assert(this.depth === 0);
 			let player = this.players[this.turn % this.players.length];
 			yield this.log(player, " takes the floor for turn " + (this.turn + 1));
-			this.playerStack.push(player);
+			yield this.setTurnPlayer(player);
+			yield this.setActivePlayer(player);
+			this.depth++;
 			let line = 0;
 			while (line < this.constitution.length) {
-				let amendment = this.getAmend(line);
-				yield this.setActiveAmend(amendment);
-				yield this.log("The " + getOrdinal(line + 1) + " amendment is invoked ", amendment.exp);
-				yield this.resolve(amendment.exp);
-				line = (this.getLine(this.active) + 1);
+				let amend = this.getAmend(line);
+				this.author = amend.author;
+				yield this.setActiveAmend(amend);
+				yield this.log("The " + getOrdinal(line + 1) + " amendment is invoked ", amend.exp);
+				yield this.resolve(amend.exp);
+				line = (this.getLine(this.activeAmend) + 1);
 			}
-			this.playerStack.pop();
+			this.depth--;
 			this.turn++;
 		}
 
@@ -221,31 +228,20 @@ Game.prototype.pause = function* () {
 	yield;
 };
 
-// Gets the player currently at the top of the player stack.
-Game.prototype.getActivePlayer = function () {
-	return this.playerStack[this.playerStack.length - 1];
-};
-
-// Adds a player to the top of the player stack.
-Game.prototype.pushPlayerStack = function (player) {
-	this.playerStack.push(player);
-}
-
-// Removes a player from the top of the player stack.
-Game.prototype.popPlayerStack = function (player) {
-	let res = this.playerStack.pop();
-	console.assert(!player || player === res);
-}
-
 // Gets the list of players, going clockwise, starting at the given player.
 Game.prototype.getPlayersFrom = function (player) {
 	return this.players.slice(player.id).concat(this.players.slice(0, player.id));
-}
+};
 
-// Gets how far into the player stack the game is at.
-Game.prototype.getDepth = function () {
-	return this.playerStack.length;
-}
+// Sets the player whose turn it is.
+Game.prototype.setTurnPlayer = function (player) {
+	this.turnPlayer = player;
+};
+
+// Sets the active player (i.e. target of "you").
+Game.prototype.setActivePlayer = function (player) {
+	this.activePlayer = player;
+};
 
 // Resolves an expression in the game.
 Game.prototype.resolve = function (exp) {
@@ -313,17 +309,17 @@ Game.prototype.win = function* (player) {
 };
 
 // Gets the line the given amendment is on.
-Game.prototype.getLine = function (amendment) {
+Game.prototype.getLine = function (amend) {
 
 	// Check cache first
-	if (this.constitution[amendment.lineCache] === amendment)
-		return amendment.lineCache;
+	if (this.constitution[amend.lineCache] === amend)
+		return amend.lineCache;
 
 	// Traverse constitution to find
 	for (let i = 0; i < this.constitution.length; i++) {
 		let test = this.constitution[i];
 		test.lineCache = i;
-		if (test === amendment)
+		if (test === amend)
 			return i;
 	}
 	return null;
@@ -331,19 +327,19 @@ Game.prototype.getLine = function (amendment) {
 
 // Gets the amendment on the given line of the constitution.
 Game.prototype.getAmend = function (line) {
-	let amendment = this.constitution[line];
-	amendment.lineCache = line;
-	return amendment;
+	let amend = this.constitution[line];
+	amend.lineCache = line;
+	return amend;
 };
 
 // Sets the amendment that is currently being invoked in the game.
 Game.prototype.setActiveAmend = function (amend) {
-	this.active = amend;
+	this.activeAmend = amend;
 };
 
 // Inserts a new amendment at the given line. Returns a handle to the amendment.
-Game.prototype.insertAmend = function (line, exp, isProposal) {
-	let amend = new Amendment(exp, isProposal);
+Game.prototype.insertAmend = function (line, exp, author, isProposal) {
+	let amend = new Amendment(exp, author, isProposal);
 	this.constitution.splice(line, 0, amend);
 	return amend;
 };

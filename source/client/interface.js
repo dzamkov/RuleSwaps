@@ -37,7 +37,7 @@ function Interface(setup, playerInfos, selfId) {
 		playersLeft: document.getElementById("players-left"),
 		playersRight: document.getElementById("players-right"),
 
-		selfBack: document.getElementById("player-self-back"),
+		self: document.getElementById("section-player-self"),
 		selfCoins: document.getElementById("player-self-coins"),
 		selfCards: document.getElementById("player-self-cards"),
 	};
@@ -57,7 +57,7 @@ function Interface(setup, playerInfos, selfId) {
 	if (selfId !== null) {
 		this.playerSelf = this.players[selfId];
 		this.playerSelf.ui = new UI.PlayerInfo(this.playerSelf,
-			this.ui.selfCoins, this.ui.selfCards, this.ui.selfBack);
+			this.ui.self, this.ui.selfCoins, this.ui.selfCards);
 		let otherPlayers = this.getPlayersFrom(this.playerSelf).slice(1);
 		let split = Math.ceil(otherPlayers.length / 2);
 		for (let i = split - 1; i >= 0; i--) {
@@ -313,6 +313,18 @@ Interface.prototype.run = function () {
 	this.update();
 };
 
+Interface.prototype.setTurnPlayer = function (player) {
+	let oldPlayer = this.turnPlayer;
+	if (player !== oldPlayer) {
+		this.queueEffect(Effect.custom(0, ui => {
+			if (oldPlayer)
+				oldPlayer.ui.setIsTurnPlayer(false);
+			player.ui.setIsTurnPlayer(true);
+		}));
+		Game.prototype.setTurnPlayer.call(this, player);
+	}
+};
+
 Interface.prototype.revealTo = function* (player, commitment) {
 	if (this.playerSelf === player) {
 		return yield this.awaitCommitment(commitment);
@@ -322,11 +334,11 @@ Interface.prototype.revealTo = function* (player, commitment) {
 };
 
 Interface.prototype.log = function () {
-	this.queueEffect(Effect.log(this.getDepth(), arguments, UI.Log.Style.Normal));
+	this.queueEffect(Effect.log(this.depth, arguments, UI.Log.Style.Normal));
 }
 
 Interface.prototype.win = function* (player) {
-	this.queueEffect(Effect.log(this.getDepth(), [player, " wins!"], UI.Log.Style.Victory));
+	this.queueEffect(Effect.log(this.depth, [player, " wins!"], UI.Log.Style.Victory));
 	yield Game.prototype.win.call(this, player);
 }
 
@@ -344,8 +356,8 @@ Interface.prototype.setActiveAmend = function (amend) {
 	return Game.prototype.setActiveAmend.call(this, amend);
 };
 
-Interface.prototype.insertAmend = function (line, exp, isProposal, ref) {
-	let amend = Game.prototype.insertAmend.call(this, line, exp, isProposal);
+Interface.prototype.insertAmend = function (line, exp, author, isProposal, ref) {
+	let amend = Game.prototype.insertAmend.call(this, line, exp, author, isProposal);
 	this.queueInsertAmend(line, amend, ref);
 	return amend;
 };

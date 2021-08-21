@@ -85,6 +85,13 @@ $playarea-sidebar-width: $card-width + 2 * $deck-padding;
 	display: none !important;
 }
 
+.section-back {
+	&.-turn-player {
+		border: solid 2px rgba(#cccccc, 0.4);
+		box-shadow: 0 0 16px 0 rgba(#fdff7e, 0.4), inset 0 0 8px rgba(#ffffff, 0.15);
+	}
+}
+
 #section-player-self {
 	@extend .section-back;
 	position: absolute;

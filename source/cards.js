@@ -60,7 +60,7 @@
 	Card.register("you_draw", new Card(Role.Action,
 		"You draw 2 cards",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			yield playerDraws(game, player, 2);
 		}));
 
@@ -68,7 +68,7 @@
 		"If {Condition}, you draw 4 cards",
 		function* (game, slots) {
 			if (yield game.resolve(slots[0])) {
-				let player = game.getActivePlayer();
+				let player = game.activePlayer;
 				yield playerDraws(game, player, 4);
 			}
 		}));
@@ -93,7 +93,7 @@
 		"You draw 3 cards, then discard 2",
 		function* (game, slots) {
 			// TODO: Actual drafting
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			yield playerDraws(game, player, 3);
 			yield playerDiscards(game, player, 2);
 		}));
@@ -102,7 +102,7 @@
 		"If {Condition}, you draw 6 cards, then discard 3",
 		function* (game, slots) {
 			if (yield game.resolve(slots[0])) {
-				let player = game.getActivePlayer();
+				let player = game.activePlayer;
 				yield playerDraws(game, player, 6);
 				yield playerDiscards(game, player, 3);
 			}
@@ -112,7 +112,7 @@
 		"You may discard up to 4 cards, then draw the same number of cards",
 		function* (game, slots) {
 			let limit = 4;
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			if (player.handSize > 0) {
 				yield game.log(player, " may discard up to ", Log.Cards(limit));
 				let commitment = yield game.interactHand(player, {
@@ -138,7 +138,7 @@
 	Card.register("you_draw_type", new Card(Role.Action,
 		"Name a card type and draw until you get a card of that type (discard all others drawn)",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			let role = yield game.reveal(yield game.interactRole(player));
 			yield game.log(player, " wants a ", role.str.toLowerCase(), " card");
 
@@ -164,7 +164,7 @@
 	Card.register("you_draw_to", new Card(Role.Action,
 		"You draw until you have 8 cards",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			yield playerDrawsTo(game, player, 8);
 		}));
 
@@ -172,7 +172,7 @@
 		"If {Condition}, you draw until you have 10 cards",
 		function* (game, slots) {
 			if (yield game.resolve(slots[0])) {
-				let player = game.getActivePlayer();
+				let player = game.activePlayer;
 				yield playerDrawsTo(game, player, 10);
 			}
 		}));
@@ -245,7 +245,7 @@
 	Card.register("you_gain_coins", new Card(Role.Action,
 		"You gain 5 coins",
 		function* (game, slots) {
-			var player = game.getActivePlayer();
+			var player = game.activePlayer;
 			yield playerGains(game, player, 5);
 		}));
 
@@ -253,7 +253,7 @@
 		"If {Condition}, you gain 15 coins",
 		function* (game, slots) {
 			if (yield game.resolve(slots[0])) {
-				var player = game.getActivePlayer();
+				var player = game.activePlayer;
 				yield playerGains(game, player, 15);
 			}
 		}));
@@ -300,18 +300,24 @@
 
 	let playerPerforms = function* (game, player, exp) {
 		let oldInConstitution = game.inConstitution;
+		let oldActivePlayer = game.activePlayer;
+		let oldAuthor = game.author;
 		game.inConstitution = false;
+		game.setActivePlayer(player);
+		game.author = player;
 		yield game.log(player, " performs an action ", exp);
-		yield game.pushPlayerStack(player);
+		game.depth++;
 		yield game.resolve(exp);
-		yield game.popPlayerStack(player);
+		game.depth--;
 		game.inConstitution = oldInConstitution;
+		game.setActivePlayer(oldActivePlayer);
+		game.author = oldAuthor;
 	};
 
 	Card.register("conditional_you_propose", new Card(Role.Action,
 		"You may propose an amendment, to be ratified if {Condition} and {Condition}",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			yield game.log(player, " may propose an amendment");
 			let commitment = yield game.interactNewAmend(player, false);
 			let res = yield game.reveal(commitment);
@@ -322,7 +328,7 @@
 						(" proposes a new amendment below the " + getOrdinal(res.line))) + " ",
 					res.exp);
 				yield game.takeCards(player, CardSet.fromList(res.exp.toList()), commitment);
-				let amendment = yield game.insertAmend(res.line, res.exp, true, commitment);
+				let amendment = yield game.insertAmend(res.line, res.exp, player, true, commitment);
 				if ((yield game.resolve(slots[0])) && (yield game.resolve(slots[1]))) {
 					yield game.reifyAmend(amendment);
 					yield game.log(player, "'s amendment has been ratified");
@@ -381,7 +387,7 @@
 						(" proposes a new amendment below the " + getOrdinal(res.line))) + " ",
 					res.exp);
 				yield game.takeCards(player, CardSet.fromList(res.exp.toList()), commitment);
-				let amendment = yield game.insertAmend(res.line, res.exp, true, commitment);
+				let amendment = yield game.insertAmend(res.line, res.exp, player, true, commitment);
 				if (yield game.resolve(slots[1])) {
 					yield game.reifyAmend(amendment);
 					yield game.log(player, "'s amendment has been ratified");
@@ -399,7 +405,7 @@
 	Card.register("you_perform_for_coins", new Card(Role.Action,
 		"You may perform an action. If you do, gain 5 coins for each card used",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			yield game.log(player, " may perform an action");
 			let commitment = yield game.interactSpecify(player, Role.Action);
 			let exp = yield game.reveal(commitment);
@@ -459,15 +465,17 @@
 	Card.register("foreach_conditional", new Card(Role.Action,
 		"For each player, going clockwise, if that player satisfies {Condition}, they do {Action}",
 		function* (game, slots) {
-			let players = game.getPlayersFrom(game.getActivePlayer());
+			let players = game.getPlayersFrom(game.activePlayer);
 			for (let i = 0; i < players.length; i++) {
 				let player = players[i];
 				yield game.log(player, " is evaluated");
-				yield game.pushPlayerStack(player);
+				game.setActivePlayer(player);
+				game.depth++;
 				if (yield game.resolve(slots[0]))
 					yield game.resolve(slots[1]);
-				yield game.popPlayerStack(player);
+				game.depth--;
 			}
+			game.setActivePlayer(players[0]);
 		}));
 
 	Card.register("left_player_wins", new Card(Role.Action,
@@ -475,7 +483,7 @@
 		function* (game, slots) {
 			if (game.inConstitution) {
 				if (yield game.resolve(slots[0])) {
-					let players = game.getPlayersFrom(game.getActivePlayer());
+					let players = game.getPlayersFrom(game.activePlayer);
 					yield game.win(players[1 % players.length]);
 				}
 			} else {
@@ -488,7 +496,7 @@
 		"If this is in the constitution, you may perform an action. If you have no cards afterward, you win",
 		function* (game, slots) {
 			if (game.inConstitution) {
-				let player = game.getActivePlayer();
+				let player = game.activePlayer;
 				let commitment = yield game.interactSpecify(player, Role.Action, {
 					accept: { text: "Perform" }
 				});
@@ -517,7 +525,7 @@
 		"If this is in the constitution, you may reveal your hand. If you have exactly 3 cards of each type, you win",
 		function* (game, slots) {
 			if (game.inConstitution) {
-				let player = game.getActivePlayer();
+				let player = game.activePlayer;
 				let res = yield game.reveal(yield game.interactBoolean(player, {
 					yes: { text: "Reveal hand" },
 					no: { text: "Don't reveal hand" }
@@ -544,7 +552,7 @@
 	Card.register("wealth_win", new Card(Role.Action,
 		"If you have 100 coins, you win",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			if (player.coins >= 100) {
 				yield game.log(player, " has ", Log.Coins(100));
 				yield game.win(player);
@@ -560,7 +568,7 @@
 				(yield game.resolve(slots[1])) &&
 				(yield game.resolve(slots[2])) &&
 				(yield game.resolve(slots[3])))
-				yield game.win(game.getActivePlayer());
+				yield game.win(game.activePlayer);
 		}));
 
 	Card.register("player_win", new Card(Role.Action,
@@ -619,7 +627,7 @@
 	Card.register("you_pay", new Card(Role.Condition,
 		"You pay 20 coins",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			return yield mayPay(game, player, 20);
 		}));
 
@@ -627,7 +635,7 @@
 		"You give 10 coins to {Player} (Could be yourself)",
 		function* (game, slots) {
 			let amount = 10;
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			let recipient = yield game.resolve(slots[0]);
 			if (player.coins >= amount) {
 				yield game.log(player, " may give ", Log.Coins(10), " to ", recipient);
@@ -654,7 +662,7 @@
 		"You have at least 12 cards",
 		function* (game, slots) {
 			let amount = 12;
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			if (player.handSize >= amount) {
 				yield game.log(player, " has over ", Log.Cards(amount));
 				return true;
@@ -668,7 +676,7 @@
 		"You have at most 2 cards",
 		function* (game, slots) {
 			let amount = 2;
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			if (player.handSize <= amount) {
 				yield game.log(player, " doesn't have over ", Log.Cards(amount));
 				return true;
@@ -682,7 +690,7 @@
 		"You have at least 75 coins",
 		function* (game, slots) {
 			let amount = 75;
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			if (player.coins >= amount) {
 				yield game.log(player, " has over ", Log.Coins(amount));
 				return true;
@@ -695,7 +703,7 @@
 	Card.register("you_offer_coins_right", new Card(Role.Condition,
 		"The player to your right accepts an offering of coins",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			let players = yield game.getPlayersFrom(player);
 			let recipient = players[players.length - 1];
 			yield game.log(player, " may offer coins to ", recipient);
@@ -729,7 +737,7 @@
 	Card.register("you_reveal_hand", new Card(Role.Condition,
 		"You reveal your hand",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			let res = yield game.reveal(yield game.interactBoolean(player, {
 				yes: { text: "Reveal hand" },
 				no: { text: "Don't reveal hand" }
@@ -772,14 +780,14 @@
 	Card.register("you_discard", new Card(Role.Condition,
 		"You discard 3 cards",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			return yield mayDiscard(game, player, 3);
 		}));
 
 	Card.register("you_perform", new Card(Role.Condition,
 		"You perform an action",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			yield game.log(player, " may perform an action");
 			let commitment = yield game.interactSpecify(player, Role.Action, {
 				pass: {
@@ -849,7 +857,7 @@
 
 	Card.register("you_are", new Card(Role.Condition,
 		"You are {Player}", function* (game, slots) {
-			let you = game.getActivePlayer();
+			let you = game.activePlayer;
 			let other = yield game.resolve(slots[0]);
 			if (you === other) {
 				yield game.log(you, " is the expected player");
@@ -875,19 +883,19 @@
 	Card.register("you_draw_action", new Card(Role.Condition,
 		"You draw a card, and it is an action card (keep it regardless)",
 		function* (game, slots) {
-			return yield drawRole(game, game.getActivePlayer(), Role.Action);
+			return yield drawRole(game, game.activePlayer, Role.Action);
 		}));
 
 	Card.register("you_draw_condition", new Card(Role.Condition,
 		"You draw a card, and it is a condition card (keep it regardless)",
 		function* (game, slots) {
-			return yield drawRole(game, game.getActivePlayer(), Role.Condition);
+			return yield drawRole(game, game.activePlayer, Role.Condition);
 		}));
 
 	Card.register("you_draw_player", new Card(Role.Condition,
 		"You draw a card, and it is a player card (keep it regardless)",
 		function* (game, slots) {
-			return yield drawRole(game, game.getActivePlayer(), Role.Player);
+			return yield drawRole(game, game.activePlayer, Role.Player);
 		}));
 
 	Card.register("majority_vote", new Card(Role.Condition,
@@ -920,7 +928,7 @@
 	Card.register("payment_vote", new Card(Role.Condition,
 		"Payment-weighted vote (each player gets votes equal to the amount of coins they pay)",
 		function* (game, slots) {
-			let players = yield game.getPlayersFrom(game.getActivePlayer());
+			let players = yield game.getPlayersFrom(game.activePlayer);
 			yield game.log("A payment-weighted vote is triggered")
 			let payments = new Array(players.length);
 			let votes = new Array(players.length);
@@ -990,7 +998,7 @@
 		}));
 
 	Card.register("in_constitution", new Card(Role.Condition,
-		"This is in the constitution",
+		"This card is in the constitution",
 		function* (game, slots) {
 			if (game.inConstitution) {
 				yield game.log("Card ", Log.Positive("is"), " in the constitution");
@@ -1004,14 +1012,15 @@
 	// Players
 	// -----------------------
 
-	Card.register("you", new Card(Role.Player,
-		"You", function (game, slots) {
-			return game.getActivePlayer();
+	Card.register("author", new Card(Role.Player,
+		"Whoever played this card", function* (game, slots) {
+			yield game.log(game.author, " played this card");
+			return game.author;
 		}));
 
 	Card.register("your_left_player", new Card(Role.Player,
 		"The player to your left", function* (game, slots) {
-			let other = game.getActivePlayer();
+			let other = game.activePlayer;
 			let players = yield game.getPlayersFrom(other);
 			let res = players[1 % players.length];
 			yield game.log(res, " is the player to the left of ", other);
@@ -1020,7 +1029,7 @@
 
 	Card.register("your_right_player", new Card(Role.Player,
 		"The player to your right", function* (game, slots) {
-			let other = game.getActivePlayer();
+			let other = game.activePlayer;
 			let players = yield game.getPlayersFrom(other);
 			let res = players[players.length - 1];
 			yield game.log(res, " is the player to the right of ", other);
@@ -1295,7 +1304,7 @@
 	Card.register("auction_winner_to_you_picks", new Card(Role.Player,
 		"Auction winner picks, with proceeds going to you (You don't participate in the auction)",
 		function* (game, slots) {
-			let player = game.getActivePlayer();
+			let player = game.activePlayer;
 			let winner = yield auctionWinner(game, player);
 			return yield picks(game, winner, true);
 		}));
@@ -1317,18 +1326,21 @@
 	Card.register("first", new Card(Role.Player,
 		"The first player, going clockwise, who satisfies {Condition} (Defaults to you if no one satisfies the condition)",
 		function* (game, slots) {
-			let players = game.getPlayersFrom(game.getActivePlayer());
+			let players = game.getPlayersFrom(game.activePlayer);
 			for (let i = 0; i < players.length; i++) {
 				let player = players[i];
 				yield game.log(player, " is evaluated");
-				yield game.pushPlayerStack(player);
+				game.setActivePlayer(player);
+				game.depth++;
 				let res = yield game.resolve(slots[0]);
-				yield game.popPlayerStack(player);
+				game.depth--;
 				if (res) {
+					game.setActivePlayer(players[0]);
 					yield game.log(player, " is first to satisfy the condition");
 					return player;
 				}
 			}
+			game.setActivePlayer(players[0]);
 			yield game.log("Nobody satisfied the condition, so the active player, ",
 				players[0], ", is selected");
 			return players[0];
@@ -1398,7 +1410,7 @@ let defaultDeck = CardSet.create({
 	"wealth_vote": 2,
 	"in_constitution": 2,
 
-	"you": 4,
+	"author": 5,
 	"your_left_player": 2,
 	"your_right_player": 2,
 	"poorest_player": 3,

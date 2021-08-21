@@ -11,11 +11,11 @@ function FuzzerGame(setup, playerInfos) {
 FuzzerGame.prototype = Object.create(Game.prototype);
 
 FuzzerGame.prototype.log = function() {
-	process.stdout.write("\t".repeat(this.getDepth()));
+	process.stdout.write("\t".repeat(this.depth));
 	for (let i = 0; i < arguments.length; i++) {
 		if (arguments[i] === Log.Break) {
 			process.stdout.write("\n");
-			process.stdout.write("\t".repeat(this.getDepth()));
+			process.stdout.write("\t".repeat(this.depth));
 		} else {
 			process.stdout.write(arguments[i].toString());
 		}

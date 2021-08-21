@@ -711,7 +711,8 @@ let UI = new function() {
 	
 	
 	// Augments a set of elements to display player information.
-	function PlayerInfo(player, coins, cards) {
+	function PlayerInfo(player, element, coins, cards) {
+		this.element = element;
 		this.coins = coins;
 		this.cards = cards;
 		
@@ -746,10 +747,10 @@ let UI = new function() {
 		cards.className = "icon -small -cards";
 		info.appendChild(cards);
 		
-		let playerInfo = new PlayerInfo(player, coins, cards);
+		let playerInfo = new PlayerInfo(player, container, coins, cards);
 		playerInfo.container = container;
 		return playerInfo;
-	}
+	};
 	
 	// Triggers an animation class on an element.
 	function trigger(element, style) {
@@ -762,14 +763,21 @@ let UI = new function() {
 	PlayerInfo.prototype.setCoins = function(coins) {
 		this.coins.innerText = coins;
 		trigger(this.coins, "-pulse");
-	}
+	};
 	
 	// Sets the number of cards the given player has.
 	PlayerInfo.prototype.setCards = function(cards) {
 		this.cards.innerText = cards;
 		trigger(this.cards, "-pulse");
-	}
-	
+	};
+
+	// Sets whether this is the current turn's player.
+	PlayerInfo.prototype.setIsTurnPlayer = function(isTurnPlayer) {
+		this.element.className = this.element.className.replace(" -turn-player", "");
+		if (isTurnPlayer) {
+			this.element.className += " -turn-player";
+		}
+	};
 	
 	// The base class for input interfaces.
 	function Input(container) {

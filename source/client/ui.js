@@ -900,8 +900,8 @@ let UI = new function() {
 		Payment.prototype.request = function(options, callback) {
 			this.limit = options.limit;
 			setButtons(this.buttons, options.buttons, this, this.onButtonClick);
-			this.set(Math.min(this.coins, this.limit));
 			Input.prototype.request.call(this, callback);
+			this.set(Math.min(this.coins, this.limit));
 		};
 		
 		// Augments a set of elements to be a cards input.

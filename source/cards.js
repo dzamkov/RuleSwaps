@@ -424,11 +424,22 @@
 		"Repeal the last amendment in the constitution (unless it is active)",
 		function* (game, slots) {
 			let last = game.constitution[game.constitution.length - 1];
-			if (!last.isProposal && game.active !== last) {
+			if (!last.isProposal && game.activeAmend !== last) {
 				yield game.log("The last amendment has been repealed ", last.exp);
 				yield game.removeAmend(last);
 			} else {
 				yield game.log("The last amendment is active and will not be repealed");
+			}
+		}));
+
+	Card.register("conditional_you_are_author", new Card(Role.Action,
+		"If you were the one who played this card, do {Action}",
+		function* (game, slots) {
+			yield game.log(game.author, " played this card");
+			if (game.author == game.activePlayer) {
+				yield game.resolve(slots[0]);
+			} else {
+				yield game.log(game.activePlayer, " is not ", game.author);
 			}
 		}));
 
@@ -522,7 +533,7 @@
 		}));
 
 	Card.register("composition_win", new Card(Role.Action,
-		"You may reveal your hand. If you have exactly 3 cards of each type, you win",
+		"You may reveal your hand. If you have exactly 3 action, 3 condition and 3 player cards, you win",
 		function* (game, slots) {
 			let player = game.activePlayer;
 			let res = yield game.reveal(yield game.interactBoolean(player, {
@@ -1371,6 +1382,7 @@ let defaultDeck = CardSet.create({
 	"player_propose_or_discard": 3,
 	"you_perform_for_coins": 2,
 	"repeal_last_amendment": 2,
+	"conditional_you_are_author": 3,
 	"conditional_twice": 3,
 	"sequence": 1,
 	"while": 2,

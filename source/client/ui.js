@@ -658,7 +658,8 @@ let UI = new function() {
 	
 	// Scrolls to the bottom of the log.
 	Log.prototype.scrollToBottom = function() {
-		this.element.scrollTop = this.element.scrollHeight;
+		// A reverse-scroll container is used, so the bottom is actually at 0.
+		this.element.parentNode.scrollTop = 0;
 	};
 	
 	// Augments an element to be a button.

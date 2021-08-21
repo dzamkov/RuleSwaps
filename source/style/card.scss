@@ -82,14 +82,16 @@ $mini-card-list-height: 88px;
 
 .card {
 	@extend .card-shape;
-	cursor: pointer;
 	position: relative;
-	&.-hover .card-content {
-		background-color: #e6ffff;
-		border-color: #002966;
-		box-shadow: 0 0 14px 0 #003399;
-		transform: scale(1.1);
-		z-index: 1;
+	&.-hover {
+		cursor: pointer;
+		& .card-content {
+			background-color: #e6ffff;
+			border-color: #002966;
+			box-shadow: 0 0 14px 0 #003399;
+			transform: scale(1.1);
+			z-index: 1;
+		}
 	}
 	&.-action .card-header {
 		background: linear-gradient($action-color-light, $action-color-mid);

@@ -52,8 +52,8 @@ var Motion = new function() {
 		this.damping = Math.sqrt(4.0 * this.acceleration);
 
 		element.animated = this;
-		element.addEventListener("mouseenter", this.setMouseOver.bind(this, true));
-		element.addEventListener("mouseleave", this.setMouseOver.bind(this, false));
+		element.addEventListener("mouseenter", this.mouseEnter.bind(this));
+		element.addEventListener("mouseleave", this.mouseLeave.bind(this));
 	};
 
 	// Pins all animated descendants of the given element.
@@ -117,6 +117,19 @@ var Motion = new function() {
 		element.style.top = y + "px";
 		this.x = x;
 		this.y = y;
+
+		// Manually verify that the mouse is still hovering over the element (some browsers don't
+		// trigger mouseleave in this situation).
+		if (window.hovering === this) {
+			let rect = this.element.getBoundingClientRect();
+			if (window.hoveringClientX < rect.left ||
+				window.hoveringClientY < rect.top ||
+				window.hoveringClientX > rect.right ||
+				window.hoveringClientY > rect.bottom) {
+				window.hovering = null;
+				this.updateMouseHover();
+			}
+		}
 	};
 
 	// Causes this animated element to become freely positioned.
@@ -209,16 +222,29 @@ var Motion = new function() {
 			this.element.parentNode.removeChild(this.element);
 	};
 
-	// Sets whether the mouse is over this element (which doesn't necessarily correlate hovering, since
-	// dragged elements will always be hovered over and in that case no other element can be).
-	Animated.prototype.setMouseOver = function(isMouseOver) {
-		this.isMouseOver = isMouseOver;
+	// Handles the mouse entering this element.
+	Animated.prototype.mouseEnter = function() {
+		if (window.hovering) {
+			let oldHovering = window.hovering;
+			window.hovering = this;
+			oldHovering.updateMouseHover();
+		} else {
+			window.hovering = this;
+		}
 		this.updateMouseHover();
+	};
+
+	// Handles the mouse leaving this element.
+	Animated.prototype.mouseLeave = function() {
+		if (window.hovering === this) {
+			window.hovering = null;
+			this.updateMouseHover();
+		}
 	};
 
 	// Updates the mouse hover status of this animated element.
 	Animated.prototype.updateMouseHover = function() {
-		let isMouseHover = window.dragging ? window.dragging.animated === this : this.isMouseOver;
+		let isMouseHover = (window.dragging ? window.dragging.animated : window.hovering) === this;
 		if (isMouseHover !== this.isMouseHover) {
 			if (isMouseHover) {
 				this.element.className += " " + this.hoverStyle;
@@ -278,6 +304,8 @@ var Motion = new function() {
 
 	// Handle mouse move for dragging
 	window.addEventListener("mousemove", function(e) {
+		window.hoveringClientX = e.clientX;
+		window.hoveringClientY = e.clientY;
 		let dragging = window.dragging;
 		if (dragging) {
 			let animated = dragging.animated;

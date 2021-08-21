@@ -522,30 +522,26 @@
 		}));
 
 	Card.register("composition_win", new Card(Role.Action,
-		"If this is in the constitution, you may reveal your hand. If you have exactly 3 cards of each type, you win",
+		"You may reveal your hand. If you have exactly 3 cards of each type, you win",
 		function* (game, slots) {
-			if (game.inConstitution) {
-				let player = game.activePlayer;
-				let res = yield game.reveal(yield game.interactBoolean(player, {
-					yes: { text: "Reveal hand" },
-					no: { text: "Don't reveal hand" }
-				}));
-				if (res) {
-					let hand = yield game.reveal(yield game.getHand(player));
-					let roleCounts = hand.getRoleCounts();
-					if (roleCounts[0] === 3 && roleCounts[1] === 3 && roleCounts[2] === 3) {
-						yield game.log(player, " reveals their hand ", hand,
-							" which has exactly 3 action, 3 condition and 3 player cards!");
-						yield game.win(player);
-					} else {
-						yield game.log(player, " reveals their hand ", hand,
-							" which doesn't satisfy the necessary criteria");
-					}
+			let player = game.activePlayer;
+			let res = yield game.reveal(yield game.interactBoolean(player, {
+				yes: { text: "Reveal hand" },
+				no: { text: "Don't reveal hand" }
+			}));
+			if (res) {
+				let hand = yield game.reveal(yield game.getHand(player));
+				let roleCounts = hand.getRoleCounts();
+				if (roleCounts[0] === 3 && roleCounts[1] === 3 && roleCounts[2] === 3) {
+					yield game.log(player, " reveals their hand ", hand,
+						" which has exactly 3 action, 3 condition and 3 player cards!");
+					yield game.win(player);
 				} else {
-					yield game.log(player, " doesn't reveal their hand");
+					yield game.log(player, " reveals their hand ", hand,
+						" which doesn't satisfy the necessary criteria");
 				}
 			} else {
-				yield game.log("Card ", Log.Negative("is not"), " in the constitution");
+				yield game.log(player, " doesn't reveal their hand");
 			}
 		}));
 
